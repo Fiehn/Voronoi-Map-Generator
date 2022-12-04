@@ -15,11 +15,12 @@ For now only a few features exist, with the diagram being the main one:
 ## Features being worked on
 Many more things are needed but this is the current priority list:
 * Clean up of code, espacially with regrads to Delaunay and global variables (evil)
-* New point generation system
+* New point generation system, Loyd relaxation is an option?
 * Performance with drawing the cells constantly, perhaps moving the drawing into a more static environment somehow??
 * Typecasting ?
-* 
+* Bounding boxes for voronoi
 * New height map generation, Perlin noise is limited and can at times feel unnatural
+* Making the map not scale with window size but be constant and making zooming a thing
 
 
 
