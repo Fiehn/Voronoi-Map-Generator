@@ -6,18 +6,9 @@
 #include <cmath>
 #include "points.hpp"
 
-// Generate vecor that stores the vertecies of voronoi diagram
-std::vector<sf::Vector2f> voroi_points;
-
-// monotonically increases with real angle, used for delaunay
-inline double pseudo_angle(const double dx, const double dy) {
-    const double p = dx / (std::abs(dx) + std::abs(dy));
-    return (dy > 0.0 ? 3.0 - p : 1.0 + p) / 4.0; // [0..1)
-}
 
 class Cell 
-{
-    
+{  
 public:
     const int id; // Unique Id coming from the points vector
     Cell(int i) : id(i) {}; // Constructor, am I doing this right?
@@ -36,10 +27,6 @@ public:
     }
     
     void bubble_sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points);
-    
-
-private:
-    
 
 };
 
@@ -55,7 +42,7 @@ void Cell::bubble_sort_angles(const std::vector<sf::Vector2f>& points, const std
     while (!sorted)
     {
         sorted = true;
-        for (unsigned int k = 0; k < vertex.size() - 1; ++k)
+        for (int k = 0; k < vertex.size() - 1; ++k)
         {
             if (angle[k] > angle[k + 1])
             {

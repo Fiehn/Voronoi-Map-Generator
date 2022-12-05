@@ -4,8 +4,7 @@
 #include <vector>
 #include <math.h>
 
-// Initialize vector of points that act as the "centers/ids" for each cell
-std::vector<sf::Vector2f> points;
+
 
 inline double dist(sf::Vector2f a, sf::Vector2f b) {
     const double dx = a.x - b.x;

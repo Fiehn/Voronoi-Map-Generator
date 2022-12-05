@@ -7,35 +7,56 @@
 #include <cstdlib>
 
 
-// Ok, lets start from the very beginning
-// http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/
-// https://github.com/Sushisource/DnDTG
-
-
-
 int main()
 {
     //std::srand(time(NULL));
+    int windowWidth = 1400;
+    int windowHeight = 800;
 
-    sf::RenderWindow window(sf::VideoMode(1400, 800), "SFML");
+    sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML");
 
+    // as a hash table????? would be better perhaps?
+    std::vector<sf::Vector2f> points;
 
-
-    generatePoints(points, 200, 150, 1400, 800,10.f);
+    generatePoints(points, 300, 100, windowWidth, windowHeight,10.f);
     //generateCells(points);
 
-    Delaunator d(points);
-    voroi(d);
     // With optimization make sure that it just returns voroi and nothing else ;)
-    // Also it uses over 10% cpu right now because it is constantly forced to redraw all trianglefans, try making a constant?
+    // kinda important!
+    Delaunator d(points);
+    std::vector<sf::Vector2f> voronoi_points = voronoi(d,points);
 
     // This will be the initialization of the map, with height and shit
+    // Very slow, took 30 sec with 1000, 600 granted that is overkill but still, should be optimized or something
     for (int i = 0; i < map.size(); i++) {
         if (map[i].vertex.size() == 0) { continue; };
-        map[i].bubble_sort_angles(points,voroi_points);
+        map[i].bubble_sort_angles(points,voronoi_points);
         map[i].height = perlin(points[i].x, points[i].y);
     }
     
+    // Initialization for drawing the map
+    sf::RenderTexture bgMap;
+    bgMap.create(windowWidth, windowHeight);
+
+    for (int i = 0; i < map.size(); i++) {
+        sf::Color color(255, 255, 255, 255 / 2 * map[i].height);
+        if (map[i].vertex.size() == 0) { continue; };
+        sf::VertexArray T(sf::TriangleFan, map[i].vertex.size() + 1);
+
+        for (int j = 0; j < map[i].vertex.size(); j++) {
+            T[j].position = voronoi_points[map[i].vertex[j]];
+            T[j].color = color;
+
+        }
+
+        T[map[i].vertex.size()].position = voronoi_points[map[i].vertex[0]];
+        T[map[i].vertex.size()].color = color;
+
+        bgMap.draw(T);
+    }
+    bgMap.display();
+    sf::Sprite background(bgMap.getTexture());
+
     while (window.isOpen())
     {
         sf::Event event;
@@ -46,24 +67,8 @@ int main()
         }
 
         window.clear();
-        for (int i = 0; i < map.size(); i++) {
-            sf::Color color(255, 255, 255,255/2* map[i].height);
-            if (map[i].vertex.size() == 0) { continue; };
-            sf::VertexArray T(sf::TriangleFan, map[i].vertex.size() + 1);
-            
-            for (int j = 0; j < map[i].vertex.size(); j++) {
-                T[j].position = voroi_points[map[i].vertex[j]];
-                T[j].color = color;
-
-                /*sf::Vertex point(voroi_points[map[i].vertex[j]], sf::Color::White);
-                window.draw(&point, 1, sf::Points);*/
-            }
-
-            T[map[i].vertex.size()].position = voroi_points[map[i].vertex[0]];
-            T[map[i].vertex.size()].color = color;
-
-            window.draw(T);
-        }
+        
+        window.draw(background);
 
         window.display();        
     }

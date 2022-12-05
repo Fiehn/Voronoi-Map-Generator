@@ -12,13 +12,15 @@
 #include "cell.hpp"
 
 
-// stolen and repurposed from:
-// https://github.com/delfrrr/delaunator-cpp/blob/master/include/delaunator.hpp
-
 inline size_t fast_mod(const size_t i, const size_t c) {
     return i >= c ? i % c : i;
 }
 
+// monotonically increases with real angle, used for delaunay
+inline double pseudo_angle(const double dx, const double dy) {
+    const double p = dx / (std::abs(dx) + std::abs(dy));
+    return (dy > 0.0 ? 3.0 - p : 1.0 + p) / 4.0; // [0..1)
+}
 // Kahan and Babuska summation, Neumaier variant; accumulates less FP error
 inline double sum(const std::vector<double>& x) {
     double sum = x[0];
@@ -529,7 +531,9 @@ void Delaunator::link(const std::size_t a, const std::size_t b) {
 }
 
 // fix the things
-void voroi(Delaunator d) {
+std::vector<sf::Vector2f> voronoi(Delaunator d,std::vector<sf::Vector2f> const& points) {
+    std::vector<sf::Vector2f> voronoi_points;
+
     int j = 0;
     for (int i = 0; i < d.triangles.size(); i = i + 3) {
         int i0 = d.triangles[i];
@@ -539,7 +543,7 @@ void voroi(Delaunator d) {
         // Calculate the voronoi point (you should check the rest of the conditions)
         // There should also be bounding boxes or whatever
         sf::Vector2f vor_point = circumcenter(points[i0], points[i1], points[i2]);
-        voroi_points.push_back(vor_point);
+        voronoi_points.push_back(vor_point);
 
         // add neighbors i0 takes i1 and i2 if they are not already in the vector
         map[i0].add_neighbors(i1);
@@ -556,6 +560,7 @@ void voroi(Delaunator d) {
 
         j++;
     }
+    return voronoi_points;
 }
 
 
