@@ -15,14 +15,23 @@ float RandomBetween(float smallNumber, float bigNumber)
 
 int pop_front_i(std::vector<int>& v)
 {
-    if (v.size() > 0) {
-        int value = v[0];
-        v.erase(v.begin());
-        return value;
-    }
-    return 0;
+    if (v.empty()) { return 0; }
+
+    int value = v[0];
+    v.erase(v.begin());
+    return value;
+
 }
 
+int pop_random_i(std::vector<int>& v)
+{
+    if (v.empty()) { return 0; }
+
+    int rand_index = rand() % v.size();
+    int value = v[rand_index];
+    v.erase(std::next(v.begin(),rand_index));
+    return value;
+}
 
 class Cell 
 {  
@@ -81,7 +90,7 @@ void Cell::bubble_sort_angles(const std::vector<sf::Vector2f>& points, const std
 // 
 // Damn.. RAND_MAX is usually about 32k, waaay too little for +100k cells... figure something out.
 // k-point smooth height generator
-void height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04,float delta_max_pos=0.03,float prob_of_island= 0.008,float dist_from_mainland = 1.0)
+void height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04,float delta_max_pos=0.03,float prob_of_island= 0.008,float dist_from_mainland = 1.0,std::string method = "Front")
 {   
     /* 
     1. Initiate queue active
@@ -106,7 +115,9 @@ void height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04,float 
 
     while (active.empty() == false)
     {
-        int index = pop_front_i(active); // seriously needs to just be a dequeu
+        int index = 0;
+        if(method=="Random") { index = pop_random_i(active); }
+        else if(method =="Front") { index = pop_front_i(active); }
 
         float height_sum = 0.0;
         int count_values = 0;
@@ -133,7 +144,7 @@ void height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04,float 
                 }
             }
         }
-        
+        if (count_values == 0) { active.push_back(map[index].id); }
         map[index].height = clamp((height_sum / count_values) + RandomBetween(-delta_max_neg,delta_max_pos),1.0,0.0);
 
     }

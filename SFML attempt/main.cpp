@@ -36,7 +36,7 @@ int main()
     }
     
     
-    height_gen(map, 5, 0.04, 0.03, 0.008, 1.0);
+    height_gen(map, 5, 0.04, 0.03, 0.008, 1.0, "Random");
 
     // Initialization for drawing the map
     sf::RenderTexture bgMap;
