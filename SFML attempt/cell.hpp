@@ -6,32 +6,10 @@
 #include <cmath>
 #include <numeric>
 #include "points.hpp"
+#include "util.h"
 
-float RandomBetween(float smallNumber, float bigNumber)
-{
-    float diff = bigNumber - smallNumber;
-    return (((float)rand() / RAND_MAX) * diff) + smallNumber;
-}
 
-int pop_front_i(std::vector<int>& v)
-{
-    if (v.empty()) { return 0; }
 
-    int value = v[0];
-    v.erase(v.begin());
-    return value;
-
-}
-
-int pop_random_i(std::vector<int>& v)
-{
-    if (v.empty()) { return 0; }
-
-    int rand_index = rand() % v.size();
-    int value = v[rand_index];
-    v.erase(std::next(v.begin(),rand_index));
-    return value;
-}
 
 class Cell 
 {  
@@ -90,14 +68,13 @@ void Cell::bubble_sort_angles(const std::vector<sf::Vector2f>& points, const std
 // 
 // Damn.. RAND_MAX is usually about 32k, waaay too little for +100k cells... figure something out.
 // k-point smooth height generator
-void height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04,float delta_max_pos=0.03,float prob_of_island= 0.008,float dist_from_mainland = 1.0,std::string method = "Front")
+void random_height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04,float delta_max_pos=0.03,float prob_of_island= 0.008,float dist_from_mainland = 1.0,std::string method = "Front")
 {   
     /* 
     1. Initiate queue active
     2. Pick k random starting cells
     3. Assign height above 0.9 to these cells and add their neighbors to active
-    4.
-        Check neighbor's height
+    4.  Check neighbor's height
         if not 0 save it else add to active if not already there
         add small probability of height increase for each neighbor 
     5. Calculate neighbor averages and add random factor
@@ -109,7 +86,7 @@ void height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04,float 
     for (int i = 0; i < k; i++)
     {
         int index = rand() % map.size();
-        map[index].height = RandomBetween(0.90, 1.0);
+        map[index].height = RandomBetween(0.6, 1.0);
         active.insert(std::end(active), std::begin(map[index].neighbors), std::end(map[index].neighbors));
     }
 
@@ -127,7 +104,7 @@ void height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04,float 
             // Also should be reconsidered
             if (RandomBetween(0.0, 1.0) < prob_of_island && height_sum < dist_from_mainland && count_values > 1)
             {
-                map[map[index].neighbors[j]].height = RandomBetween(0.4, 0.6);
+                map[map[index].neighbors[j]].height = RandomBetween(0.3, 0.7);
                 active.insert(std::begin(active), std::begin(map[map[index].neighbors[j]].neighbors), std::end(map[map[index].neighbors[j]].neighbors));
             }
             if (map[map[index].neighbors[j]].height != 0.f)

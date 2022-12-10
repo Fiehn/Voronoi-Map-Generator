@@ -137,6 +137,7 @@
     <ClInclude Include="delany.hpp" />
     <ClInclude Include="cell_objects.hpp" />
     <ClInclude Include="Deprecated_poisson_disk.h" />
+    <ClInclude Include="util.h" />
     <ClInclude Include="points.hpp" />
     <ClInclude Include="Voroni.hpp" />
   </ItemGroup>

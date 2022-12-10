@@ -3,6 +3,7 @@
 #include <SFML/System/Vector2.hpp>
 #include <vector>
 #include <math.h>
+#include "util.h"
 
 
 
@@ -12,11 +13,6 @@ inline double dist(sf::Vector2f a, sf::Vector2f b) {
     return dx * dx + dy * dy;
 }
 
-float clamp(float x, float max, float min) {
-    if (x < min) { return min; }
-    if (x > max) { return max; }
-    return x;
-}
 
 // Perlin noise, will be used for height?? or something
 float interpolate(float a0, float a1, float w) {

@@ -6,6 +6,10 @@
 #include <time.h>
 #include <cstdlib>
 
+// For random use:
+// rand() << 15 | rand();
+// It will shift the first random number 15 bits and then insert another random number in those 15 bits, thereby generating 32 bits
+
 
 int main()
 {
@@ -35,15 +39,16 @@ int main()
         //map[i].height = perlin(points[i].x, points[i].y);
     }
     
-    
-    height_gen(map, 5, 0.04, 0.03, 0.008, 1.0, "Random");
+    random_height_gen(map, 6, 0.04, 0.02, 0.002, 1.0, "Front");
 
     // Initialization for drawing the map
     sf::RenderTexture bgMap;
     bgMap.create(windowWidth, windowHeight);
 
     for (int i = 0; i < map.size(); i++) {
-        sf::Color color(255, 255, 255, 255 * map[i].height);
+        int water = 1;
+        if (map[i].height < 0.50) { water = 0; }
+        sf::Color color(255*water, 255*water, 255*(1-water), 255 * map[i].height); // Here it loses data in conversion which is fine but hives warning so ask it to do it
         if (map[i].vertex.size() == 0) { continue; };
         sf::VertexArray T(sf::TriangleFan, map[i].vertex.size() + 1);
 
