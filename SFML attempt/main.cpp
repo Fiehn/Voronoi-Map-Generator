@@ -32,15 +32,19 @@ int main()
     std::vector<sf::Vector2f> voronoi_points = voronoi(d,points);
 
     // This will be the initialization of the map, with height and other things
-    // Very slow, took 30 sec with 1000, 600 granted that is overkill but still, should be optimized or something
-    for (int i = 0; i < map.size(); i++) {
+    // This should most likely be a function for itself
+    for (size_t i = 0; i < map.size(); i++) {
         if (map[i].vertex.size() == 0) { continue; };
         map[i].bubble_sort_angles(points,voronoi_points);
-        //map[i].height = perlin(points[i].x, points[i].y);
     }
-    
-    random_height_gen(map, 6, 0.04, 0.02, 0.002, 1.0, "Front");
 
+    clock_t start = clock();
+    random_height_gen(map, 5, 0.04, 0.02, 0.005, 1.0, "Random");
+    smooth_height(map,0.09,3,"Random");
+    clock_t end = clock();
+    std::cout << double(end - start) / CLOCKS_PER_SEC;
+    
+    
     // Initialization for drawing the map
     sf::RenderTexture bgMap;
     bgMap.create(windowWidth, windowHeight);
@@ -48,7 +52,7 @@ int main()
     for (int i = 0; i < map.size(); i++) {
         int water = 1;
         if (map[i].height < 0.50) { water = 0; }
-        sf::Color color(255*water, 255*water, 255*(1-water), 255 * map[i].height); // Here it loses data in conversion which is fine but hives warning so ask it to do it
+        sf::Color color(128*water, 255 * water, 255 * (1 - water), (sf::Uint8)std::ceil(255 * map[i].height)); // Here it loses data in conversion which is fine but hives warning so ask it to do it
         if (map[i].vertex.size() == 0) { continue; };
         sf::VertexArray T(sf::TriangleFan, map[i].vertex.size() + 1);
 

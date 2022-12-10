@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-int long rand_long()
+long rand_long() // Should only be used in the case that there is a need for larger variables
 {
     return rand() << 15 | rand();
 }
@@ -35,7 +35,7 @@ int pop_random_i(std::vector<int>& v)
 {
     if (v.empty()) { return 0; }
 
-    int rand_index = rand() % v.size();
+    int rand_index = rand_long() % v.size();
     int value = v[rand_index];
     v.erase(std::next(v.begin(), rand_index));
     return value;

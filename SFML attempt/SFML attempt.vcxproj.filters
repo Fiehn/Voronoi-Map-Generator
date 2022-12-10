@@ -33,7 +33,7 @@
     <ClInclude Include="cell_objects.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Deprecated_poisson_disk.h">
+    <ClInclude Include="Deprecated.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="util.h">
