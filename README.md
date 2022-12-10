@@ -10,17 +10,22 @@ The Voronoi was then created from the dual graph of the triangulation. It is how
 For now only a few features exist, with the diagram being the main one:
 * Voronoi Diagram with SFML
 * Jittered grid point generation
-* Perlin noise
+* Height generation and smoothing, with custom algorithm (Perlin noise was discarded for being too random)
 
 ## Features being worked on
 Many more things are needed but this is the current priority list:
-* Clean up of code, espacially with regrads to Delaunay and global variables (evil)
-* New point generation system, Loyd relaxation is an option?
-* Performance with drawing the cells constantly, perhaps moving the drawing into a more static environment somehow??
+* Clean up of code, espacially with regrads to Delaunay
 * Typecasting ?
-* Bounding boxes for voronoi
-* New height map generation, Perlin noise is limited and can at times feel unnatural
-* Making the map not scale with window size but be constant and making zooming a thing
+* Bounding boxes for voronoi, not that necesary with the current system, only a few places it does not generate cells which adds to the astetic
+* Making zooming and moving the map a thing
+* Making UI system to alter the map while the program is running
+** Making a new button, seed inserter, altering parameters perhaps with sliders
+* New point generation system, Loyd relaxation is an option?
+* creating rainfall and percipitation
+* average temperature
+* wind speed and direction for each cell
+* drawing coastline with smooth line
+* smooth cell transitions ??? big challenge
 
 
 
