@@ -169,7 +169,13 @@ void smooth_height(std::vector<Cell>& map,float rise_threshold=0.1,int repeats =
                 height_sum = height_sum + map[map[index].neighbors[j]].height;
                 count_values++;
             }
-            map[index].height = height_sum / (float)count_values;
+
+            if (height_sum > 0.005) {
+                map[index].height = height_sum / (float)count_values;
+            }
+            else if (map[index].height > 0.5) {
+                map[index].height = 0.1;
+            }
         }
         // calculate the new rise
         rise(map);

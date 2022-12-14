@@ -36,7 +36,7 @@ int main()
     }
 
     clock_t start = clock();
-    random_height_gen(map, 5, 0.04, 0.02, 0.005, 1.0, "Random");
+    random_height_gen(map, 5, 0.04, 0.02, 0.01, 1.0, "Random");
     smooth_height(map,0.09,5,"Random");
     clock_t end = clock();
     std::cout << double(end - start) / CLOCKS_PER_SEC;
