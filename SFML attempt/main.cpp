@@ -25,19 +25,18 @@ int main()
     //generateCells(points);
 
     // Make sure that it just returns voronoi and nothing else
-    Delaunator d(points);
-    std::vector<sf::Vector2f> voronoi_points = d.voronoi(points);
+    Delu::Delaunator d(points);
 
     // This will be the initialization of the map, with height and other things
     // This should most likely be a function for itself
-    for (size_t i = 0; i < map.size(); i++) {
-        if (map[i].vertex.size() == 0) { continue; };
-        map[i].bubble_sort_angles(points,voronoi_points);
+    for (size_t i = 0; i < d.map.size(); i++) {
+        if (d.map[i].vertex.size() == 0) { continue; };
+        d.map[i].bubble_sort_angles(points,d.voronoi_points);
     }
 
     clock_t start = clock();
-    random_height_gen(map, 5, 0.04, 0.02, 0.005, 1.0, "Random");
-    smooth_height(map,0.09,5,"Random");
+    random_height_gen(d.map, 5, 0.04, 0.02, 0.005, 1.0, "Random");
+    smooth_height(d.map,0.09,5,"Random");
     clock_t end = clock();
     std::cout << double(end - start) / CLOCKS_PER_SEC;
     
@@ -46,21 +45,21 @@ int main()
     sf::RenderTexture bgMap;
     bgMap.create(windowWidth, windowHeight);
 
-    for (int i = 0; i < map.size(); i++) {
+    for (int i = 0; i < d.map.size(); i++) {
         int water = 1;
-        if (map[i].height < 0.50) { water = 0; }
-        sf::Color color(128*water, 255 * water, 255 * (1 - water), (sf::Uint8)std::ceil(255 * map[i].height)); // Here it loses data in conversion which is fine but hives warning so ask it to do it
-        if (map[i].vertex.size() == 0) { continue; };
-        sf::VertexArray T(sf::TriangleFan, map[i].vertex.size() + 1);
+        if (d.map[i].height < 0.50) { water = 0; }
+        sf::Color color(128*water, 255 * water, 255 * (1 - water), (sf::Uint8)std::ceil(255 * d.map[i].height)); // Here it loses data in conversion which is fine but hives warning so ask it to do it
+        if (d.map[i].vertex.size() == 0) { continue; };
+        sf::VertexArray T(sf::TriangleFan, d.map[i].vertex.size() + 1);
 
-        for (int j = 0; j < map[i].vertex.size(); j++) {
-            T[j].position = voronoi_points[map[i].vertex[j]];
+        for (int j = 0; j < d.map[i].vertex.size(); j++) {
+            T[j].position = d.voronoi_points[d.map[i].vertex[j]];
             T[j].color = color;
 
         }
 
-        T[map[i].vertex.size()].position = voronoi_points[map[i].vertex[0]];
-        T[map[i].vertex.size()].color = color;
+        T[d.map[i].vertex.size()].position = d.voronoi_points[d.map[i].vertex[0]];
+        T[d.map[i].vertex.size()].color = color;
         
         bgMap.draw(T);
     }

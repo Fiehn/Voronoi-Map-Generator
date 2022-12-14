@@ -5,11 +5,6 @@
 #include <math.h>
 #include "util.h"
 
-inline double dist(sf::Vector2f a, sf::Vector2f b) {
-    const double dx = a.x - b.x;
-    const double dy = a.y - b.y;
-    return dx * dx + dy * dy;
-}
 
 sf::Vector2f randomGradient() {
     sf::Vector2f v;
