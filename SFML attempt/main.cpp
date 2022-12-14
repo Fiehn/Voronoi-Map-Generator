@@ -26,7 +26,7 @@ int main()
 
     // Make sure that it just returns voronoi and nothing else
     Delaunator d(points);
-    std::vector<sf::Vector2f> voronoi_points = voronoi(d,points);
+    std::vector<sf::Vector2f> voronoi_points = d.voronoi(points);
 
     // This will be the initialization of the map, with height and other things
     // This should most likely be a function for itself

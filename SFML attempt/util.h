@@ -14,6 +14,16 @@ float clamp(float x, float max, float min)
     if (x > max) { return max; }
     return x;
 }
+sf::Vector2f clampVect2f(sf::Vector2f vect, float maxx, float minx, float maxy, float miny)
+{
+    sf::Vector2f new_vect = vect;
+    if (vect.x < minx) { new_vect.x = minx; }
+    if (vect.x > maxx) { new_vect.x = maxy; }
+    if (vect.y < miny) { new_vect.y = miny; }
+    if (vect.y > maxy) { new_vect.y = maxy; }
+    return new_vect;
+}
+
 
 float RandomBetween(float smallNumber, float bigNumber)
 {

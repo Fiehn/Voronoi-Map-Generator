@@ -147,6 +147,7 @@ public:
 
     Delaunator(std::vector<sf::Vector2f> const& in_points);
 
+    std::vector<sf::Vector2f> voronoi(std::vector<sf::Vector2f> const& points);
 
     double get_hull_area();
 
@@ -513,7 +514,7 @@ void Delaunator::link(const std::size_t a, const std::size_t b) {
     else if (a < s) {
         halfedges[a] = b;
     }
-    else {
+    if (a > s) {
         throw std::runtime_error("Cannot link edge");
     }
     if (b != INVALID_INDEX) {
@@ -531,14 +532,14 @@ void Delaunator::link(const std::size_t a, const std::size_t b) {
 }
 
 // fix the things
-std::vector<sf::Vector2f> voronoi(Delaunator d,std::vector<sf::Vector2f> const& points) {
+std::vector<sf::Vector2f> Delaunator::voronoi(std::vector<sf::Vector2f> const& points) {
     std::vector<sf::Vector2f> voronoi_points;
 
     int j = 0;
-    for (int i = 0; i < d.triangles.size(); i = i + 3) {
-        int i0 = d.triangles[i];
-        int i1 = d.triangles[i + 1];
-        int i2 = d.triangles[i + 2];
+    for (int i = 0; i < triangles.size(); i = i + 3) {
+        int i0 = triangles[i];
+        int i1 = triangles[i + 1];
+        int i2 = triangles[i + 2];
 
         // Calculate the voronoi point (you should check the rest of the conditions)
         // There should also be bounding boxes or whatever
