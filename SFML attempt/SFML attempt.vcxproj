@@ -138,7 +138,6 @@
     <ClInclude Include="cell_objects.hpp" />
     <ClInclude Include="Deprecated.h" />
     <ClInclude Include="util.h" />
-    <ClInclude Include="Voroni.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

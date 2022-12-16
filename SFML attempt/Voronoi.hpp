@@ -39,13 +39,47 @@ namespace vor {
             std::vector<std::size_t>& halfedges);
         void link(std::size_t a, std::size_t b, std::vector<std::size_t>& halfedges);
 
-        void voronoi(const std::vector<std::size_t>& triangles);
+        std::vector<std::size_t> delaunay();
+
+        void voronoi(const std::vector<std::size_t> triangles);
     };
 
 
     Voronoi::Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter)
     {
         generatePoints(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, jitter);
+        
+        std::vector<std::size_t> triangles = delaunay();
+        // Generate the Voronoi points after Delaunay triangulation is done
+        voronoi(triangles);
+        //Sort the verticies of each cell so they can be drawn
+        for (size_t i = 0; i < cells.size(); i++) {
+            if (cells[i].vertex.size() == 0) { continue; };
+            cells[i].bubble_sort_angles(points, voronoi_points);
+        }
+
+    }
+    
+    void Voronoi::generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) {
+
+        float stepSizewidth = (float)MAXWIDTH / ncellx;
+        float stepSizeHeight = (float)MAXHEIGHT / ncelly;
+
+        for (int x = 0; x < MAXWIDTH; x = x + stepSizewidth) {
+            for (int y = 0; y < MAXHEIGHT; y = y + stepSizeHeight) {
+                sf::Vector2f p;
+                sf::Vector2f random = randomGradient() * jitter;
+
+                p.x = clamp(x + random.x, MAXWIDTH, 0);
+                p.y = clamp(y + random.y, MAXHEIGHT, 0);
+                points.push_back(p);
+
+            }
+        }
+    }
+
+    std::vector<std::size_t> Voronoi::delaunay()
+    {
         std::size_t n = points.size();
 
         std::vector<std::size_t> halfedges;
@@ -162,12 +196,12 @@ namespace vor {
         hull_tri[i2] = 2;
         m_hash[hash_key(points[i0], m_center, m_hash_size)] = i0;
         m_hash[hash_key(points[i1], m_center, m_hash_size)] = i1;
-        m_hash[hash_key(points[i2], m_center,m_hash_size)] = i2;
+        m_hash[hash_key(points[i2], m_center, m_hash_size)] = i2;
 
         std::size_t max_triangles = n < 3 ? 1 : 2 * n - 5;
         triangles.reserve(max_triangles * 3);
         halfedges.reserve(max_triangles * 3);
-        add_triangle(triangles, i0, i1, i2, INVALID_INDEX, INVALID_INDEX, INVALID_INDEX,halfedges);
+        add_triangle(triangles, i0, i1, i2, INVALID_INDEX, INVALID_INDEX, INVALID_INDEX, halfedges);
 
         // Potential bug territory!
         sf::Vector2f pp(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
@@ -189,7 +223,7 @@ namespace vor {
             std::size_t start = 0;
 
             // Bug search here!
-            size_t key = hash_key(points[i],m_center,m_hash_size);
+            size_t key = hash_key(points[i], m_center, m_hash_size);
             for (size_t j = 0; j < m_hash_size; j++) {
                 start = m_hash[fast_mod(key + j, m_hash_size)];
                 if (start != INVALID_INDEX && start != hull_next[start]) break;
@@ -218,7 +252,7 @@ namespace vor {
                 hull_tri[e],
                 halfedges);
 
-            hull_tri[i] = legalize(t + 2, halfedges, hull_tri,hull_next,hull_start,m_edge_stack,triangles);
+            hull_tri[i] = legalize(t + 2, halfedges, hull_tri, hull_next, hull_start, m_edge_stack, triangles);
             hull_tri[e] = t;
             hull_size++;
 
@@ -227,7 +261,7 @@ namespace vor {
             while (
                 q = hull_next[next],
                 orient(points[i], points[next], points[q])) {
-                t = add_triangle(triangles,next, i, q, hull_tri[i], INVALID_INDEX, hull_tri[next], halfedges);
+                t = add_triangle(triangles, next, i, q, hull_tri[i], INVALID_INDEX, hull_tri[next], halfedges);
                 hull_tri[i] = legalize(t + 2, halfedges, hull_tri, hull_next, hull_start, m_edge_stack, triangles);
                 hull_next[next] = next; // mark as removed
                 hull_size--;
@@ -237,7 +271,7 @@ namespace vor {
                 while (
                     q = hull_prev[e],
                     orient(points[i], points[q], points[e])) {
-                    t = add_triangle(triangles,q, i, e, INVALID_INDEX, hull_tri[e], hull_tri[q], halfedges);
+                    t = add_triangle(triangles, q, i, e, INVALID_INDEX, hull_tri[e], hull_tri[q], halfedges);
                     legalize(t + 2, halfedges, hull_tri, hull_next, hull_start, m_edge_stack, triangles);
                     hull_tri[q] = t;
                     hull_next[e] = e; // mark as removed
@@ -256,31 +290,7 @@ namespace vor {
             m_hash[hash_key(points[i], m_center, m_hash_size)] = i;
             m_hash[hash_key(points[e], m_center, m_hash_size)] = e;
         }
-        // Generate the Voronoi points after Delaunay triangulation is done
-        voronoi(triangles);
-        //Sort the verticies of each cell so they can be drawn
-        for (size_t i = 0; i < cells.size(); i++) {
-            if (cells[i].vertex.size() == 0) { continue; };
-            cells[i].bubble_sort_angles(points, voronoi_points);
-        }
-    }
-    
-    void Voronoi::generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) {
-
-        float stepSizewidth = (float)MAXWIDTH / ncellx;
-        float stepSizeHeight = (float)MAXHEIGHT / ncelly;
-
-        for (int x = 0; x < MAXWIDTH; x = x + stepSizewidth) {
-            for (int y = 0; y < MAXHEIGHT; y = y + stepSizeHeight) {
-                sf::Vector2f p;
-                sf::Vector2f random = randomGradient() * jitter;
-
-                p.x = clamp(x + random.x, MAXWIDTH, 0);
-                p.y = clamp(y + random.y, MAXHEIGHT, 0);
-                points.push_back(p);
-
-            }
-        }
+        return triangles;
     }
 
     std::size_t Voronoi::legalize(std::size_t a, 
@@ -442,7 +452,7 @@ namespace vor {
     }
 
     // fix the things
-    void Voronoi::voronoi(const std::vector<std::size_t>& triangles) 
+    void Voronoi::voronoi(const std::vector<std::size_t> triangles) 
     {
 
         int j = 0;
