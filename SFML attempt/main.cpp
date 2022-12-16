@@ -1,10 +1,9 @@
 #include <SFML/Graphics.hpp>
-#include <iostream>
-#include "delany.hpp"
-#include "points.hpp"
+#include "Voronoi.hpp"
 #include "cell.hpp"
 #include <time.h>
 #include <cstdlib>
+#include <iostream>
 
 // There might be a problem with neighbors.. There are holes in the height map??
 
@@ -18,48 +17,36 @@ int main()
     window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
     
     
-    // as a hash table????? would be better, perhaps?
-    std::vector<sf::Vector2f> points;
-
-    generatePoints(points, 200, 150, windowWidth, windowHeight,10.f);
-    //generateCells(points);
-
     // Make sure that it just returns voronoi and nothing else
-    Delu::Delaunator d(points);
+    vor::Voronoi map(200, 150, windowWidth, windowHeight, 10.f);
 
-    // This will be the initialization of the map, with height and other things
-    // This should most likely be a function for itself
-    for (size_t i = 0; i < d.map.size(); i++) {
-        if (d.map[i].vertex.size() == 0) { continue; };
-        d.map[i].bubble_sort_angles(points,d.voronoi_points);
-    }
 
     clock_t start = clock();
-    random_height_gen(d.map, 5, 0.04, 0.02, 0.005, 1.0, "Random");
-    smooth_height(d.map,0.09,5,"Random");
+    random_height_gen(map.cells, 5, 0.04, 0.02, 0.005, 1.0, "Random");
+    smooth_height(map.cells,0.09,5,"Random");
     clock_t end = clock();
     std::cout << double(end - start) / CLOCKS_PER_SEC;
     
     
-    // Initialization for drawing the map
+    // Initialization for drawing the cells
     sf::RenderTexture bgMap;
     bgMap.create(windowWidth, windowHeight);
 
-    for (int i = 0; i < d.map.size(); i++) {
+    for (int i = 0; i < map.cells.size(); i++) {
         int water = 1;
-        if (d.map[i].height < 0.50) { water = 0; }
-        sf::Color color(128*water, 255 * water, 255 * (1 - water), (sf::Uint8)std::ceil(255 * d.map[i].height)); // Here it loses data in conversion which is fine but hives warning so ask it to do it
-        if (d.map[i].vertex.size() == 0) { continue; };
-        sf::VertexArray T(sf::TriangleFan, d.map[i].vertex.size() + 1);
+        if (map.cells[i].height < 0.50) { water = 0; }
+        sf::Color color(128*water, 255 * water, 255 * (1 - water), (sf::Uint8)std::ceil(255 * map.cells[i].height)); // Here it loses data in conversion which is fine but hives warning so ask it to do it
+        if (map.cells[i].vertex.size() == 0) { continue; };
+        sf::VertexArray T(sf::TriangleFan, map.cells[i].vertex.size() + 1);
 
-        for (int j = 0; j < d.map[i].vertex.size(); j++) {
-            T[j].position = d.voronoi_points[d.map[i].vertex[j]];
+        for (int j = 0; j < map.cells[i].vertex.size(); j++) {
+            T[j].position = map.voronoi_points[map.cells[i].vertex[j]];
             T[j].color = color;
 
         }
 
-        T[d.map[i].vertex.size()].position = d.voronoi_points[d.map[i].vertex[0]];
-        T[d.map[i].vertex.size()].color = color;
+        T[map.cells[i].vertex.size()].position = map.voronoi_points[map.cells[i].vertex[0]];
+        T[map.cells[i].vertex.size()].color = color;
         
         bgMap.draw(T);
     }
@@ -154,31 +141,3 @@ int main()
     return 0;
 }
 
-
-
-//if (event.type == sf::Event::MouseButtonPressed)
-//{
-//    bgMap.clear();
-//    for (int i = 0; i < map.size(); i++) {
-//        int water = 1;
-//        if (map[i].height < 1) { water = 0; }
-//        sf::Color color(255 * water, 255 * water, 255 * (1 - water), (sf::Uint8)std::ceil(255 * map[i].height)); // Here it loses data in conversion which is fine but hives warning so ask it to do it
-//        if (map[i].vertex.size() == 0) { continue; };
-//        sf::VertexArray T(sf::TriangleFan, map[i].vertex.size() + 1);
-//
-//        for (int j = 0; j < map[i].vertex.size(); j++) {
-//            T[j].position = voronoi_points[map[i].vertex[j]];
-//            T[j].color = color;
-//
-//        }
-//
-//        T[map[i].vertex.size()].position = voronoi_points[map[i].vertex[0]];
-//        T[map[i].vertex.size()].color = color;
-//
-//        bgMap.draw(T);
-//    }
-//
-//    bgMap.display();
-//    sf::Sprite background(bgMap.getTexture());
-//
-//}

@@ -36,6 +36,18 @@ inline float RandomBetween(float smallNumber, float bigNumber)
     return (((float)rand() / RAND_MAX) * diff) + smallNumber;
 }
 
+sf::Vector2f randomGradient() {
+    sf::Vector2f v;
+
+    int randomSignx = rand() % 2;
+    int randomSigny = rand() % 2;
+    float randomx = (float)rand() / (float)RAND_MAX;
+    float randomy = (float)rand() / (float)RAND_MAX;
+    v.x = (randomSignx)*randomx + (randomSignx - 1) * randomx;
+    v.y = (randomSigny)*randomy + (randomSigny - 1) * randomy;
+    return v;
+}
+
 inline int pop_front_i(std::vector<int>& v)
 {
     if (v.empty()) { return 0; }
@@ -155,4 +167,28 @@ inline bool check_pts_equal(sf::Vector2f a, sf::Vector2f b) {
     return std::fabs(a.x - b.x) <= EPSILON &&
         std::fabs(a.y - b.y) <= EPSILON;
 }
+
+// Compare a list of points to a center point, used for sorting
+struct compare_dist_to_point {
+    std::vector<sf::Vector2f> const& points;
+    sf::Vector2f p;
+
+    bool operator()(std::size_t i, std::size_t j) {
+        const double d1 = dist(points[i], p);
+        const double d2 = dist(points[j], p);
+        const double diff1 = d1 - d2;
+        const double diff2 = points[i].x - points[j].x;
+        const double diff3 = points[i].y - points[j].y;
+
+        if (diff1 > 0.0 || diff1 < 0.0) {
+            return diff1 < 0;
+        }
+        else if (diff2 > 0.0 || diff2 < 0.0) {
+            return diff2 < 0;
+        }
+        else {
+            return diff3 < 0;
+        }
+    }
+};
 

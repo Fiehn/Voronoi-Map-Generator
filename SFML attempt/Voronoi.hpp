@@ -1,56 +1,23 @@
 #pragma once
-#include <SFML/System/Vector2.hpp>
-#include <vector>
-#include <algorithm>
-#include <cmath>
 #include <exception>
-#include <iostream>
-#include <limits>
-#include <memory>
-#include <utility>
-#include "points.hpp"
 #include "cell.hpp"
 #include "util.h"
 
-namespace Delu {
-
-    struct compare {
-
-        std::vector<sf::Vector2f> const& points;
-        sf::Vector2f p;
-
-        bool operator()(std::size_t i, std::size_t j) {
-            const double d1 = dist(points[i], p);
-            const double d2 = dist(points[j], p);
-            const double diff1 = d1 - d2;
-            const double diff2 = points[i].x - points[j].x;
-            const double diff3 = points[i].y - points[j].y;
-
-            if (diff1 > 0.0 || diff1 < 0.0) {
-                return diff1 < 0;
-            }
-            else if (diff2 > 0.0 || diff2 < 0.0) {
-                return diff2 < 0;
-            }
-            else {
-                return diff3 < 0;
-            }
-        }
-    };
+namespace vor {
 
     constexpr std::size_t INVALID_INDEX = std::numeric_limits<std::size_t>::max();
 
-
-    class Delaunator {
+    class Voronoi {
     public:
-        std::vector<sf::Vector2f> const& points;
-        
-        std::vector<Cell> map;
+        std::vector<sf::Vector2f> points; // as a hash table????? would be better, perhaps?
+        std::vector<Cell> cells;
         std::vector<sf::Vector2f> voronoi_points;
 
-        Delaunator(std::vector<sf::Vector2f> const& in_points);
+        Voronoi(const int ncellx,const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
 
     private:
+        void generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
+
         std::size_t legalize(
             std::size_t a, 
             std::vector<std::size_t>& halfedges, 
@@ -76,9 +43,9 @@ namespace Delu {
     };
 
 
-    Delaunator::Delaunator(std::vector<sf::Vector2f> const& in_points) :
-        points(in_points)
+    Voronoi::Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter)
     {
+        generatePoints(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, jitter);
         std::size_t n = points.size();
 
         std::vector<std::size_t> halfedges;
@@ -111,10 +78,10 @@ namespace Delu {
 
             ids.push_back(i);
             // Added this myself!!!
-            map.push_back(Cell(i)); // Need to do something about the map
+            cells.push_back(Cell(i)); // Need to do something about the cells
             // Stopped adding this here
         }
-        // Center of the map of points
+        // Center of the cells of points
         sf::Vector2f c((min_x + max_x) / 2, (min_y + max_y) / 2);
         // Initialize the smallest distance from the center
         double min_dist = std::numeric_limits<double>::max();
@@ -168,7 +135,7 @@ namespace Delu {
         m_center = circumcenter(points[i0], points[i1], points[i2]);
 
         // sort the points by distance from the seed triangle circumcenter
-        std::sort(ids.begin(), ids.end(), compare{ points, m_center });
+        std::sort(ids.begin(), ids.end(), compare_dist_to_point{ points, m_center });
 
         // initialize a hash table for storing edges of the advancing convex hull
         // takes the sqrt of n then ceiling then round then cast it into data type size_t
@@ -289,10 +256,34 @@ namespace Delu {
             m_hash[hash_key(points[i], m_center, m_hash_size)] = i;
             m_hash[hash_key(points[e], m_center, m_hash_size)] = e;
         }
+        // Generate the Voronoi points after Delaunay triangulation is done
         voronoi(triangles);
+        //Sort the verticies of each cell so they can be drawn
+        for (size_t i = 0; i < cells.size(); i++) {
+            if (cells[i].vertex.size() == 0) { continue; };
+            cells[i].bubble_sort_angles(points, voronoi_points);
+        }
     }
     
-    std::size_t Delaunator::legalize(std::size_t a, 
+    void Voronoi::generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) {
+
+        float stepSizewidth = (float)MAXWIDTH / ncellx;
+        float stepSizeHeight = (float)MAXHEIGHT / ncelly;
+
+        for (int x = 0; x < MAXWIDTH; x = x + stepSizewidth) {
+            for (int y = 0; y < MAXHEIGHT; y = y + stepSizeHeight) {
+                sf::Vector2f p;
+                sf::Vector2f random = randomGradient() * jitter;
+
+                p.x = clamp(x + random.x, MAXWIDTH, 0);
+                p.y = clamp(y + random.y, MAXHEIGHT, 0);
+                points.push_back(p);
+
+            }
+        }
+    }
+
+    std::size_t Voronoi::legalize(std::size_t a, 
         std::vector<std::size_t>& halfedges, 
         std::vector<std::size_t>& hull_tri, 
         std::vector<std::size_t>& hull_next, 
@@ -394,7 +385,7 @@ namespace Delu {
         return ar;
     }
 
-    inline std::size_t Delaunator::hash_key(
+    inline std::size_t Voronoi::hash_key(
         sf::Vector2f p, 
         const sf::Vector2f& m_center, 
         const std::size_t& m_hash_size) const {
@@ -405,7 +396,7 @@ namespace Delu {
             m_hash_size);
     }
 
-    std::size_t Delaunator::add_triangle(
+    std::size_t Voronoi::add_triangle(
         std::vector<std::size_t>& triangles, 
         std::size_t i0, 
         std::size_t i1, 
@@ -425,7 +416,7 @@ namespace Delu {
         return t;
     }
 
-    void Delaunator::link(const std::size_t a, const std::size_t b, std::vector<std::size_t>& halfedges) {
+    void Voronoi::link(const std::size_t a, const std::size_t b, std::vector<std::size_t>& halfedges) {
         std::size_t s = halfedges.size();
         if (a == s) {
             halfedges.push_back(b);
@@ -451,32 +442,31 @@ namespace Delu {
     }
 
     // fix the things
-    void Delaunator::voronoi(const std::vector<std::size_t>& triangles) 
+    void Voronoi::voronoi(const std::vector<std::size_t>& triangles) 
     {
 
         int j = 0;
         for (int i = 0; i < triangles.size(); i = i + 3) {
             int i0 = triangles[i];
-            int i1 = triangles[i + 1];
+            int i1 = triangles[i + 1]; // Should be fixed
             int i2 = triangles[i + 2];
 
-            // Calculate the voronoi point (you should check the rest of the conditions)
-            // There should also be bounding boxes or whatever
+            // There should also be bounding boxes here
             sf::Vector2f vor_point = circumcenter(points[i0], points[i1], points[i2]);
             voronoi_points.push_back(vor_point);
 
             // add neighbors i0 takes i1 and i2 if they are not already in the vector
-            map[i0].add_neighbors(i1);
-            map[i0].add_neighbors(i2);
-            map[i1].add_neighbors(i0);
-            map[i1].add_neighbors(i2);
-            map[i2].add_neighbors(i1);
-            map[i2].add_neighbors(i0);
+            cells[i0].add_neighbors(i1);
+            cells[i0].add_neighbors(i2);
+            cells[i1].add_neighbors(i0);
+            cells[i1].add_neighbors(i2);
+            cells[i2].add_neighbors(i1);
+            cells[i2].add_neighbors(i0);
 
             // add voroni points to list of vertex
-            map[i0].add_vertex(j);
-            map[i1].add_vertex(j);
-            map[i2].add_vertex(j);
+            cells[i0].add_vertex(j);
+            cells[i1].add_vertex(j);
+            cells[i2].add_vertex(j);
 
             j++;
         }

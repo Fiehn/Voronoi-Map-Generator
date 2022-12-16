@@ -5,7 +5,6 @@
 #include <algorithm> 
 #include <cmath>
 #include <numeric>
-#include "points.hpp"
 #include "util.h"
 
 

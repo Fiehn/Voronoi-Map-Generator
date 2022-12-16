@@ -21,13 +21,10 @@
     <ClInclude Include="Voroni.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="delany.hpp">
+    <ClInclude Include="Voronoi.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cell.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="points.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cell_objects.hpp">

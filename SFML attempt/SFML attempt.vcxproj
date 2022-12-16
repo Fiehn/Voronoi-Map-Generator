@@ -134,11 +134,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cell.hpp" />
-    <ClInclude Include="delany.hpp" />
+    <ClInclude Include="Voronoi.hpp" />
     <ClInclude Include="cell_objects.hpp" />
     <ClInclude Include="Deprecated.h" />
     <ClInclude Include="util.h" />
-    <ClInclude Include="points.hpp" />
     <ClInclude Include="Voroni.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
