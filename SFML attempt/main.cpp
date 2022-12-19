@@ -15,40 +15,46 @@ int main()
 
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML");
     window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
-    
-    
-    // Make sure that it just returns voronoi and nothing else
+
     vor::Voronoi map(200, 150, windowWidth, windowHeight, 10.f);
 
-
-    clock_t start = clock();
+    //clock_t start = clock();
     random_height_gen(map.cells, 7, 0.04, 0.02, 0.01, 1.0, "Random");
     smooth_height(map.cells,0.09,8,"Random");
-    clock_t end = clock();
-    std::cout << double(end - start) / CLOCKS_PER_SEC;
+    //clock_t end = clock();
+    //std::cout << double(end - start) / CLOCKS_PER_SEC;
     
-    
+    // Temperature testing
+    std::pair<sf::Vector2f, float> equator { sf::Vector2f((double)windowWidth / 2, (double)windowHeight / 2), 30.f};
+    std::pair<sf::Vector2f, float> north{ sf::Vector2f((double)windowWidth / 2, 0.f), -20.f };
+    std::pair<sf::Vector2f, float> south{ sf::Vector2f((double)windowWidth / 2, (double)windowHeight), -20.f };
+    map.globalTempPoints.push_back(equator);
+    map.globalTempPoints.push_back(north);
+    map.globalTempPoints.push_back(south);
+
+    map.calcTemp();
+
     // Initialization for drawing the cells
     sf::RenderTexture bgMap;
     bgMap.create(windowWidth, windowHeight);
 
     for (int i = 0; i < map.cells.size(); i++) {
         int water = 1;
-        if (map.cells[i].height < 0.50) { water = 0; }
-        sf::Color color(128*water, 255 * water, 255 * (1 - water), 55+(sf::Uint8)std::ceil(200 * map.cells[i].height)); // Here it loses data in conversion which is fine but hives warning so ask it to do it
-if (map.cells[i].vertex.size() == 0) { continue; };
-sf::VertexArray T(sf::TriangleFan, map.cells[i].vertex.size() + 1);
+        if (map.cells[i].height < map.waterLevel) { water = 0; }
+        sf::Color color(128*water * map.cells[i].avgTemp, 255 * water, 255 * (1 - water), 55 + (sf::Uint8)std::ceil(200 * map.cells[i].height));
 
-for (int j = 0; j < map.cells[i].vertex.size(); j++) {
-    T[j].position = map.voronoi_points[map.cells[i].vertex[j]];
-    T[j].color = color;
+    if (map.cells[i].vertex.size() == 0) { continue; };
+    sf::VertexArray T(sf::TriangleFan, map.cells[i].vertex.size() + 1);
 
-}
+    for (int j = 0; j < map.cells[i].vertex.size(); j++) {
+        T[j].position = map.voronoi_points[map.cells[i].vertex[j]];
+        T[j].color = color;
+    }
 
-T[map.cells[i].vertex.size()].position = map.voronoi_points[map.cells[i].vertex[0]];
-T[map.cells[i].vertex.size()].color = color;
+    T[map.cells[i].vertex.size()].position = map.voronoi_points[map.cells[i].vertex[0]];
+    T[map.cells[i].vertex.size()].color = color;
 
-bgMap.draw(T);
+    bgMap.draw(T);
     }
 
     sf::Vector2f oldPos;

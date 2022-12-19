@@ -1,41 +1,33 @@
 #pragma once
-
-#include <SFML/System/Vector2.hpp>
 #include <vector>
 #include <algorithm> 
 #include <cmath>
 #include <numeric>
 #include "util.h"
-
+#include "Voronoi.hpp"
 
 class Cell 
 {  
 public:
     const int id; // Unique Id coming from the points vector
-    Cell(int i) : id(i) {}; // Constructor, am I doing this right?
+    Cell(int i) : id(i) { vertex.reserve(15); neighbors.reserve(15); }; // Constructor, am I doing this right?
     std::vector<int> vertex; // Id's of vertecies that corespond to the cell and are stored in voroi_points this should be pointers?
     float height = 0.f;
     std::vector<int> neighbors;
     float rise = 0.f;
-    
-    void add_neighbors(int &key) {
-        // check list for duplicates
-        if (!std::count(neighbors.begin(), neighbors.end(), key)) {
-            neighbors.push_back(key);
-        }
-    }
-    void add_vertex(int &key) {
-        vertex.push_back(key);
-    }
+    float avgTemp = 0.f;
+    bool submerged = false;
     
     void bubble_sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points);
-
+    
+    
 };
 
 // Sort angles between center, point and horizontal for drawing trianglefans 
 void Cell::bubble_sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points) 
 {
     std::vector<float> angle;
+    angle.reserve(vertex.size());
     for (size_t i = 0; i < vertex.size(); i++) {
         angle.push_back((float)(atan2(points[id].y - voroi_points[vertex[i]].y, points[id].x - voroi_points[vertex[i]].x)));
     }

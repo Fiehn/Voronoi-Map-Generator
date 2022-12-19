@@ -1,4 +1,5 @@
 #pragma once
+#include <unordered_map>
 #include <exception>
 #include "cell.hpp"
 #include "util.h"
@@ -12,8 +13,12 @@ namespace vor {
         std::vector<sf::Vector2f> points; // as a hash table????? would be better, perhaps?
         std::vector<Cell> cells;
         std::vector<sf::Vector2f> voronoi_points;
+        std::vector<std::pair<sf::Vector2f, float>> globalTempPoints;
+        float waterLevel = 0.f;
 
         Voronoi(const int ncellx,const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
+
+        void calcTemp();
 
     private:
         void generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
@@ -45,7 +50,8 @@ namespace vor {
     };
 
 
-    Voronoi::Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter)
+    Voronoi::Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) :
+        waterLevel(0.4)
     {
         generatePoints(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, jitter);
         
@@ -53,7 +59,7 @@ namespace vor {
         // Generate the Voronoi points after Delaunay triangulation is done
         voronoi(triangles);
         //Sort the verticies of each cell so they can be drawn
-        for (size_t i = 0; i < cells.size(); i++) {
+        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
             if (cells[i].vertex.size() == 0) { continue; };
             cells[i].bubble_sort_angles(points, voronoi_points);
         }
@@ -81,6 +87,7 @@ namespace vor {
     std::vector<std::size_t> Voronoi::delaunay()
     {
         std::size_t n = points.size();
+        cells.reserve(n);
 
         std::vector<std::size_t> halfedges;
         std::vector<std::size_t> hull_prev;
@@ -100,6 +107,7 @@ namespace vor {
         double min_y = std::numeric_limits<double>::max();
         std::vector<std::size_t> ids;
         ids.reserve(n);
+        
 
         for (std::size_t i = 0; i < n; i++) {
             const double x = points[i].x;
@@ -454,31 +462,44 @@ namespace vor {
     // fix the things
     void Voronoi::voronoi(const std::vector<std::size_t> triangles) 
     {
-
-        int j = 0;
-        for (int i = 0; i < triangles.size(); i = i + 3) {
+        voronoi_points.reserve(triangles.size() / 3);
+        for (int i = 0, j = 0,size = triangles.size(); i < size; i = i + 3, j++) {
             int i0 = triangles[i];
             int i1 = triangles[i + 1]; // Should be fixed
             int i2 = triangles[i + 2];
 
             // There should also be bounding boxes here
-            sf::Vector2f vor_point = circumcenter(points[i0], points[i1], points[i2]);
-            voronoi_points.push_back(vor_point);
+            // sf::Vector2f vor_point = circumcenter(points[i0], points[i1], points[i2]);
+            voronoi_points.push_back(circumcenter(points[i0], points[i1], points[i2]));
 
             // add neighbors i0 takes i1 and i2 if they are not already in the vector
-            cells[i0].add_neighbors(i1);
-            cells[i0].add_neighbors(i2);
-            cells[i1].add_neighbors(i0);
-            cells[i1].add_neighbors(i2);
-            cells[i2].add_neighbors(i1);
-            cells[i2].add_neighbors(i0);
+            insert_unique(cells[i0].neighbors,i1);
+            insert_unique(cells[i0].neighbors, i2);
+            insert_unique(cells[i1].neighbors, i0);
+            insert_unique(cells[i1].neighbors, i2);
+            insert_unique(cells[i2].neighbors, i1);
+            insert_unique(cells[i2].neighbors, i0);
 
             // add voroni points to list of vertex
-            cells[i0].add_vertex(j);
-            cells[i1].add_vertex(j);
-            cells[i2].add_vertex(j);
+            cells[i0].vertex.push_back(j);
+            cells[i1].vertex.push_back(j);
+            cells[i2].vertex.push_back(j);
+        }
+    }
 
-            j++;
+    // Not working
+    void Voronoi::calcTemp()
+    {
+        for (int i = 0; i < cells.size(); i++)
+        {
+            float distTempInfluence = 0;
+
+            for (int j = 0; j < globalTempPoints.size(); j++)
+            {   
+                distTempInfluence = distTempInfluence + globalTempPoints[j].second/fabs(points[cells[i].id].y - globalTempPoints[j].first.y);
+            }
+            // One degree C drop per 100 meter, here I am assuming 1 height is 10 km  should be: * 100
+            cells[i].avgTemp = (waterLevel - cells[i].height)/2 + distTempInfluence;
         }
     }
 

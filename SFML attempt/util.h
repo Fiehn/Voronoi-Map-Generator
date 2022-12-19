@@ -55,7 +55,6 @@ inline int pop_front_i(std::vector<int>& v)
     int value = v[0];
     v.erase(v.begin());
     return value;
-
 }
 
 inline int pop_random_i(std::vector<int>& v)
@@ -69,7 +68,16 @@ inline int pop_random_i(std::vector<int>& v)
 }
 
 
-// Here goes things for Delaunay Triangulation
+inline float normalized_value(float value, float max, float min) { return fabs((value - min) / (max - min)); }
+
+// Is this the correct way?
+template < typename T >
+void insert_unique(std::vector<T>& vector, T key) {
+    // check list for duplicates
+    if (!std::count(vector.begin(), vector.end(), key)) {
+        vector.push_back(key);
+    }
+}
 
 // Kahan and Babuska summation, Neumaier variant; accumulates less FP error
 inline double sum_vec_double(const std::vector<double>& x) 
