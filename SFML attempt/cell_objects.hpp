@@ -4,54 +4,22 @@
 #include <SFML/System/Vector2.hpp>
 
 
-class Language {
+class Biome {
 public:
-	Language(int i = 0) : id(i) {}
-	const int id;
-	char name;
-	
-
+	int vegetationType = 0;
 };
 
-class Religion {
+class River {
 public:
-	Religion(int i = 0) : id(i) {}
-	const int id;
-	char name;
-	
-	std::vector<sf::Vector2f> holySites;
-	std::vector<std::string> holySitesDesc;
-	void generate_holy_sites();
-
+	float len = 0;
+	float maxWidth = 0;
+	float maxDepth = 0;
+	float flowSpeed = 0;
+	std::vector<int> cells;
 };
 
-class Culture {
-public:
-	Culture(int i = 0) : id(i) {}
-	const int id;
-	char name; // is it string or char??
-	Language language; 
 
 
-};
-
-class Nation {
-public:
-	Nation(int i) : id(i) {}
-	const int id;
-	char name;
-	Culture domCulture; // Should be changed to a list or a stack of some variety
-	Culture secCulture;
-	Language domLanguage;
-	Language secLanguage;
-	Religion domReligion;
-	Religion secReligion;
-
-};
-
-class biome {
-
-};
 
 
 

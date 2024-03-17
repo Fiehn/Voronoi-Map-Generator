@@ -13,12 +13,13 @@ namespace vor {
         std::vector<sf::Vector2f> points; // as a hash table????? would be better, perhaps?
         std::vector<Cell> cells;
         std::vector<sf::Vector2f> voronoi_points;
-        std::vector<std::pair<sf::Vector2f, float>> globalTempPoints;
-        float waterLevel = 0.f;
 
         Voronoi(const int ncellx,const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
 
-        void calcTemp();
+        int getCellIndex(sf::Vector2f point);
+
+        void DestroyMap();
+
 
     private:
         void generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
@@ -49,9 +50,7 @@ namespace vor {
         void voronoi(const std::vector<std::size_t> triangles);
     };
 
-
-    Voronoi::Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) :
-        waterLevel(0.4)
+    Voronoi::Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter)
     {
         generatePoints(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, jitter);
         
@@ -61,11 +60,28 @@ namespace vor {
         //Sort the verticies of each cell so they can be drawn
         for (std::size_t i = 0, size = cells.size(); i < size; i++) {
             if (cells[i].vertex.size() == 0) { continue; };
-            cells[i].bubble_sort_angles(points, voronoi_points);
+            cells[i].sort_angles(points, voronoi_points);
         }
 
     }
-    
+
+    int Voronoi::getCellIndex(sf::Vector2f point)
+    {
+        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
+            if (cells[i].contains(point,voronoi_points)) {
+				return i;
+			}
+		}
+		return INVALID_INDEX;
+	} 
+
+    void Voronoi::DestroyMap()
+    {
+        points.clear();
+        cells.clear();
+        voronoi_points.clear();
+    };
+
     void Voronoi::generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) {
 
         float stepSizewidth = (float)MAXWIDTH / ncellx;
@@ -316,7 +332,6 @@ namespace vor {
         // recursion eliminated with a fixed-size stack
         while (true) {
             const size_t b = halfedges[a];
-
             /* if the pair of triangles doesn't satisfy the Delaunay condition
             * (p1 is inside the circumcircle of [p0, pl, pr]), flip them,
             * then do the same check/flip recursively for the new pair of triangles
@@ -473,7 +488,7 @@ namespace vor {
             voronoi_points.push_back(circumcenter(points[i0], points[i1], points[i2]));
 
             // add neighbors i0 takes i1 and i2 if they are not already in the vector
-            insert_unique(cells[i0].neighbors,i1);
+            insert_unique(cells[i0].neighbors, i1);
             insert_unique(cells[i0].neighbors, i2);
             insert_unique(cells[i1].neighbors, i0);
             insert_unique(cells[i1].neighbors, i2);
@@ -487,21 +502,6 @@ namespace vor {
         }
     }
 
-    // Not working
-    void Voronoi::calcTemp()
-    {
-        for (int i = 0; i < cells.size(); i++)
-        {
-            float distTempInfluence = 0;
-
-            for (int j = 0; j < globalTempPoints.size(); j++)
-            {   
-                distTempInfluence = distTempInfluence + globalTempPoints[j].second/fabs(points[cells[i].id].y - globalTempPoints[j].first.y);
-            }
-            // One degree C drop per 100 meter, here I am assuming 1 height is 10 km  should be: * 100
-            cells[i].avgTemp = (waterLevel - cells[i].height)/2 + distTempInfluence;
-        }
-    }
 
 };
 

@@ -7,54 +7,54 @@
 
 // There might be a problem with neighbors.. There are holes in the height map??
 
+
+
 int main()
 {
     std::srand(time(NULL));
-    int windowWidth = 1800;
-    int windowHeight = 1000;
+    int windowWidth = 2500;
+    int windowHeight = 1500;
 
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML");
     window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
 
+
     vor::Voronoi map(200, 150, windowWidth, windowHeight, 10.f);
-
-    //clock_t start = clock();
-    random_height_gen(map.cells, 7, 0.04, 0.02, 0.01, 1.0, "Random");
-    smooth_height(map.cells,0.09,8,"Random");
-    //clock_t end = clock();
-    //std::cout << double(end - start) / CLOCKS_PER_SEC;
+    GlobalWorldObjects globals;
     
-    // Temperature testing
-    std::pair<sf::Vector2f, float> equator { sf::Vector2f((double)windowWidth / 2, (double)windowHeight / 2), 30.f};
-    std::pair<sf::Vector2f, float> north{ sf::Vector2f((double)windowWidth / 2, 0.f), -20.f };
-    std::pair<sf::Vector2f, float> south{ sf::Vector2f((double)windowWidth / 2, (double)windowHeight), -20.f };
-    map.globalTempPoints.push_back(equator);
-    map.globalTempPoints.push_back(north);
-    map.globalTempPoints.push_back(south);
 
-    map.calcTemp();
+    random_height_gen(map.cells, 7, 0.04, 0.02, 0.01, 1.0, "Random");
+    smooth_height(map.cells,0.09,15,"Random");
+    noise_height(map.cells, 2);
+    
+    calcHeightValues(map.cells, globals, 0.05);
+
+    calcRiverStart(map.cells, globals);
+
 
     // Initialization for drawing the cells
     sf::RenderTexture bgMap;
     bgMap.create(windowWidth, windowHeight);
 
     for (int i = 0; i < map.cells.size(); i++) {
-        int water = 1;
-        if (map.cells[i].height < map.waterLevel) { water = 0; }
-        sf::Color color(128*water * map.cells[i].avgTemp, 255 * water, 255 * (1 - water), 55 + (sf::Uint8)std::ceil(200 * map.cells[i].height));
+        
+        sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255/3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+        // sf::Color color(0,0,255 * map.cells[i].riverBool, 255);
 
-    if (map.cells[i].vertex.size() == 0) { continue; };
-    sf::VertexArray T(sf::TriangleFan, map.cells[i].vertex.size() + 1);
+        if (map.cells[i].vertex.size() == 0) { continue; };
+        sf::VertexArray T(sf::TriangleFan, map.cells[i].vertex.size() + 1);
 
-    for (int j = 0; j < map.cells[i].vertex.size(); j++) {
-        T[j].position = map.voronoi_points[map.cells[i].vertex[j]];
-        T[j].color = color;
-    }
+        for (int j = 0; j < map.cells[i].vertex.size(); j++) 
+        {
+            T[j].position = map.voronoi_points[map.cells[i].vertex[j]];
+            T[j].color = color;
+        }
 
-    T[map.cells[i].vertex.size()].position = map.voronoi_points[map.cells[i].vertex[0]];
-    T[map.cells[i].vertex.size()].color = color;
 
-    bgMap.draw(T);
+        T[map.cells[i].vertex.size()].position = map.voronoi_points[map.cells[i].vertex[0]];
+        T[map.cells[i].vertex.size()].color = color;
+
+        bgMap.draw(T);
     }
 
     sf::Vector2f oldPos;
@@ -81,6 +81,19 @@ int main()
                     moving = true;
                     oldPos = window.mapPixelToCoords(sf::Vector2i(event.mouseButton.x, event.mouseButton.y));
                 }
+                if (event.mouseButton.button == 1) {
+                    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+                    int cellIndex = map.getCellIndex(mousePos);
+                    // display
+                    std::cout << "Cell index: " << cellIndex << std::endl;
+                    std::cout << "Cell height: " << map.cells[cellIndex].height << std::endl;
+                    std::cout << "Cell riverBool: " << map.cells[cellIndex].riverBool << std::endl;
+                    std::cout << "Cell oceanBool: " << map.cells[cellIndex].oceanBool << std::endl;
+                    std::cout << "Cell snowBool: " << map.cells[cellIndex].snowBool << std::endl;
+                    std::cout << "Cell lakeBool: " << map.cells[cellIndex].lakeBool << std::endl;
+                    // neighbors
+                    std::cout << "Cell neighbors: " << map.cells[cellIndex].neighbors.size() << std::endl;
+                }
                 break;
 
             case sf::Event::MouseButtonReleased:
@@ -90,6 +103,15 @@ int main()
                     moving = false;
                 }
                 break;
+
+            case sf::Event::KeyPressed:
+				if (event.key.code == sf::Keyboard::Escape)
+				    window.close();
+                else if (event.key.code == sf::Keyboard::A)
+                { // activate text-box
+                    continue;
+                }
+				break;
 
             case sf::Event::MouseMoved:
             {
@@ -156,6 +178,7 @@ int main()
                 window.setView(view);
                 break;
             }
+
         }
 
         window.clear();

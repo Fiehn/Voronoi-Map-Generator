@@ -1,5 +1,8 @@
 #pragma once
 #include <vector>
+#include <string>
+#include <SFML/System/Vector2.hpp>
+
 
 inline long rand_long() // Should only be used in the case that there is a need for larger variables
 {
@@ -14,6 +17,7 @@ inline float clamp(float x, float max, float min)
     if (x > max) { return max; }
     return x;
 }
+
 inline sf::Vector2f clampVect2f(sf::Vector2f vect, float maxx, float minx, float maxy, float miny)
 {
     sf::Vector2f new_vect = vect;
@@ -67,7 +71,6 @@ inline int pop_random_i(std::vector<int>& v)
     return value;
 }
 
-
 inline float normalized_value(float value, float max, float min) { return fabs((value - min) / (max - min)); }
 
 // Is this the correct way?
@@ -88,6 +91,19 @@ inline double sum_vec_double(const std::vector<double>& x)
     for (int i = 1; i < x.size(); i++) {
         const double k = x[i];
         const double m = sum + k;
+        err += std::fabs(sum) >= std::fabs(k) ? sum - m + k : k - m + sum;
+        sum = m;
+    }
+    return sum + err;
+}
+inline float sum_vec_float(const std::vector<float>& x)
+{
+    float sum = x[0];
+    float err = 0.0;
+
+    for (int i = 1; i < x.size(); i++) {
+        const float k = x[i];
+        const float m = sum + k;
         err += std::fabs(sum) >= std::fabs(k) ? sum - m + k : k - m + sum;
         sum = m;
     }
@@ -199,4 +215,8 @@ struct compare_dist_to_point {
         }
     }
 };
+
+
+
+
 
