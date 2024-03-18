@@ -7,22 +7,33 @@ Used under the MIT lisence.
 The Voronoi was then created from the dual graph of the triangulation.
 
 ## Features
-For now only a few features exist, with the diagram being the main one:
 * Voronoi Diagram with SFML
 * Jittered grid point generation
 * Height generation, noising and smoothing
-* River generation (weak)
-
+* River generation (Lacking)
+![image](https://github.com/Fiehn/Voronoi-Map-Generator/assets/81577064/3fbc5b37-b68e-408e-9fb7-a7658099e2dd)
 ## Features being worked on
-Many more things are needed but this is the current priority list:
+
+### VertexBuffer
+* Threads to work better with VertexBuffer and be cleaner
+* Create functions for changes in and creation of VertexBuffer
+* VertexArray implementation for lack of GPU
+
+### General
 * Delaunay Cleanup
 * Type uniformity
 * Bounding boxes for Voronoi
-* Altering map through VertexBuffer
+
+### UI
 * UI system to alter the map while the program is running
 ** Making a new button, seed inserter, altering parameters perhaps with sliders
+
+### Generation
+* Rivers / Lakes
 * Rainfall and percipitation
 * Temperature
 * Wind speed and direction for each cell
+
+### Graphical and Technical upgrades
 * Drawing smooth lines (Potentialy shaders)
-![image](https://github.com/Fiehn/Voronoi-Map-Generator/assets/81577064/3fbc5b37-b68e-408e-9fb7-a7658099e2dd)
+
