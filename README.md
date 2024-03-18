@@ -15,9 +15,9 @@ The Voronoi was then created from the dual graph of the triangulation.
 ## Features being worked on
 
 ### VertexBuffer
-* Threads to work better with VertexBuffer and be cleaner
-* Create functions for changes in and creation of VertexBuffer
-* VertexArray implementation for lack of GPU
+[] Threads to work better with VertexBuffer and be cleaner
+[] Create functions for changes in and creation of VertexBuffer
+[] VertexArray implementation for lack of GPU
 
 ### General
 * Delaunay Cleanup
