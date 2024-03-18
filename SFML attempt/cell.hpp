@@ -14,8 +14,10 @@ public:
     const int id; // Unique Id coming from the points vector
     Cell(int i) : id(i) { vertex.reserve(15); neighbors.reserve(15); }; // Constructor, am I doing this right?
     std::vector<int> vertex; // Id's of vertecies that corespond to the cell and are stored in voroi_points this should be pointers?
+    std::vector<int> neighbors; // Id's of the neighbors
+    unsigned int vertex_offset = 0U; // Offset for the vertex buffer
+
     float height = 0.f;
-    std::vector<int> neighbors;
     float rise = 0.f;
     float avgTemp = 0.f;
     float tempSTD = 1.f;

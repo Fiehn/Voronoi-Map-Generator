@@ -13,6 +13,7 @@ namespace vor {
         std::vector<sf::Vector2f> points; // as a hash table????? would be better, perhaps?
         std::vector<Cell> cells;
         std::vector<sf::Vector2f> voronoi_points;
+        std::size_t vertexCount;
 
         Voronoi(const int ncellx,const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
 
@@ -23,6 +24,8 @@ namespace vor {
 
     private:
         void generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
+
+        std::size_t getVertexCount();
 
         std::size_t legalize(
             std::size_t a, 
@@ -62,7 +65,7 @@ namespace vor {
             if (cells[i].vertex.size() == 0) { continue; };
             cells[i].sort_angles(points, voronoi_points);
         }
-
+        vertexCount = getVertexCount();
     }
 
     int Voronoi::getCellIndex(sf::Vector2f point)
@@ -74,6 +77,15 @@ namespace vor {
 		}
 		return INVALID_INDEX;
 	} 
+
+    std::size_t Voronoi::getVertexCount()
+    {
+		int count = 0;
+        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
+			count += cells[i].vertex.size();
+		}
+		return count;
+	}
 
     void Voronoi::DestroyMap()
     {

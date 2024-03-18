@@ -6,7 +6,7 @@
 #include <iostream>
 
 // There might be a problem with neighbors.. There are holes in the height map??
-
+// https://gitlab.gbar.dtu.dk/s164179/Microbots/blob/dc8b5b4b883fa1fe572fd82d44fbf291d7f81153/SFML-2.5.0/examples/island/Island.cpp
 
 
 int main()
@@ -32,30 +32,37 @@ int main()
     calcRiverStart(map.cells, globals);
 
 
-    // Initialization for drawing the cells
-    sf::RenderTexture bgMap;
-    bgMap.create(windowWidth, windowHeight);
-
-    for (int i = 0; i < map.cells.size(); i++) {
-        
-        sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255/3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-        // sf::Color color(0,0,255 * map.cells[i].riverBool, 255);
-
-        if (map.cells[i].vertex.size() == 0) { continue; };
-        sf::VertexArray T(sf::TriangleFan, map.cells[i].vertex.size() + 1);
-
-        for (int j = 0; j < map.cells[i].vertex.size(); j++) 
-        {
-            T[j].position = map.voronoi_points[map.cells[i].vertex[j]];
-            T[j].color = color;
-        }
-
-
-        T[map.cells[i].vertex.size()].position = map.voronoi_points[map.cells[i].vertex[0]];
-        T[map.cells[i].vertex.size()].color = color;
-
-        bgMap.draw(T);
+    sf::VertexBuffer vertexBuffer(sf::Triangles, sf::VertexBuffer::Dynamic);
+    vertexBuffer.create(map.vertexCount * 3);
+    // Attempt VertexBuffer
+    if (sf::VertexBuffer::isAvailable()) {
+        std::cout << "Vertex buffer is available" << std::endl;
     }
+    else {
+        std::cout << "Vertex buffer is not available" << std::endl;
+    }
+
+    // Fill vertex buffer / draw triangles
+    unsigned int offset = 0;
+    for (size_t i = 0; i < map.cells.size(); i++)
+    { // for each cell draw triangles with ordered vertex points back to center (points[cell.id]
+        if (map.cells[i].vertex.size() == 0) { continue; }
+        else { map.cells[i].vertex_offset = offset; }
+        sf::Vertex vertices[3];
+        sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+        for (int j = 0; j < map.cells[i].vertex.size(); j++)
+        {
+            vertices[0].color = color;
+			vertices[1].color = color;
+			vertices[2].color = color;
+			vertices[0].position = map.voronoi_points[map.cells[i].vertex[j]];
+			vertices[1].position = map.voronoi_points[map.cells[i].vertex[(j + 1) % map.cells[i].vertex.size()]];
+			vertices[2].position = map.points[map.cells[i].id];
+			vertexBuffer.update(vertices, 3, offset);
+			offset += 3;
+		}
+    }
+
 
     sf::Vector2f oldPos;
     bool moving = false;
@@ -63,9 +70,6 @@ int main()
     float zoom = 1;
     // Retrieve the window's default view
     sf::View view = window.getDefaultView();
-
-    bgMap.display();
-    sf::Sprite background(bgMap.getTexture());
 
     while (window.isOpen())
     {
@@ -83,16 +87,13 @@ int main()
                 }
                 if (event.mouseButton.button == 1) {
                     sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-                    int cellIndex = map.getCellIndex(mousePos);
-                    // display
-                    std::cout << "Cell index: " << cellIndex << std::endl;
-                    std::cout << "Cell height: " << map.cells[cellIndex].height << std::endl;
-                    std::cout << "Cell riverBool: " << map.cells[cellIndex].riverBool << std::endl;
-                    std::cout << "Cell oceanBool: " << map.cells[cellIndex].oceanBool << std::endl;
-                    std::cout << "Cell snowBool: " << map.cells[cellIndex].snowBool << std::endl;
-                    std::cout << "Cell lakeBool: " << map.cells[cellIndex].lakeBool << std::endl;
-                    // neighbors
-                    std::cout << "Cell neighbors: " << map.cells[cellIndex].neighbors.size() << std::endl;
+                    std::size_t cellIndex = map.getCellIndex(mousePos);
+                    if(cellIndex != vor::INVALID_INDEX) {
+                        std::cout << "ID: " << cellIndex << " Height: " << map.cells[cellIndex].height << " riverBool: " << map.cells[cellIndex].riverBool << " oceanBool: " << map.cells[cellIndex].oceanBool << " snowBool: " << map.cells[cellIndex].snowBool << " lakeBool: " << map.cells[cellIndex].lakeBool << std::endl;
+                    }
+                    else {
+                        std::cout << "Out of Bounds!" << std::endl;
+                    }
                 }
                 break;
 
@@ -108,8 +109,20 @@ int main()
 				if (event.key.code == sf::Keyboard::Escape)
 				    window.close();
                 else if (event.key.code == sf::Keyboard::A)
-                { // activate text-box
-                    continue;
+                { // paint the cells triangles in vertexBuffer
+                    
+                    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+                    
+                    std::size_t cellIndex = map.getCellIndex(mousePos);
+                    unsigned int offset = map.cells[cellIndex].vertex_offset;
+                    int n_vertices = map.cells[cellIndex].vertex.size();
+
+                    // now change color on vertex
+                    sf::Color color(0, 0, 255, 255);
+                    for (int i = 0; i < n_vertices * 3; i++)
+                    {
+                        continue;
+                    }
                 }
 				break;
 
@@ -183,9 +196,9 @@ int main()
 
         window.clear();
         
-        window.draw(background);
+        window.draw(vertexBuffer);
 
-        window.display();        
+        window.display();
     }
 
     return 0;
