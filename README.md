@@ -24,5 +24,5 @@ Many more things are needed but this is the current priority list:
 * Rainfall and percipitation
 * Temperature
 * Wind speed and direction for each cell
-* Drawing smooth lines
-** Potentialy shaders
+* Drawing smooth lines (Potentialy shaders)
+![image](https://github.com/Fiehn/Voronoi-Map-Generator/assets/81577064/3fbc5b37-b68e-408e-9fb7-a7658099e2dd)
