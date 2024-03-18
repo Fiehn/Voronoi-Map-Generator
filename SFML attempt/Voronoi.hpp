@@ -10,10 +10,12 @@ namespace vor {
 
     class Voronoi {
     public:
-        std::vector<sf::Vector2f> points; // as a hash table????? would be better, perhaps?
+        std::vector<sf::Vector2f> points;
         std::vector<Cell> cells;
-        std::vector<sf::Vector2f> voronoi_points;
+        std::vector<sf::Vector2f> voronoi_points; // deprecated ?
+        std::vector<sf::Vertex> vertices;
         std::size_t vertexCount;
+        
 
         Voronoi(const int ncellx,const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
 
@@ -26,6 +28,8 @@ namespace vor {
         void generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
 
         std::size_t getVertexCount();
+
+        void vertexGen();
 
         std::size_t legalize(
             std::size_t a, 
@@ -65,7 +69,8 @@ namespace vor {
             if (cells[i].vertex.size() == 0) { continue; };
             cells[i].sort_angles(points, voronoi_points);
         }
-        vertexCount = getVertexCount();
+        //Generate the vertices for the cells
+        vertexGen();
     }
 
     int Voronoi::getCellIndex(sf::Vector2f point)
@@ -80,12 +85,32 @@ namespace vor {
 
     std::size_t Voronoi::getVertexCount()
     {
-		int count = 0;
+		std::size_t count = 0;
         for (std::size_t i = 0, size = cells.size(); i < size; i++) {
 			count += cells[i].vertex.size();
 		}
 		return count;
 	}
+
+    void Voronoi::vertexGen()
+    {
+        vertexCount = getVertexCount();
+        vertices.reserve(vertexCount * 3);
+        unsigned int offset = 0;
+        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
+            if (cells[i].vertex.size() == 0) { continue; }
+            else { cells[i].vertex_offset = offset; }
+
+            for (std::size_t j = 0; j < cells[i].vertex.size(); j++)
+            {
+                vertices.push_back(sf::Vertex(voronoi_points[cells[i].vertex[j]], sf::Color::White));
+                vertices.push_back(sf::Vertex(voronoi_points[cells[i].vertex[(j + 1) % cells[i].vertex.size()]], sf::Color::White));
+                vertices.push_back(sf::Vertex(points[cells[i].id], sf::Color::White));
+                
+                offset += 3;
+            }
+        }
+    }
 
     void Voronoi::DestroyMap()
     {

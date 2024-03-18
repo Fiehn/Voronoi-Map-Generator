@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <iostream>
 
-// There might be a problem with neighbors.. There are holes in the height map??
+// There is some inspiration to get from the following (particularly for threading):
 // https://gitlab.gbar.dtu.dk/s164179/Microbots/blob/dc8b5b4b883fa1fe572fd82d44fbf291d7f81153/SFML-2.5.0/examples/island/Island.cpp
 
 
@@ -42,26 +42,16 @@ int main()
         std::cout << "Vertex buffer is not available" << std::endl;
     }
 
-    // Fill vertex buffer / draw triangles
-    unsigned int offset = 0;
-    for (size_t i = 0; i < map.cells.size(); i++)
-    { // for each cell draw triangles with ordered vertex points back to center (points[cell.id]
-        if (map.cells[i].vertex.size() == 0) { continue; }
-        else { map.cells[i].vertex_offset = offset; }
-        sf::Vertex vertices[3];
+    // Fill vertex buffer / draw triangles from map.vertices
+    for (std::size_t i = 0; i < map.cells.size(); i++) {
         sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-        for (int j = 0; j < map.cells[i].vertex.size(); j++)
-        {
-            vertices[0].color = color;
-			vertices[1].color = color;
-			vertices[2].color = color;
-			vertices[0].position = map.voronoi_points[map.cells[i].vertex[j]];
-			vertices[1].position = map.voronoi_points[map.cells[i].vertex[(j + 1) % map.cells[i].vertex.size()]];
-			vertices[2].position = map.points[map.cells[i].id];
-			vertexBuffer.update(vertices, 3, offset);
-			offset += 3;
-		}
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+            map.vertices[j].color = color;
+        }
+
     }
+    vertexBuffer.update(map.vertices.data());
+
 
 
     sf::Vector2f oldPos;
@@ -114,6 +104,9 @@ int main()
                     sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
                     
                     std::size_t cellIndex = map.getCellIndex(mousePos);
+                    if (cellIndex == vor::INVALID_INDEX) {
+						break;
+					}
                     unsigned int offset = map.cells[cellIndex].vertex_offset;
                     int n_vertices = map.cells[cellIndex].vertex.size();
 
@@ -121,8 +114,9 @@ int main()
                     sf::Color color(0, 0, 255, 255);
                     for (int i = 0; i < n_vertices * 3; i++)
                     {
-                        continue;
+                        map.vertices[offset + i].color = color;
                     }
+                    vertexBuffer.update(map.vertices.data());
                 }
 				break;
 

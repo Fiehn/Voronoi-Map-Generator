@@ -52,7 +52,7 @@ bool Cell::contains(sf::Vector2f point, const std::vector<sf::Vector2f>& voroi_p
 	return result;
 }
 
-// Sort angles between center, point and horizontal for drawing trianglefans (insertion sort)
+// Sort angles between center, point and horizontal for drawing triangles (insertion sort)
 void Cell::sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points)
 {
     std::vector<float> angle;
