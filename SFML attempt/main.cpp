@@ -1,3 +1,4 @@
+#pragma once
 #include <SFML/Graphics.hpp>
 #include "Voronoi.hpp"
 #include "cell.hpp"
@@ -34,12 +35,14 @@ int main()
 
     sf::VertexBuffer vertexBuffer(sf::Triangles, sf::VertexBuffer::Dynamic);
     vertexBuffer.create(map.vertexCount * 3);
+
     // Attempt VertexBuffer
     if (sf::VertexBuffer::isAvailable()) {
         std::cout << "Vertex buffer is available" << std::endl;
     }
     else {
         std::cout << "Vertex buffer is not available" << std::endl;
+        return 0;
     }
 
     // Fill vertex buffer / draw triangles from map.vertices
@@ -51,8 +54,7 @@ int main()
 
     }
     vertexBuffer.update(map.vertices.data());
-
-
+    
 
     sf::Vector2f oldPos;
     bool moving = false;
@@ -80,6 +82,7 @@ int main()
                     std::size_t cellIndex = map.getCellIndex(mousePos);
                     if(cellIndex != vor::INVALID_INDEX) {
                         std::cout << "ID: " << cellIndex << " Height: " << map.cells[cellIndex].height << " riverBool: " << map.cells[cellIndex].riverBool << " oceanBool: " << map.cells[cellIndex].oceanBool << " snowBool: " << map.cells[cellIndex].snowBool << " lakeBool: " << map.cells[cellIndex].lakeBool << std::endl;
+                        std::cout << "Coordinates: " << map.points[cellIndex].x << " " << map.points[cellIndex].y << std::endl;
                     }
                     else {
                         std::cout << "Out of Bounds!" << std::endl;
@@ -116,7 +119,9 @@ int main()
                     {
                         map.vertices[offset + i].color = color;
                     }
-                    vertexBuffer.update(map.vertices.data());
+                    // TODO: update only the part of the buffer that has changed
+                    vertexBuffer.update(map.vertices.data()); // There is no need to update the whole buffer, only the part that has changed (offset, n_vertices)
+
                 }
 				break;
 
@@ -190,6 +195,7 @@ int main()
 
         window.clear();
         
+        // TODO: Draw only the cells that are visible in the window (use the view to determine which cells are visible) (Low priority since draws are not the bottleneck)
         window.draw(vertexBuffer);
 
         window.display();

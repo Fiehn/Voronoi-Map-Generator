@@ -1,5 +1,6 @@
 #pragma once
 #include <unordered_map>
+#include <algorithm> 
 #include <exception>
 #include "cell.hpp"
 #include "util.h"
@@ -8,6 +9,21 @@ namespace vor {
 
     constexpr std::size_t INVALID_INDEX = std::numeric_limits<std::size_t>::max();
 
+    struct Grid { // Grid for spatial hashing
+        std::size_t m_width;
+		std::size_t m_height;
+		std::vector<std::vector<std::vector<std::size_t>>> m_cells;
+        Grid(std::size_t width, std::size_t height)
+            : m_width(width), m_height(height), m_cells(width, std::vector<std::vector<std::size_t>>(height, std::vector<std::size_t>())) {}
+        std::vector<std::size_t>& operator()(std::size_t x, std::size_t y) {
+			return m_cells[x][y];
+		}
+        const std::vector<std::size_t>& operator()(std::size_t x, std::size_t y) const {
+			return m_cells[x][y];
+		}
+        Grid() = default;
+    };
+
     class Voronoi {
     public:
         std::vector<sf::Vector2f> points;
@@ -15,14 +31,14 @@ namespace vor {
         std::vector<sf::Vector2f> voronoi_points; // deprecated ?
         std::vector<sf::Vertex> vertices;
         std::size_t vertexCount;
-        
+        vor::Grid grid_cells;
+        int cell_size = 50;
 
-        Voronoi(const int ncellx,const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
+        Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
 
         int getCellIndex(sf::Vector2f point);
 
         void DestroyMap();
-
 
     private:
         void generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
@@ -30,6 +46,8 @@ namespace vor {
         std::size_t getVertexCount();
 
         void vertexGen();
+
+        void genGrid(const int MAXWIDTH, const int MAXHEIGHT);
 
         std::size_t legalize(
             std::size_t a, 
@@ -59,6 +77,7 @@ namespace vor {
 
     Voronoi::Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter)
     {
+
         generatePoints(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, jitter);
         
         std::vector<std::size_t> triangles = delaunay();
@@ -71,16 +90,42 @@ namespace vor {
         }
         //Generate the vertices for the cells
         vertexGen();
+        //Generate the grid
+        genGrid(MAXWIDTH, MAXHEIGHT);
+    }
+
+    void Voronoi::genGrid(const int MAXWIDTH, const int MAXHEIGHT)
+    {// Generate a grid that stores indices of cells that are inside the grid_cells vector
+        grid_cells = vor::Grid(std::floor(MAXWIDTH / cell_size) + 1, std::floor(MAXHEIGHT / cell_size) + 1);
+
+        for (int i = 0; i < cells.size(); i++)
+        {
+            for (int j = 0; j < cells[i].vertex.size(); j++)
+            {
+                int x = std::floor(clamp_int(voronoi_points[cells[i].vertex[j]].x, MAXWIDTH, 0) / cell_size);
+                int y = std::floor(clamp_int(voronoi_points[cells[i].vertex[j]].y, MAXHEIGHT, 0) / cell_size);
+                // TODO: Check if the cell is already in the grid_cell (insert_unique?) because this will enivetably create duplicates
+                // TODO: There are crashes and I suspect it's because of the grid_cells because they happen when the cells are being drawn
+                grid_cells(x, y).push_back(i);
+            }
+        }
     }
 
     int Voronoi::getCellIndex(sf::Vector2f point)
-    {
-        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
-            if (cells[i].contains(point,voronoi_points)) {
-				return i;
-			}
-		}
-		return INVALID_INDEX;
+    { // could be faster still than what the static grid can provide
+        int grid_cell_x = point.x / cell_size;
+        int grid_cell_y = point.y / cell_size;
+
+        for (int i = 0; i < grid_cells(grid_cell_x, grid_cell_y).size(); i++)
+        {
+            int idx = grid_cells(grid_cell_x, grid_cell_y)[i];
+            if (cells[idx].contains(point, voronoi_points))
+            {
+                return idx;
+            }
+        }
+
+        return INVALID_INDEX;
 	} 
 
     std::size_t Voronoi::getVertexCount()
@@ -93,7 +138,7 @@ namespace vor {
 	}
 
     void Voronoi::vertexGen()
-    {
+    { // Collect all vertices for the triangles that draw the Voronoi map and store them in a vector (vertices)
         vertexCount = getVertexCount();
         vertices.reserve(vertexCount * 3);
         unsigned int offset = 0;
@@ -114,13 +159,15 @@ namespace vor {
 
     void Voronoi::DestroyMap()
     {
-        points.clear();
-        cells.clear();
-        voronoi_points.clear();
+        delete(&points);
+        delete(&cells);
+        delete(&voronoi_points);
+        delete(&vertices);
+        delete(&grid_cells);
     };
 
-    void Voronoi::generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) {
-
+    void Voronoi::generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) 
+    {
         float stepSizewidth = (float)MAXWIDTH / ncellx;
         float stepSizeHeight = (float)MAXHEIGHT / ncelly;
 

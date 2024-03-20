@@ -1,3 +1,7 @@
+#pragma once
+#include "Voronoi.hpp"
+#include "cell.hpp"
+#include <SFML/Graphics.hpp>
 
 class GlobalWorldObjects
 {
@@ -18,11 +22,9 @@ public:
 
 	GlobalWorldObjects();
 
-
 };
 
 GlobalWorldObjects::GlobalWorldObjects()
 {
 }
-
 

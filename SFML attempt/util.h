@@ -17,6 +17,12 @@ inline float clamp(float x, float max, float min)
     if (x > max) { return max; }
     return x;
 }
+inline int clamp_int(int x, int max, int min)
+{
+	if (x < min) { return min; }
+	if (x > max) { return max; }
+	return x;
+}
 
 inline sf::Vector2f clampVect2f(sf::Vector2f vect, float maxx, float minx, float maxy, float miny)
 {
@@ -66,19 +72,19 @@ inline int pop_random_i(std::vector<int>& v)
     if (v.empty()) { return 0; }
 
     int rand_index = rand_long() % v.size();
-    int value = v[rand_index];
-    v.erase(std::next(v.begin(), rand_index));
+    std::swap(v[rand_index], v.back());
+    int value = v.back();
+    v.pop_back();
     return value;
 }
 
 inline float normalized_value(float value, float max, float min) { return fabs((value - min) / (max - min)); }
 
 // Is this the correct way?
-template < typename T >
-void insert_unique(std::vector<T>& vector, T key) {
-    // check list for duplicates
-    if (!std::count(vector.begin(), vector.end(), key)) {
-        vector.push_back(key);
+template <typename T>
+void insert_unique(std::vector<T>& vec, const T& key) {
+    if (std::find(vec.begin(), vec.end(), key) == vec.end()) {
+        vec.push_back(key);
     }
 }
 

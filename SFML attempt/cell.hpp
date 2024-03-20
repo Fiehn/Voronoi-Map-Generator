@@ -12,7 +12,7 @@ class Cell
 {  
 public:
     const int id; // Unique Id coming from the points vector
-    Cell(int i) : id(i) { vertex.reserve(15); neighbors.reserve(15); }; // Constructor, am I doing this right?
+    Cell(int i) : id(i) { vertex.reserve(10); neighbors.reserve(10); }; // Constructor, am I doing this right?
     std::vector<int> vertex; // Id's of vertecies that corespond to the cell and are stored in voroi_points this should be pointers?
     std::vector<int> neighbors; // Id's of the neighbors
     unsigned int vertex_offset = 0U; // Offset for the vertex buffer
@@ -55,24 +55,25 @@ bool Cell::contains(sf::Vector2f point, const std::vector<sf::Vector2f>& voroi_p
 // Sort angles between center, point and horizontal for drawing triangles (insertion sort)
 void Cell::sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points)
 {
-    std::vector<float> angle;
-    angle.reserve(vertex.size());
+    // Create a temporary vector to store vertex indices along with their corresponding angles
+    std::vector<std::pair<int, float>> vertex_with_angles;
+    vertex_with_angles.reserve(vertex.size());
+
+    // Calculate angles and store them along with vertex indices
     for (size_t i = 0; i < vertex.size(); i++) {
-        angle.push_back((float)(atan2(points[id].y - voroi_points[vertex[i]].y, points[id].x - voroi_points[vertex[i]].x)));
+        float angle = static_cast<float>(atan2(points[id].y - voroi_points[vertex[i]].y, points[id].x - voroi_points[vertex[i]].x));
+        vertex_with_angles.emplace_back(vertex[i], angle);
     }
-    
-    for (size_t i = 1; i < angle.size(); i++) {
-		float key = angle[i];
-		int key2 = vertex[i];
-		int j = i - 1;
-        while (j >= 0 && angle[j] > key) {
-			angle[j + 1] = angle[j];
-			vertex[j + 1] = vertex[j];
-			j = j - 1;
-		}
-		angle[j + 1] = key;
-		vertex[j + 1] = key2;
-	}
+
+    // Sort the vertex_with_angles vector based on angles
+    std::sort(vertex_with_angles.begin(), vertex_with_angles.end(), [](const auto& lhs, const auto& rhs) {
+        return lhs.second < rhs.second;
+        });
+
+    // Update vertex with sorted vertex indices
+    for (size_t i = 0; i < vertex.size(); i++) {
+        vertex[i] = vertex_with_angles[i].first;
+    }
 }
 
 void rise(std::vector<Cell>& map)
