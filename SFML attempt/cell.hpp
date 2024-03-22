@@ -11,7 +11,7 @@
 class Cell 
 {  
 public:
-    const int id; // Unique Id coming from the points vector
+    unsigned int id; // Unique Id coming from the points vector
     Cell(int i) : id(i) { vertex.reserve(10); neighbors.reserve(10); }; // Constructor, am I doing this right?
     std::vector<int> vertex; // Id's of vertecies that corespond to the cell and are stored in voroi_points this should be pointers?
     std::vector<int> neighbors; // Id's of the neighbors
@@ -37,6 +37,11 @@ public:
     void sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points);
     
     bool contains(sf::Vector2f point, const std::vector<sf::Vector2f>& voroi_points);
+
+    ~Cell() {
+        vertex.clear();
+        neighbors.clear();
+    }
 };
 
 // contains
@@ -77,15 +82,23 @@ void Cell::sort_angles(const std::vector<sf::Vector2f>& points, const std::vecto
 }
 
 void rise(std::vector<Cell>& map)
-{
-    /* Calculate the rise by finding the tallest and shortest neighbor*/
+{ /* Calculate the rise by finding the tallest and shortest neighbor*/
     for (size_t i = 0; i < map.size(); i++)
     {
         float max_height = std::numeric_limits<float>::min();
         float min_height = std::numeric_limits<float>::max();
-        for (int j = 0; j < map[i].neighbors.size(); j++)
+
+        // Cache neighbor heights
+        const std::vector<int>& neighbors = map[i].neighbors;
+        std::vector<float> neighbor_heights(neighbors.size());
+        for (size_t j = 0; j < neighbors.size(); j++) {
+			neighbor_heights[j] = map[neighbors[j]].height;
+		}
+
+        // find min and max height
+        for (int j = 0; j < neighbors.size(); j++)
         {
-            float neighbor_height = map[map[i].neighbors[j]].height;
+            float neighbor_height = neighbor_heights[j];
             if (neighbor_height < min_height) min_height = neighbor_height;
             if (neighbor_height > max_height) max_height = neighbor_height;
         }
@@ -95,8 +108,8 @@ void rise(std::vector<Cell>& map)
 
 // k-point smooth height generator
 // there is a max of RAND_MAX_LONG (about a million cells)
-void random_height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04,float delta_max_pos=0.03,float prob_of_island= 0.008,float dist_from_mainland = 1.0,std::string method = "Front")
-{   
+void random_height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04,float delta_max_pos=0.03,float prob_of_island= 0.008,float dist_from_mainland = 1.0, int method = 1)
+{   // Method 1 is random, method 2 is first in first out
     /* 
     1. Initiate queue active
     2. Pick k random starting cells
@@ -120,8 +133,8 @@ void random_height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04
     while (active.empty() == false)
     {
         int index = 0;
-        if(method=="Random") { index = pop_random_i(active); }
-        else if(method =="Front") { index = pop_front_i(active); }
+        if(method== 1) { index = pop_random_i(active); }
+        else if(method == 2) { index = pop_front_i(active); }
 
         float height_sum = 0.0;
         int count_values = 0;
@@ -158,50 +171,57 @@ void random_height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04
 }
 
 
-void smooth_height(std::vector<Cell>& map,float rise_threshold=0.1,int repeats = 1, std::string method="Random")
-{
-    for (int _ = 0; _ < repeats; _++)
+void smooth_height(std::vector<Cell>& map, float rise_threshold = 0.1, int repeats = 1, int method = 1)
+{ // method 1 = Random, method 2 = Front
     {
-        std::vector<int> active;
-        for (size_t i = 0; i < map.size(); i++)
-        {
-            if (map[i].rise > rise_threshold)
-            {
-                active.push_back(i);
-                active.insert(std::end(active), std::begin(map[i].neighbors), std::end(map[i].neighbors));
-            }
-        }
-        while (active.empty() == false)
-        {
-            int index = 0;
-            if (method == "Random") { index = pop_random_i(active); }
-            else if (method == "Front") { index = pop_front_i(active); }
+        std::vector<unsigned int> active;
+        active.reserve(map.size() * 5);
 
-            float height_sum = 0.f;
-            int count_values = 0;
-            for (int j = 0; j < map[index].neighbors.size(); j++)
+        for (int _ = 0; _ < repeats; _++)
+        {
+            for (size_t i = 0; i < map.size(); i++)
             {
-                height_sum = height_sum + map[map[index].neighbors[j]].height;
-                count_values++;
+                if (map[i].rise > rise_threshold)
+                {
+                    active.push_back(i);
+                    active.insert(std::end(active), std::begin(map[i].neighbors), std::end(map[i].neighbors));
+                }
             }
+            while (true)
+            {
+                if (active.empty()) { break; }
 
-            if (height_sum > 0.005) {
-                map[index].height = height_sum / (float)count_values;
+                size_t index = 0;
+                if (method == 1) { index = pop_random_i(active); }
+                else if (method == 2) { index = pop_front_i(active); }
+
+                float height_sum = 0.f;
+                int count_values = 0;
+                for (int j = 0; j < map[index].neighbors.size(); j++)
+                {
+                    height_sum = height_sum + map[map[index].neighbors[j]].height;
+                    count_values++;
+                }
+
+                if (height_sum > 0.005) {
+                    map[index].height = height_sum / static_cast<float>(count_values);
+                }
+                else if (map[index].height > 0.5) {
+                    map[index].height = 0.1;
+                }
             }
-            else if (map[index].height > 0.5) {
-                map[index].height = 0.1;
-            }
+            // calculate the new rise
+            rise(map);
         }
-        // calculate the new rise
-        rise(map);
     }
 }
 
 void noise_height(std::vector<Cell>& map, int n)
 {
+    size_t size = map.size();
     for (int i = 0; i < n; i++)
     {
-        for (size_t j = 0; j < map.size(); j++)
+        for (size_t j = 0; j < size; j++)
         {
 			map[j].height = map[j].height + RandomBetween(-0.005, 0.005);
 		}

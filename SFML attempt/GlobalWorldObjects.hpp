@@ -21,10 +21,25 @@ public:
 	std::vector<int> oceanCells;
 
 	GlobalWorldObjects();
+	void clearGlobals();
 
 };
 
 GlobalWorldObjects::GlobalWorldObjects()
 {
+	seaLevel = 0.5f;
+	globalTempAvg = 0.f;
+	globalSnowline = 0.8f;
+	globalTreeline = 0.8f;
+	globalHumidity = 0.f;
+	globalPercepitation = 0.f;
 }
-
+void GlobalWorldObjects::clearGlobals()
+{
+	snowCells.clear();
+	treeCells.clear();
+	riverCells.clear();
+	lakeCells.clear();
+	coastCells.clear();
+	oceanCells.clear();
+}

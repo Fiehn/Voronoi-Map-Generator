@@ -58,22 +58,24 @@ sf::Vector2f randomGradient() {
     return v;
 }
 
-inline int pop_front_i(std::vector<int>& v)
+template <typename T>
+inline T pop_front_i(std::vector<T>& v)
 {
     if (v.empty()) { return 0; }
 
-    int value = v[0];
+    T value = v[0];
     v.erase(v.begin());
     return value;
 }
 
-inline int pop_random_i(std::vector<int>& v)
+template <typename T>
+inline T pop_random_i(std::vector<T>& v)
 {
     if (v.empty()) { return 0; }
 
-    int rand_index = rand_long() % v.size();
+    size_t rand_index = rand_long() % v.size();
     std::swap(v[rand_index], v.back());
-    int value = v.back();
+    T value = v.back();
     v.pop_back();
     return value;
 }

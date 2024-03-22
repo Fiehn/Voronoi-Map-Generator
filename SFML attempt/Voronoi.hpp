@@ -21,7 +21,38 @@ namespace vor {
         const std::vector<std::size_t>& operator()(std::size_t x, std::size_t y) const {
 			return m_cells[x][y];
 		}
+        
         Grid() = default;
+        
+        void clear()
+        {
+            for (std::size_t i = 0; i < m_width; i++) {
+                for (std::size_t j = 0; j < m_height; j++) {
+					m_cells[i][j].clear();
+				}
+			}
+		}
+    };
+
+    class BoolArray2D {
+        private:
+            bool* array;
+            int width;
+            int height;
+        public:
+            BoolArray2D(int width, int height) : width(width), height(height) {
+			    array = new bool[width * height];
+                for (int i = 0; i < width * height; i++) {
+				    array[i] = false;
+			    }
+		    }
+            ~BoolArray2D() {
+                delete[] array;
+                
+            }
+            bool& operator()(int row, int col) {
+                return array[row * height + col];
+            }
     };
 
     class Voronoi {
@@ -38,7 +69,11 @@ namespace vor {
 
         int getCellIndex(sf::Vector2f point);
 
-        void DestroyMap();
+        ~Voronoi();
+
+        void clearMap();
+
+        void fillMap(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float point_jitter);
 
     private:
         void generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
@@ -94,19 +129,37 @@ namespace vor {
         genGrid(MAXWIDTH, MAXHEIGHT);
     }
 
+    void Voronoi::fillMap(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float point_jitter)
+    {
+        generatePoints(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, point_jitter);
+        std::vector<std::size_t> triangles = delaunay();
+        voronoi(triangles);
+        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
+			if (cells[i].vertex.size() == 0) { continue; };
+			cells[i].sort_angles(points, voronoi_points);
+		}
+        vertexGen();
+		genGrid(MAXWIDTH, MAXHEIGHT);
+    }
+
     void Voronoi::genGrid(const int MAXWIDTH, const int MAXHEIGHT)
     {// Generate a grid that stores indices of cells that are inside the grid_cells vector
         grid_cells = vor::Grid(std::floor(MAXWIDTH / cell_size) + 1, std::floor(MAXHEIGHT / cell_size) + 1);
-
+        
         for (int i = 0; i < cells.size(); i++)
         {
+            vor::BoolArray2D bool_grid(std::floor(MAXWIDTH / cell_size) + 1, std::floor(MAXHEIGHT / cell_size) + 1);
+            
             for (int j = 0; j < cells[i].vertex.size(); j++)
             {
                 int x = std::floor(clamp_int(voronoi_points[cells[i].vertex[j]].x, MAXWIDTH, 0) / cell_size);
                 int y = std::floor(clamp_int(voronoi_points[cells[i].vertex[j]].y, MAXHEIGHT, 0) / cell_size);
-                // TODO: Check if the cell is already in the grid_cell (insert_unique?) because this will enivetably create duplicates
                 // TODO: There are crashes and I suspect it's because of the grid_cells because they happen when the cells are being drawn
-                grid_cells(x, y).push_back(i);
+                if (bool_grid(x, y) == false)
+                {
+					grid_cells(x, y).push_back(i);
+					bool_grid(x,y) = true;
+				}
             }
         }
     }
@@ -157,13 +210,22 @@ namespace vor {
         }
     }
 
-    void Voronoi::DestroyMap()
+    void Voronoi::clearMap()
     {
-        delete(&points);
-        delete(&cells);
-        delete(&voronoi_points);
-        delete(&vertices);
-        delete(&grid_cells);
+		points.clear();
+		cells.clear();
+		voronoi_points.clear();
+		vertices.clear();
+		grid_cells.clear();
+	}
+
+    Voronoi::~Voronoi()
+    {
+        points.clear();
+        cells.clear();
+        voronoi_points.clear();
+        vertices.clear();
+        grid_cells.clear();
     };
 
     void Voronoi::generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) 
