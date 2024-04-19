@@ -41,15 +41,15 @@ static void genWorld(GlobalWorldObjects& globals, vor::Voronoi& map, const int n
 
     loadText(window, text, 50, loadingText, "Generating Heightmap");
     random_height_gen(map.cells, peaks, 0.04, 0.02, 0.01, 1.0, 1);
-    loadText(window, text, 50, loadingText, " Smoothing Heightmap");
+    loadText(window, text, 50, loadingText, "Smoothing Heightmap");
     smooth_height(map.cells, 0.09, 15, 1);
-    loadText(window, text, 50, loadingText, " Generating Noise");
+    loadText(window, text, 50, loadingText, "Generating Noise");
     noise_height(map.cells, 2);
-    loadText(window, text, 50, loadingText, " Calculating Heights");
+    loadText(window, text, 50, loadingText, "Calculating Heights");
     calcHeightValues(map.cells, globals, 0.05);
-    loadText(window, text, 50, loadingText, " Calculating Wind");
+    loadText(window, text, 50, loadingText, "Calculating Wind");
     calcWind(map.cells,map.points, MAXHEIGHT, globals);
-    loadText(window, text, 50, loadingText, " Calculating Rivers");
+    loadText(window, text, 50, loadingText, "Calculating Rivers");
     calcRiverStart(map.cells, globals);
     return;
 }
@@ -76,6 +76,37 @@ static sf::VertexBuffer genBuffer(vor::Voronoi& map)
 	vertexBuffer.update(map.vertices.data());
 	return vertexBuffer;
 }
+static sf::VertexArray genArray(vor::Voronoi& map)
+{
+    sf::VertexArray vertexArray(sf::Triangles, map.vertexCount * 3);
+
+    for (std::size_t i = 0; i < map.cells.size(); i++) {
+		sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+			map.vertices[j].color = color;
+		}
+	}
+    // Fill vertex array / draw triangles from map.vertices
+    for (std::size_t i = 0; i < map.vertices.size(); i++) {
+        vertexArray.append(map.vertices[i]);
+    }
+    return vertexArray;
+}
+
+static void updateVertex(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
+{
+    if (useVertexBuffer)
+    {
+		vertexBuffer.update(map.vertices.data());
+	}
+    else
+    {
+		vertexArray.clear();
+        for (std::size_t i = 0; i < map.vertices.size(); i++) {
+			vertexArray.append(map.vertices[i]);
+		}
+	}
+}   
 
 int main()
 {
@@ -146,8 +177,20 @@ int main()
     sf::VertexArray windArrows = vor::windArrows(map);
 
     loadText(window,text,50,loadingText,"Generating Vertex Buffer");
-    sf::VertexBuffer vertexBuffer = genBuffer(map);
-    
+
+    bool useVertexBuffer = sf::VertexBuffer::isAvailable;
+
+    sf::VertexBuffer vertexBuffer;
+    sf::VertexArray vertexArray;
+
+    if (useVertexBuffer)
+    {
+        vertexBuffer = genBuffer(map);
+    }
+    else
+    {
+        vertexArray = genArray(map);
+    }
 
     // Create the view
     sf::Vector2f oldPos;
@@ -218,7 +261,7 @@ int main()
                         map.vertices[offset + i].color = color;
                     }
                     // TODO: update only the part of the buffer that has changed
-                    vertexBuffer.update(map.vertices.data()); // There is no need to update the whole buffer, only the part that has changed (offset, n_vertices)
+                    updateVertex(map,vertexArray,vertexBuffer,useVertexBuffer); // There is no need to update the whole buffer, only the part that has changed (offset, n_vertices)
 
                 }
                 else if (event.key.code == sf::Keyboard::N)
@@ -226,7 +269,14 @@ int main()
                     // Delete the map and draw a new one
                     
                     genWorld(globals, map, 200, 150, windowWidth, windowHeight, 8.f, 10, window);
-                    vertexBuffer = genBuffer(map);
+                    if (!useVertexBuffer)
+                    {
+                        vertexBuffer = genBuffer(map);
+                    }
+                    else
+                    {
+                        vertexArray = genArray(map);
+                    }
                     windArrows = vor::windArrows(map); // NEEEEEDS to be fixed so that it works with the new map
                 }
                 else if (event.key.code == sf::Keyboard::L)
@@ -248,7 +298,7 @@ int main()
                                 map.vertices[j].color = color;
                             }
                         }
-                        vertexBuffer.update(map.vertices.data());
+                        updateVertex(map,vertexArray,vertexBuffer,useVertexBuffer);
 					}
                     else
                     {
@@ -259,8 +309,8 @@ int main()
                                 map.vertices[j].color = color;
                             }
                         }
-                        vertexBuffer.update(map.vertices.data());
-					}
+                        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+                    }
                 }
                 else if (event.key.code == sf::Keyboard::Comma)
                 { // activate arrows for wind direction
@@ -339,7 +389,14 @@ int main()
         window.clear();
         
         // TODO: Draw only the cells that are visible in the window (use the view to determine which cells are visible) (Low priority since draws are not the bottleneck)
-        window.draw(vertexBuffer);
+        if (useVertexBuffer)
+        {
+            window.draw(vertexBuffer);
+        }
+        else
+        {
+            window.draw(vertexArray);
+        }
         
         if (drawLines) {
 			window.draw(lines);

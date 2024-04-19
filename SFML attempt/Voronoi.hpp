@@ -657,9 +657,8 @@ namespace vor {
         // 4. Scale the arrow based on strength
         // 5. Draw the arrow
         // 6. Repeat for all gridcells
-
         sf::VertexArray windArrows(sf::Triangles, 3 * map.grid_cells.m_width * map.grid_cells.m_height);
-        float arrowLengthBase = 20.f; // Adjust this value as needed
+        float arrowLengthBase = 25.f; // Adjust this value as needed
         float baseAngleOffset = PI / 8;
 
         for (int x_gridCell = 0; x_gridCell < map.grid_cells.m_width; x_gridCell++)
