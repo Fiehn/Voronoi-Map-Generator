@@ -11,7 +11,7 @@ The Voronoi was then created from the dual graph of the triangulation.
 * Jittered grid point generation
 * Height generation, noising and smoothing
 * River generation (Lacking)
-* Wind speed and direction for each cell (Lacking)
+* Wind speed and direction for each cell (Based on convergence lines, and then randomly assigns strength and direction based on region. Then averaging to smooth)
 ![image](https://github.com/Fiehn/Voronoi-Map-Generator/assets/81577064/3fbc5b37-b68e-408e-9fb7-a7658099e2dd)
 ## Features being worked on
 
@@ -33,6 +33,8 @@ The Voronoi was then created from the dual graph of the triangulation.
 * Rivers / Lakes
 * Rainfall and percipitation
 * Temperature
+
+* Wind is based on the grids that are already used for spatial hashing, thus it will scale with that implementation. It needs to account for ocean cells and potentially height of other cells. 
 ![image](https://github.com/Fiehn/Voronoi-Map-Generator/assets/81577064/c4b033b6-1c4b-436e-8c2c-1ad8a04636d2)
 
 ### Graphical and Technical upgrades
