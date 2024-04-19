@@ -17,6 +17,12 @@ inline float clamp(float x, float max, float min)
     if (x > max) { return max; }
     return x;
 }
+inline int clamp_int(int x, int max, int min)
+{
+	if (x < min) { return min; }
+	if (x > max) { return max; }
+	return x;
+}
 
 inline sf::Vector2f clampVect2f(sf::Vector2f vect, float maxx, float minx, float maxy, float miny)
 {
@@ -52,33 +58,35 @@ sf::Vector2f randomGradient() {
     return v;
 }
 
-inline int pop_front_i(std::vector<int>& v)
+template <typename T>
+inline T pop_front_i(std::vector<T>& v)
 {
     if (v.empty()) { return 0; }
 
-    int value = v[0];
+    T value = v[0];
     v.erase(v.begin());
     return value;
 }
 
-inline int pop_random_i(std::vector<int>& v)
+template <typename T>
+inline T pop_random_i(std::vector<T>& v)
 {
     if (v.empty()) { return 0; }
 
-    int rand_index = rand_long() % v.size();
-    int value = v[rand_index];
-    v.erase(std::next(v.begin(), rand_index));
+    size_t rand_index = rand_long() % v.size();
+    std::swap(v[rand_index], v.back());
+    T value = v.back();
+    v.pop_back();
     return value;
 }
 
 inline float normalized_value(float value, float max, float min) { return fabs((value - min) / (max - min)); }
 
 // Is this the correct way?
-template < typename T >
-void insert_unique(std::vector<T>& vector, T key) {
-    // check list for duplicates
-    if (!std::count(vector.begin(), vector.end(), key)) {
-        vector.push_back(key);
+template <typename T>
+void insert_unique(std::vector<T>& vec, const T& key) {
+    if (std::find(vec.begin(), vec.end(), key) == vec.end()) {
+        vec.push_back(key);
     }
 }
 
@@ -216,7 +224,31 @@ struct compare_dist_to_point {
     }
 };
 
+float normalizeAngle(float angleDegrees) {
+    while (angleDegrees >= 360.0) {
+        angleDegrees -= 360.0;
+    }
+    while (angleDegrees < 0.0) {
+        angleDegrees += 360.0;
+    }
+    return angleDegrees;
+}
 
+#define PI 3.14159265
 
+inline float radians(float degrees) {
+	return degrees * (PI / 180.0);
+}
 
+std::vector<float> scalarMultiplication(const std::vector<float>& vec, float scalar) {
+    std::vector<float> result;
+    result.reserve(vec.size()); // Reserve space for efficiency
+
+    // Perform scalar multiplication
+    for (float value : vec) {
+        result.push_back(value * scalar);
+    }
+
+    return result;
+}
 

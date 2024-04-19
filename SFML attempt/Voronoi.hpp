@@ -1,5 +1,6 @@
 #pragma once
 #include <unordered_map>
+#include <algorithm> 
 #include <exception>
 #include "cell.hpp"
 #include "util.h"
@@ -8,21 +9,80 @@ namespace vor {
 
     constexpr std::size_t INVALID_INDEX = std::numeric_limits<std::size_t>::max();
 
+    struct Grid { // Grid for spatial hashing
+        std::size_t m_width; // width of the grid in amount of gridcells
+		std::size_t m_height; // height of the grid in amount of gridcells
+		std::vector<std::vector<std::vector<std::size_t>>> m_cells; // 3D vector to store the indices of the cells in the grid
+        Grid(std::size_t width, std::size_t height) 
+            : m_width(width), m_height(height), m_cells(width, std::vector<std::vector<std::size_t>>(height, std::vector<std::size_t>())) {}
+        std::vector<std::size_t>& operator()(std::size_t x, std::size_t y) {
+			return m_cells[x][y]; // return the vector of indices at the given x and y coordinates
+		}
+        const std::vector<std::size_t>& operator()(std::size_t x, std::size_t y) const {
+			return m_cells[x][y]; // return the vector of indices at the given x and y coordinates
+		}
+
+        Grid() = default;
+        
+        void clear()
+        {
+            for (std::size_t i = 0; i < m_width; i++) {
+                for (std::size_t j = 0; j < m_height; j++) {
+					m_cells[i][j].clear();
+				}
+			}
+		}
+    };
+
+    class BoolArray2D {
+        private:
+            bool* array;
+            int width;
+            int height;
+        public:
+            BoolArray2D(int width, int height) : width(width), height(height) {
+			    array = new bool[width * height];
+                for (int i = 0; i < width * height; i++) {
+				    array[i] = false;
+			    }
+		    }
+            ~BoolArray2D() {
+                delete[] array;
+                
+            }
+            bool& operator()(int row, int col) {
+                return array[row * height + col];
+            }
+    };
+
     class Voronoi {
     public:
-        std::vector<sf::Vector2f> points; // as a hash table????? would be better, perhaps?
+        std::vector<sf::Vector2f> points;
         std::vector<Cell> cells;
-        std::vector<sf::Vector2f> voronoi_points;
+        std::vector<sf::Vector2f> voronoi_points; // deprecated ?
+        std::vector<sf::Vertex> vertices;
+        std::size_t vertexCount;
+        vor::Grid grid_cells;
+        int cell_size = 50;
 
-        Voronoi(const int ncellx,const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
+        Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
 
         int getCellIndex(sf::Vector2f point);
 
-        void DestroyMap();
+        ~Voronoi();
 
+        void clearMap();
+
+        void fillMap(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float point_jitter);
 
     private:
         void generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
+
+        std::size_t getVertexCount();
+
+        void vertexGen();
+
+        void genGrid(const int MAXWIDTH, const int MAXHEIGHT);
 
         std::size_t legalize(
             std::size_t a, 
@@ -52,6 +112,7 @@ namespace vor {
 
     Voronoi::Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter)
     {
+
         generatePoints(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, jitter);
         
         std::vector<std::size_t> triangles = delaunay();
@@ -62,28 +123,113 @@ namespace vor {
             if (cells[i].vertex.size() == 0) { continue; };
             cells[i].sort_angles(points, voronoi_points);
         }
+        //Generate the vertices for the cells
+        vertexGen();
+        //Generate the grid
+        genGrid(MAXWIDTH, MAXHEIGHT);
+    }
 
+    void Voronoi::fillMap(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float point_jitter)
+    {
+        generatePoints(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, point_jitter);
+        std::vector<std::size_t> triangles = delaunay();
+        voronoi(triangles);
+        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
+			if (cells[i].vertex.size() == 0) { continue; };
+			cells[i].sort_angles(points, voronoi_points);
+		}
+        vertexGen();
+		genGrid(MAXWIDTH, MAXHEIGHT);
+    }
+
+    void Voronoi::genGrid(const int MAXWIDTH, const int MAXHEIGHT)
+    {// Generate a grid that stores indices of cells that are inside the grid_cells vector
+        grid_cells = vor::Grid(std::floor(MAXWIDTH / cell_size) + 1, std::floor(MAXHEIGHT / cell_size) + 1);
+        
+        for (int i = 0; i < cells.size(); i++)
+        {
+            vor::BoolArray2D bool_grid(std::floor(MAXWIDTH / cell_size) + 1, std::floor(MAXHEIGHT / cell_size) + 1);
+            
+            for (int j = 0; j < cells[i].vertex.size(); j++)
+            {
+                int x = std::floor(clamp_int(voronoi_points[cells[i].vertex[j]].x, MAXWIDTH, 0) / cell_size);
+                int y = std::floor(clamp_int(voronoi_points[cells[i].vertex[j]].y, MAXHEIGHT, 0) / cell_size);
+                // TODO: There are crashes and I suspect it's because of the grid_cells because they happen when the cells are being drawn
+                if (bool_grid(x, y) == false)
+                {
+					grid_cells(x, y).push_back(i);
+					bool_grid(x,y) = true;
+				}
+            }
+        }
     }
 
     int Voronoi::getCellIndex(sf::Vector2f point)
-    {
-        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
-            if (cells[i].contains(point,voronoi_points)) {
-				return i;
-			}
-		}
-		return INVALID_INDEX;
+    { // could be faster still than what the static grid can provide
+        int grid_cell_x = point.x / cell_size;
+        int grid_cell_y = point.y / cell_size;
+
+        for (int i = 0; i < grid_cells(grid_cell_x, grid_cell_y).size(); i++)
+        {
+            int idx = grid_cells(grid_cell_x, grid_cell_y)[i];
+            if (cells[idx].contains(point, voronoi_points))
+            {
+                return idx;
+            }
+        }
+
+        return INVALID_INDEX;
 	} 
 
-    void Voronoi::DestroyMap()
+    std::size_t Voronoi::getVertexCount()
+    {
+		std::size_t count = 0;
+        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
+			count += cells[i].vertex.size();
+		}
+		return count;
+	}
+
+    void Voronoi::vertexGen()
+    { // Collect all vertices for the triangles that draw the Voronoi map and store them in a vector (vertices)
+        vertexCount = getVertexCount();
+        vertices.reserve(vertexCount * 3);
+        unsigned int offset = 0;
+        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
+            if (cells[i].vertex.size() == 0) { continue; }
+            else { cells[i].vertex_offset = offset; }
+
+            for (std::size_t j = 0; j < cells[i].vertex.size(); j++)
+            {
+                vertices.push_back(sf::Vertex(voronoi_points[cells[i].vertex[j]], sf::Color::White));
+                vertices.push_back(sf::Vertex(voronoi_points[cells[i].vertex[(j + 1) % cells[i].vertex.size()]], sf::Color::White));
+                vertices.push_back(sf::Vertex(points[cells[i].id], sf::Color::White));
+                
+                offset += 3;
+            }
+        }
+    }
+
+    void Voronoi::clearMap()
+    {
+		points.clear();
+		cells.clear();
+		voronoi_points.clear();
+		vertices.clear();
+		grid_cells.clear();
+	}
+
+    Voronoi::~Voronoi()
     {
         points.clear();
         cells.clear();
         voronoi_points.clear();
+        vertices.clear();
+        grid_cells.clear();
     };
 
-    void Voronoi::generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) {
-
+    void Voronoi::generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) 
+    {
         float stepSizewidth = (float)MAXWIDTH / ncellx;
         float stepSizeHeight = (float)MAXHEIGHT / ncelly;
 
@@ -503,6 +649,64 @@ namespace vor {
     }
 
 
+    sf::VertexArray windArrows(vor::Voronoi& map)
+    { // create a vertex array drawing arrows by the wind direction
+        // 1. Seperate the map and get all the cells inside each gridcell
+        // 2. take the average wind direction and wind strength for all cells inside the gridcell
+        // 3. Get positions for vertices of arrow based on direction and located in the center of the gridcell
+        // 4. Scale the arrow based on strength
+        // 5. Draw the arrow
+        // 6. Repeat for all gridcells
+        sf::VertexArray windArrows(sf::Triangles, 3 * map.grid_cells.m_width * map.grid_cells.m_height);
+        float arrowLengthBase = 25.f; // Adjust this value as needed
+        float baseAngleOffset = PI / 8;
+
+        for (int x_gridCell = 0; x_gridCell < map.grid_cells.m_width; x_gridCell++)
+        {
+            for (int y_gridCell = 0; y_gridCell < map.grid_cells.m_height; y_gridCell++)
+            {
+				// get all the cells inside the gridcell
+                std::vector<std::size_t> choice_cells = map.grid_cells(x_gridCell, y_gridCell);
+
+                // get the average wind direction and wind strength for all cells inside the gridcell
+                double sumX = 0.0;
+                double sumY = 0.0;
+                double sumStr = 0.0;
+                for (std::size_t i = 0; i < choice_cells.size(); i++) {
+                    float radian = radians(map.cells[choice_cells[i]].windDir);
+                    sumX += std::cos(radian);
+                    sumY += std::sin(radian);
+
+                    sumStr += map.cells[choice_cells[i]].windStr;
+				}
+                double averageRadians = std::atan2(sumY, sumX);
+                double averageWindStr = sumStr / choice_cells.size();
+                // Get positions for vertices of arrow based on direction and located in the center of the gridcell
+                float x_center = x_gridCell * map.cell_size + map.cell_size / 2;
+                float y_center = y_gridCell * map.cell_size + map.cell_size / 2;
+                sf::Vector2f center = sf::Vector2f(x_center, y_center);
+                // Create the arrow as a triangle with the tip pointing in the direction of the wind
+                
+                float arrowLength = arrowLengthBase * averageWindStr;
+
+                float x_tip = x_center + arrowLength * std::cos(averageRadians);
+                float y_tip = y_center + arrowLength * std::sin(averageRadians);
+
+                
+                float x_base1 = x_center + (arrowLength * 0.7f) * std::cos(averageRadians + PI - baseAngleOffset); // Adding 120 degrees to the angle
+                float y_base1 = y_center + (arrowLength * 0.7f) * std::sin(averageRadians + PI - baseAngleOffset);
+
+                float x_base2 = x_center + (arrowLength * 0.7f) * std::cos(averageRadians + PI + baseAngleOffset); // Subtracting 120 degrees from the angle
+                float y_base2 = y_center + (arrowLength * 0.7f) * std::sin(averageRadians + PI + baseAngleOffset);
+
+                windArrows.append(sf::Vertex(sf::Vector2f(x_tip, y_tip), sf::Color::Black));
+                windArrows.append(sf::Vertex(sf::Vector2f(x_base1, y_base1), sf::Color::Black));
+                windArrows.append(sf::Vertex(sf::Vector2f(x_base2, y_base2), sf::Color::Black));
+			}
+		}
+        return windArrows;
+    }
+    
 };
 
 
