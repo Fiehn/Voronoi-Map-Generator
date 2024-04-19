@@ -9,22 +9,50 @@
 // There is some inspiration to get from the following (particularly for threading):
 // https://gitlab.gbar.dtu.dk/s164179/Microbots/blob/dc8b5b4b883fa1fe572fd82d44fbf291d7f81153/SFML-2.5.0/examples/island/Island.cpp
 
-static void genWorld(GlobalWorldObjects& globals, vor::Voronoi& map, const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float point_jitter, int peaks)
+void loadText(sf::RenderWindow& window, sf::Text& text, int fontsize, std::string& displayText, std::string newText)
 {
+    displayText = displayText.substr(0, displayText.length() - 3) + "(X)" + "\n" + newText + " (0)";
+    text.setString(displayText);
+    text.move(0, - fontsize);
+    window.clear();
+    window.draw(text);
+    window.display();
+}
+
+static void genWorld(GlobalWorldObjects& globals, vor::Voronoi& map, const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float point_jitter, int peaks,sf::RenderWindow& window)
+{
+    std::string loadingText = "Initializing (0)";
+    sf::Font font;
+    if (!font.loadFromFile("arial.ttf"))
+    {
+        std::cout << "Could not load font" << std::endl;
+    }
+    sf::Text text(loadingText, font, 50);
+    text.setFillColor(sf::Color::White);
+    text.setPosition(MAXWIDTH / 2 - text.getGlobalBounds().width / 2, MAXHEIGHT / 2 - text.getGlobalBounds().height / 2);
+    // Draw the loading screen
+    window.clear();
+    window.draw(text);
+    window.display();
+
     map.clearMap();
     map.fillMap(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, point_jitter);
     globals.clearGlobals();
 
+    loadText(window, text, 50, loadingText, "Generating Heightmap");
     random_height_gen(map.cells, peaks, 0.04, 0.02, 0.01, 1.0, 1);
+    loadText(window, text, 50, loadingText, " Smoothing Heightmap");
     smooth_height(map.cells, 0.09, 15, 1);
+    loadText(window, text, 50, loadingText, " Generating Noise");
     noise_height(map.cells, 2);
-
+    loadText(window, text, 50, loadingText, " Calculating Heights");
     calcHeightValues(map.cells, globals, 0.05);
-
+    loadText(window, text, 50, loadingText, " Calculating Wind");
+    calcWind(map.cells,map.points, MAXHEIGHT, globals);
+    loadText(window, text, 50, loadingText, " Calculating Rivers");
     calcRiverStart(map.cells, globals);
     return;
 }
-
 static sf::VertexBuffer genBuffer(vor::Voronoi& map)
 {
 	sf::VertexBuffer vertexBuffer(sf::Triangles, sf::VertexBuffer::Dynamic);
@@ -51,6 +79,7 @@ static sf::VertexBuffer genBuffer(vor::Voronoi& map)
 
 int main()
 {
+    // Initialize the random seed and window
     std::srand(time(NULL));
     int windowWidth = 2500;
     int windowHeight = 1500;
@@ -58,23 +87,73 @@ int main()
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML");
     window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
 
+    // Create the global world objects
     GlobalWorldObjects globals;
+    globals.generateConvergenceLines(5);
+    
+    sf::VertexArray lines(sf::Lines, 10);
+    for (int i = 0; i < 10; i++)
+    {
+        if (i % 2 == 0)
+        {
+            lines.append(sf::Vertex(sf::Vector2f(0, globals.convergenceLines[std::floor(i / 2)] * windowHeight), sf::Color::Green));
+        }
+        else 
+        {
+            lines.append(sf::Vertex(sf::Vector2f(windowWidth, globals.convergenceLines[std::floor(i / 2)] * windowHeight), sf::Color::Green));
+        }
+	}
 
+    std::cout << "Wind Directions: " << globals.windDirection[0] << " " << globals.windDirection[1] << " " << globals.windDirection[2] << " " << globals.windDirection[3] << " " << globals.windDirection[4] << std::endl;
+
+    // Create the loading screen
+    std::string loadingText = "Initializing (0)";
+    sf::Font font;
+    if (!font.loadFromFile("arial.ttf"))
+    {
+		std::cout << "Could not load font" << std::endl;
+	}
+    sf::Text text(loadingText, font, 50);
+    text.setFillColor(sf::Color::White);
+    text.setPosition(windowWidth / 2 - text.getGlobalBounds().width / 2, windowHeight / 2 - text.getGlobalBounds().height / 2);
+    // Draw the loading screen
+    window.clear();
+    window.draw(text);
+    window.display();
+
+    // Create the map
     vor::Voronoi map(200, 150, windowWidth, windowHeight, 8.f);
-
+    
+    loadText(window,text,50,loadingText,"Generating Heightmap");
     random_height_gen(map.cells, 10, 0.04, 0.02, 0.01, 1.0, 1);
+
+    loadText(window,text,50,loadingText,"Smoothing Heightmap");
     smooth_height(map.cells, 0.09, 15, 1);
+
+    loadText(window,text,50,loadingText,"Adding Noise to Heightmap");
     noise_height(map.cells, 2);
 
+    loadText(window,text,50,loadingText,"Calculating Height Values");
     calcHeightValues(map.cells, globals, 0.05);
 
+    loadText(window,text,50,loadingText,"Calculating Wind");
+    calcWind(map.cells, map.points, windowHeight, globals);
+
+    loadText(window,text,50,loadingText,"Calculating River");
     calcRiverStart(map.cells, globals);
     
+    loadText(window,text,50,loadingText,"Drawing Wind Arrows");
+    sf::VertexArray windArrows = vor::windArrows(map);
+
+    loadText(window,text,50,loadingText,"Generating Vertex Buffer");
     sf::VertexBuffer vertexBuffer = genBuffer(map);
     
 
+    // Create the view
     sf::Vector2f oldPos;
     bool moving = false;
+    bool drawLines = false; // Set to true to draw the convergence lines of wind direction
+    bool wind = false; // Set to true to draw the wind direction
 
     float zoom = 1;
     // Retrieve the window's default view
@@ -100,6 +179,8 @@ int main()
                     if(cellIndex != vor::INVALID_INDEX) {
                         std::cout << "ID: " << cellIndex << " Height: " << map.cells[cellIndex].height << " riverBool: " << map.cells[cellIndex].riverBool << " oceanBool: " << map.cells[cellIndex].oceanBool << " snowBool: " << map.cells[cellIndex].snowBool << " lakeBool: " << map.cells[cellIndex].lakeBool << std::endl;
                         std::cout << "Coordinates: " << map.points[cellIndex].x << " " << map.points[cellIndex].y << std::endl;
+                        std::cout << "Wind direction: " << map.cells[cellIndex].windDir << " Wind speed: " << map.cells[cellIndex].windStr << std::endl;
+                        std::cout << std::endl;
                     }
                     else {
                         std::cout << "Out of Bounds!" << std::endl;
@@ -144,8 +225,46 @@ int main()
                 {
                     // Delete the map and draw a new one
                     
-                    genWorld(globals, map, 200, 150, windowWidth, windowHeight, 8.f, 10);
+                    genWorld(globals, map, 200, 150, windowWidth, windowHeight, 8.f, 10, window);
                     vertexBuffer = genBuffer(map);
+                    windArrows = vor::windArrows(map); // NEEEEEDS to be fixed so that it works with the new map
+                }
+                else if (event.key.code == sf::Keyboard::L)
+                {
+                    // Display lines
+                    drawLines = !drawLines;
+                }
+                else if (event.key.code == sf::Keyboard::W)
+                {
+                    if (wind == false)
+                    {
+						wind = true;
+                        for (size_t i = 0; i < map.cells.size(); i++)
+                        {
+                            sf::Color color(255 * map.cells[i].windDir / 360, 255 * map.cells[i].windStr, 0, 255);
+
+                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+                            {
+                                map.vertices[j].color = color;
+                            }
+                        }
+                        vertexBuffer.update(map.vertices.data());
+					}
+                    else
+                    {
+						wind = false;
+                        for (std::size_t i = 0; i < map.cells.size(); i++) {
+                            sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+                                map.vertices[j].color = color;
+                            }
+                        }
+                        vertexBuffer.update(map.vertices.data());
+					}
+                }
+                else if (event.key.code == sf::Keyboard::Comma)
+                { // activate arrows for wind direction
+                    wind = !wind;
                 }
 				break;
 
@@ -221,6 +340,13 @@ int main()
         
         // TODO: Draw only the cells that are visible in the window (use the view to determine which cells are visible) (Low priority since draws are not the bottleneck)
         window.draw(vertexBuffer);
+        
+        if (drawLines) {
+			window.draw(lines);
+		}
+        if (wind) {
+			window.draw(windArrows);
+		}
 
         window.display();
     }

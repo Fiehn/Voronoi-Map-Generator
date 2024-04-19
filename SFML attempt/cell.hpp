@@ -21,6 +21,8 @@ public:
     float rise = 0.f;
     float avgTemp = 0.f;
     float tempSTD = 1.f;
+    float windDir = 0.f;
+    float windStr = 0.f;
 
     bool oceanBool = false;
     bool coast = false;
@@ -83,6 +85,7 @@ void Cell::sort_angles(const std::vector<sf::Vector2f>& points, const std::vecto
 
 void rise(std::vector<Cell>& map)
 { /* Calculate the rise by finding the tallest and shortest neighbor*/
+    // Needs to be optimized or rethought
     for (size_t i = 0; i < map.size(); i++)
     {
         float max_height = std::numeric_limits<float>::min();
@@ -406,7 +409,6 @@ void calcPreassure(std::vector<Cell>& map, GlobalWorldObjects& globals)
 
 }
 
-
 void calcPercepitation(std::vector<Cell>& map)
 {
 
@@ -427,7 +429,51 @@ void calcLakes(std::vector<Cell>& map)
 
 }
 
-void calcWind(std::vector<Cell>& map)
+void calcWind(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, const int MAXHEIGHT, GlobalWorldObjects& globals)
 {
+    std::vector<float> wind = scalarMultiplication(globals.convergenceLines, (float)MAXHEIGHT);
 
+    for (int i = 0; i < map.size(); i++)
+    {
+        int closestLine = 0;
+        float min_dist = 1000000.f;
+        for (int j = 0; j < wind.size(); j++)
+        {
+            float dist = points[map[i].id].y - wind[j];
+            if (abs(dist) < min_dist)
+            {
+                if (dist < 0)
+                {
+                    min_dist = abs(dist);
+                    closestLine = j - 1;
+                }
+                else
+                {
+                    min_dist = abs(dist);
+                    closestLine = j;
+                }
+			}
+        }
+
+        map[i].windDir = normalizeAngle(globals.windDirection[closestLine] + 360.f * RandomBetween(-0.3,0.3));
+        map[i].windStr = clamp(globals.windStrength[closestLine] + RandomBetween(-0.5,0.5), 1.f, 0.f);
+	}
+    // get averages of neighbors direction and strength
+    for (int i = 0; i < map.size(); i++)
+    {
+        float sumX = 0.0;
+        float sumY = 0.0;
+        float sumStr = 0.0;
+        for (int j = 0; j < map[i].neighbors.size(); j++)
+        {
+            float radian = radians(map[map[i].neighbors[j]].windDir);
+            sumX += std::cos(radian);
+            sumY += std::sin(radian);
+
+            sumStr += map[map[i].neighbors[j]].windStr;
+        }
+        float averageRadians = std::atan2f(sumY, sumX);
+        map[i].windDir = normalizeAngle(averageRadians * 180.0 / PI);
+        map[i].windStr = sumStr / map[i].neighbors.size();
+    }
 }

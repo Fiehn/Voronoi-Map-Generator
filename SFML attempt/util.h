@@ -224,7 +224,31 @@ struct compare_dist_to_point {
     }
 };
 
+float normalizeAngle(float angleDegrees) {
+    while (angleDegrees >= 360.0) {
+        angleDegrees -= 360.0;
+    }
+    while (angleDegrees < 0.0) {
+        angleDegrees += 360.0;
+    }
+    return angleDegrees;
+}
 
+#define PI 3.14159265
 
+inline float radians(float degrees) {
+	return degrees * (PI / 180.0);
+}
 
+std::vector<float> scalarMultiplication(const std::vector<float>& vec, float scalar) {
+    std::vector<float> result;
+    result.reserve(vec.size()); // Reserve space for efficiency
+
+    // Perform scalar multiplication
+    for (float value : vec) {
+        result.push_back(value * scalar);
+    }
+
+    return result;
+}
 
