@@ -6,19 +6,19 @@
 class GlobalWorldObjects
 {
 public:
-	float seaLevel = 0.5f;
-	float globalTempAvg = 0.f;
-	float globalSnowline = 0.8f;
-	float globalTreeline = 0.8f;
-	float globalHumidity = 0.f;
-	float globalPercepitation = 0.f;
+	float seaLevel = 0.5f; // The sea level of the world (0 to 1) (1 being the top of the map)
+	float globalTempAvg = 15.f; // Average temperature of the world, more an abstract value than a real one
+	float globalSnowline = 0.8f; // The line where snow starts to appear on the map (0 to 1) (1 being the top of the map)
+	float globalTreeline = 0.8f; // The line where trees stop appearing on the map (0 to 1) (1 being the top of the map)
+	float globalHumidity = 0.f; // Average humidity of the world, more an abstract value than a real one
+	float globalPercepitation = 0.f; // Average percepitation of the world, more an abstract value than a real one
 
-	std::vector<int> snowCells;
-	std::vector<int> treeCells;
-	std::vector<int> riverCells;
+	std::vector<int> snowCells; // Cells that are covered in snow
+	std::vector<int> treeCells; // Cells that do not have trees because of altitute
+	std::vector<int> riverCells; // Cells that are part of a river
 	std::vector<int> lakeCells; // Penamn formula (Loook up)
-	std::vector<int> coastCells;
-	std::vector<int> oceanCells;
+	std::vector<int> coastCells; // Cells that are part of the coast
+	std::vector<int> oceanCells; // Cells that are part of the ocean
 	std::vector<float> convergenceLines; // Convergence lines for wind and ocean currents: Given in y coordinates from 0 to 1 (0 being the top of the map) (0.5 being the equator) (The buttom of the map should not be included)
 	std::vector<float> windDirection; // Wind direction for each convergence line (0 to 360 degrees) (0 being north) (will be the direction of the wind in the zone below the convergence line)
 	std::vector<float> windStrength; // Wind strength for each convergence line (0 to 1) (1 being the strongest) (will be the strength of the wind in the zone below the convergence line)
@@ -29,13 +29,34 @@ public:
 	void setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength) { convergenceLines = lines; windDirection = directions; windStrength = strength; }
 	void generateConvergenceLines(int nrLines);
 	std::vector<float> getConvergenceLines() { return convergenceLines; }
-
+	void setGlobalTemp(float temp);
+	void setSeaLevel(float level);
+	void setGlobalSnowline(float snowline);
+	void setGlobalTreeline(float treeline);
 };
+
+void GlobalWorldObjects::setGlobalSnowline(float snowline)
+{
+	globalSnowline = clamp(snowline,1.f,0.f);
+}
+void GlobalWorldObjects::setGlobalTreeline(float treeline)
+{
+	globalTreeline = clamp(treeline,1.f,0.f);
+}
+void GlobalWorldObjects::setSeaLevel(float level)
+{
+	seaLevel = clamp(level,1.f,0.f);
+	// There needs to be an update of all variables for cells
+}
+void GlobalWorldObjects::setGlobalTemp(float temp)
+{
+	globalTempAvg = temp;
+}
 
 GlobalWorldObjects::GlobalWorldObjects()
 {
-	seaLevel = 0.5f;
-	globalTempAvg = 0.f;
+	seaLevel = RandomBetween(0.4f, 0.6f);
+	globalTempAvg = RandomBetween(25.f,45.f);
 	globalSnowline = 0.8f;
 	globalTreeline = 0.8f;
 	globalHumidity = 0.f;
@@ -56,7 +77,7 @@ void GlobalWorldObjects::generateConvergenceLines(int nrLines)
 	convergenceLines.clear();
 	windDirection.clear();
 	windStrength.clear();
-	
+
 	std::vector<float> lines;
 	std::vector<float> directions;
 	std::vector<float> strength;

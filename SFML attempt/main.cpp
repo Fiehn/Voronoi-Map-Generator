@@ -38,6 +38,11 @@ static void genWorld(GlobalWorldObjects& globals, vor::Voronoi& map, const int n
     map.clearMap();
     map.fillMap(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, point_jitter);
     globals.clearGlobals();
+    globals.generateConvergenceLines(5);
+    globals.setSeaLevel(RandomBetween(0.4f, 0.6f));
+    globals.setGlobalTemp(RandomBetween(25.f, 45.f));
+    std::cout << "Wind Directions: " << globals.windDirection[0] << " " << globals.windDirection[1] << " " << globals.windDirection[2] << " " << globals.windDirection[3] << std::endl;
+    std::cout << "Global Avereage Temp: " << globals.globalTempAvg << " " << "Sea Level: " << globals.seaLevel << std::endl;
 
     loadText(window, text, 50, loadingText, "Generating Heightmap");
     random_height_gen(map.cells, peaks, 0.04, 0.02, 0.01, 1.0, 1);
@@ -47,8 +52,13 @@ static void genWorld(GlobalWorldObjects& globals, vor::Voronoi& map, const int n
     noise_height(map.cells, 2);
     loadText(window, text, 50, loadingText, "Calculating Heights");
     calcHeightValues(map.cells, globals, 0.05);
+    loadText(window, text, 50, loadingText, "Distance To Oceans");
+    closeOceanCell(map.cells, map.points, globals);
     loadText(window, text, 50, loadingText, "Calculating Wind");
     calcWind(map.cells,map.points, MAXHEIGHT, globals);
+    loadText(window, text, 50, loadingText, "Calculating Temperature");
+    calcTemp(map.cells, globals, map.points, MAXHEIGHT);
+    smoothTemps(map.cells, 1);
     loadText(window, text, 50, loadingText, "Calculating Rivers");
     calcRiverStart(map.cells, globals);
     return;
@@ -108,7 +118,7 @@ static void updateVertex(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::Ve
 	}
 }   
 
-int main()
+int main() 
 {
     // Initialize the random seed and window
     std::srand(time(NULL));
@@ -136,6 +146,7 @@ int main()
 	}
 
     std::cout << "Wind Directions: " << globals.windDirection[0] << " " << globals.windDirection[1] << " " << globals.windDirection[2] << " " << globals.windDirection[3] << " " << globals.windDirection[4] << std::endl;
+    std::cout << "Global Avereage Temp: " << globals.globalTempAvg << " " << "Sea Level: " << globals.seaLevel << std::endl;
 
     // Create the loading screen
     std::string loadingText = "Initializing (0)";
@@ -167,11 +178,21 @@ int main()
     loadText(window,text,50,loadingText,"Calculating Height Values");
     calcHeightValues(map.cells, globals, 0.05);
 
+    loadText(window,text,50,loadingText,"Distance To Oceans");
+    closeOceanCell(map.cells, map.points, globals);
+
     loadText(window,text,50,loadingText,"Calculating Wind");
     calcWind(map.cells, map.points, windowHeight, globals);
 
     loadText(window,text,50,loadingText,"Calculating River");
     calcRiverStart(map.cells, globals);
+
+    loadText(window, text, 50, loadingText, "Calculating Temperatures");
+    calcTemp(map.cells, globals, map.points, windowHeight);
+    smoothTemps(map.cells, 2);
+
+    loadText(window,text,50,loadingText,"Calculating Percepetation");
+    calcPercepitation(map.cells, map.points, globals);
     
     loadText(window,text,50,loadingText,"Drawing Wind Arrows");
     sf::VertexArray windArrows = vor::windArrows(map);
@@ -197,6 +218,7 @@ int main()
     bool moving = false;
     bool drawLines = false; // Set to true to draw the convergence lines of wind direction
     bool wind = false; // Set to true to draw the wind direction
+    bool temp = false; // Set to true to draw the temperature lines
 
     float zoom = 1;
     // Retrieve the window's default view
@@ -222,7 +244,9 @@ int main()
                     if(cellIndex != vor::INVALID_INDEX) {
                         std::cout << "ID: " << cellIndex << " Height: " << map.cells[cellIndex].height << " riverBool: " << map.cells[cellIndex].riverBool << " oceanBool: " << map.cells[cellIndex].oceanBool << " snowBool: " << map.cells[cellIndex].snowBool << " lakeBool: " << map.cells[cellIndex].lakeBool << std::endl;
                         std::cout << "Coordinates: " << map.points[cellIndex].x << " " << map.points[cellIndex].y << std::endl;
+                        std::cout << "Temp: " << map.cells[cellIndex].temp << " Percip: " << map.cells[cellIndex].percepitation << " Humidity: " << map.cells[cellIndex].humidity << std::endl;
                         std::cout << "Wind direction: " << map.cells[cellIndex].windDir << " Wind speed: " << map.cells[cellIndex].windStr << std::endl;
+                        std::cout << "Distance to Ocean: " << map.cells[cellIndex].distToOcean << std::endl;
                         std::cout << std::endl;
                     }
                     else {
@@ -269,7 +293,7 @@ int main()
                     // Delete the map and draw a new one
                     
                     genWorld(globals, map, 200, 150, windowWidth, windowHeight, 8.f, 10, window);
-                    if (!useVertexBuffer)
+                    if (useVertexBuffer)
                     {
                         vertexBuffer = genBuffer(map);
                     }
@@ -303,6 +327,34 @@ int main()
                     else
                     {
 						wind = false;
+                        for (std::size_t i = 0; i < map.cells.size(); i++) {
+                            sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+                                map.vertices[j].color = color;
+                            }
+                        }
+                        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+                    }
+                }
+                else if (event.key.code == sf::Keyboard::T)
+                { // Print Temperature
+                    if (temp == false)
+                    {
+                        temp = true;
+                        for (size_t i = 0; i < map.cells.size(); i++)
+                        {
+                            sf::Color color(255, 255/2 + clamp(5 * map.cells[i].temp,255/2,-255), 0, 255);
+
+                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+                            {
+                                map.vertices[j].color = color;
+                            }
+                        }
+                        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+                    }
+                    else
+                    {
+                        temp = false;
                         for (std::size_t i = 0; i < map.cells.size(); i++) {
                             sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
                             for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {

@@ -17,24 +17,27 @@ public:
     std::vector<int> neighbors; // Id's of the neighbors
     unsigned int vertex_offset = 0U; // Offset for the vertex buffer
 
-    float height = 0.f;
-    float rise = 0.f;
-    float avgTemp = 0.f;
-    float tempSTD = 1.f;
-    float windDir = 0.f;
-    float windStr = 0.f;
+    float height = 0.f; // Height of the cell, 1 = 8km above sealevel 
+    float rise = 0.f; // Difference in height between the highest and the lowest neighbor cell (0 to 1)
+    float temp = 0.f; // Temperature of the cell (Celsius)
+    float windDir = 0.f; // Wind direction (0 to 360 degrees)
+    float windStr = 0.f; // Wind strength (0 to 1)
+    float humidity = 1.f; // Humidity of the cell (0 to 1)
+    float percepitation = 0.f; // Percepitation of the cell ( > 0 )
 
-    bool oceanBool = false;
-    bool coast = false;
+    float distToOcean = std::numeric_limits<float>::max();
 
-    bool riverBool = false;
-    float riverStr = 0.f;
+    bool oceanBool = false; // Is an ocean
+    bool coastBool = false; // Is next to ocean
 
-    bool lakeBool = false;
-    bool snowBool = false;
-    bool treeBool = true;
+    bool riverBool = false; // Has a river
+    float riverStr = 0.f; // River strength
+
+    bool lakeBool = false; // Has a lake
+    bool snowBool = false; // Has snow
+    bool treeBool = true; // Has trees
     
-    bool iceBool = false;
+    bool iceBool = false; // Is Ice cap
 
     void sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points);
     
@@ -241,11 +244,12 @@ void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float
         {
             map[i].oceanBool = true;
             globals.oceanCells.push_back(i);
+            map[i].distToOcean = 0;
         }
         else { map[i].oceanBool = false; }
         if (map[i].height <= globals.seaLevel + delta && map[i].height >= globals.seaLevel - delta) 
         { 
-            map[i].coast = true;
+            map[i].coastBool = true;
             globals.coastCells.push_back(i);
         }
         if (map[i].height >= globals.globalSnowline) 
@@ -404,14 +408,97 @@ void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals)
     }
 }
 
-void calcPreassure(std::vector<Cell>& map, GlobalWorldObjects& globals)
+void calcTemp(std::vector<Cell>& map, GlobalWorldObjects& globals, const std::vector<sf::Vector2f>& points, const int MAXHEIGHT)
 {
+    for (int i = 0; i < map.size(); i++)
+    {   // Take distance to equator and get the distance 
+        // Add an altitute modifier
+        // Ocean Currents (needs implementation)
+        // Humidity, will be loop (needs implementation)
+        // Distance from sea (needs a function that is quick)
+        float temp = 0.f;
 
+        // Latitute
+        float dist = std::abs(points[i].y - MAXHEIGHT/2);
+        float c = 0.0015;
+        float b = 5;
+        float a = 5;
+        temp += 1.5 * globals.globalTempAvg - globals.globalTempAvg * (a * expf(-b * expf(-c * dist))); // Gompertz function
+        // Altitute
+        if (map[i].height >= globals.seaLevel)
+        {
+            temp += map[i].height * (-50);
+        }
+        else
+        {
+            temp += (1 - map[i].height) * (-50);
+        }
+        map[i].temp = temp;
+    }
 }
 
-void calcPercepitation(std::vector<Cell>& map)
+void smoothTemps(std::vector<Cell>& map,int smoothTimes)
 {
+    for (int j = 0; j < smoothTimes; j++)
+    {
+        for (int i = 0; i < map.size(); i++)
+        {
+            float temp = 0;
+            for (int j = 0; j < map[i].neighbors.size(); j++)
+            {
+                temp += map[map[i].neighbors[j]].temp;
+            }
+            map[i].temp = temp / map[i].neighbors.size();
+        }
+    }
+}
 
+
+void calcPercepitation(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, GlobalWorldObjects& globals)
+{ // Humidity, temperature, distance from sea, altitude, ocean currents (warmer=more), wind
+    std::vector<int> queue = globals.oceanCells;
+    std::vector<bool> visited(map.size(), false);
+    while (!queue.empty())
+    {
+		int idx = pop_front_i(queue);
+
+        if (map[idx].oceanBool) {
+            // Really just based on Azgaar.. Should be changed to something I get.
+            map[idx].percepitation = ((700 * (map[idx].temp + 0.06 * map[idx].height)) / 50 + 75) / (80 - map[idx].temp);
+            for (int i = 0; i < map[idx].neighbors.size(); i++)
+            { // Get the wind direction and add fragments of the percepitation to the neighbors based on the wind direction and strength
+                float dirOfNeighbor = atan2(points[map[idx].neighbors[i]].y - points[idx].y, points[map[idx].neighbors[i]].x - points[idx].x);
+                // Assign similarity of direction to the wind direction
+                float simDir = 1 - clamp(cos(dirOfNeighbor - radians(map[idx].windDir)), 1.f, 0.f);
+
+                map[map[idx].neighbors[i]].percepitation += map[idx].percepitation * simDir * map[idx].windStr;
+
+                if (visited[map[idx].neighbors[i]] == false)
+                {
+					visited[map[idx].neighbors[i]] = true;
+                    queue.push_back(map[idx].neighbors[i]);
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < map[idx].neighbors.size(); i++)
+            { // Get the wind direction and add fragments of the percepitation to the neighbors based on the wind direction and strength
+                float dirOfNeighbor = atan2(points[map[idx].neighbors[i]].y - points[idx].y, points[map[idx].neighbors[i]].x - points[idx].x);
+                // Assign similarity of direction to the wind direction
+                float simDir = 1 - clamp(cos(dirOfNeighbor - radians(map[idx].windDir)),1.f,0.f);
+
+                map[map[idx].neighbors[i]].percepitation += map[idx].percepitation * simDir * map[idx].windStr;
+
+                if (visited[map[idx].neighbors[i]] == false)
+                {
+					visited[map[idx].neighbors[i]] = true;
+                    queue.push_back(map[idx].neighbors[i]);
+                }
+            }
+        }
+        
+	}
 }
 
 void calcHumid(std::vector<Cell>& map)
@@ -477,3 +564,36 @@ void calcWind(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, c
         map[i].windStr = sumStr / map[i].neighbors.size();
     }
 }
+
+
+void calcSnow(std::vector<Cell>& map, GlobalWorldObjects& globals)
+{
+
+}
+
+
+// Will Queue up all ocean cells then evaluate neighbors and que up any that are smaller than the current distance
+void closeOceanCell(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, const GlobalWorldObjects& globals)
+{
+    std::vector<int> queue = globals.oceanCells;
+    while (!queue.empty())
+    {
+		int idx = pop_front_i(queue);
+        for (int i = 0; i < map[idx].neighbors.size(); i++)
+        {
+            if (!map[map[idx].neighbors[i]].oceanBool)
+            {
+                // Assign coastBool if not already assigned
+                map[map[idx].neighbors[i]].coastBool = map[idx].oceanBool;
+                // Calculate distance to Ocean
+                float distance = dist(points[map[idx].neighbors[i]], points[idx]) + map[idx].distToOcean;
+                if (map[map[idx].neighbors[i]].distToOcean > distance)
+                {
+                    map[map[idx].neighbors[i]].distToOcean = distance;
+                    queue.push_back(map[idx].neighbors[i]);
+                }
+			}
+		}
+	}
+}
+

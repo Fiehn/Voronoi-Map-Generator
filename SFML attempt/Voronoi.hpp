@@ -9,29 +9,27 @@ namespace vor {
 
     constexpr std::size_t INVALID_INDEX = std::numeric_limits<std::size_t>::max();
 
-    struct Grid { // Grid for spatial hashing
+    struct Grid { // For spacial partitioning, needs to be flattened further
         std::size_t m_width; // width of the grid in amount of gridcells
-		std::size_t m_height; // height of the grid in amount of gridcells
-		std::vector<std::vector<std::vector<std::size_t>>> m_cells; // 3D vector to store the indices of the cells in the grid
-        Grid(std::size_t width, std::size_t height) 
-            : m_width(width), m_height(height), m_cells(width, std::vector<std::vector<std::size_t>>(height, std::vector<std::size_t>())) {}
+        std::size_t m_height; // height of the grid in amount of gridcells
+        std::vector<std::vector<std::size_t>> m_cells; // 2D vector to store the indices of the cells in the grid
+
+        Grid(std::size_t width, std::size_t height)
+            : m_width(width), m_height(height), m_cells(width* height) {}
+
         std::vector<std::size_t>& operator()(std::size_t x, std::size_t y) {
-			return m_cells[x][y]; // return the vector of indices at the given x and y coordinates
-		}
+            return m_cells[y * m_width + x]; // access the element at the given x and y coordinates
+        }
+
         const std::vector<std::size_t>& operator()(std::size_t x, std::size_t y) const {
-			return m_cells[x][y]; // return the vector of indices at the given x and y coordinates
-		}
+            return m_cells[y * m_width + x]; // access the element at the given x and y coordinates
+        }
 
         Grid() = default;
-        
-        void clear()
-        {
-            for (std::size_t i = 0; i < m_width; i++) {
-                for (std::size_t j = 0; j < m_height; j++) {
-					m_cells[i][j].clear();
-				}
-			}
-		}
+
+        void clear() {
+            m_cells.clear(); // Clears the entire 1D vector
+        }
     };
 
     class BoolArray2D {
@@ -48,7 +46,7 @@ namespace vor {
 		    }
             ~BoolArray2D() {
                 delete[] array;
-                
+
             }
             bool& operator()(int row, int col) {
                 return array[row * height + col];
