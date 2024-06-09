@@ -2,6 +2,7 @@
 #include "Voronoi.hpp"
 #include "cell.hpp"
 #include <SFML/Graphics.hpp>
+#include "CellObjects.hpp"
 
 class GlobalWorldObjects
 {
@@ -19,13 +20,17 @@ public:
 	std::vector<int> lakeCells; // Penamn formula (Loook up)
 	std::vector<int> coastCells; // Cells that are part of the coast
 	std::vector<int> oceanCells; // Cells that are part of the ocean
+	std::vector<Biome> biomes; // List of biomes in the world
 	std::vector<float> convergenceLines; // Convergence lines for wind and ocean currents: Given in y coordinates from 0 to 1 (0 being the top of the map) (0.5 being the equator) (The buttom of the map should not be included)
 	std::vector<float> windDirection; // Wind direction for each convergence line (0 to 360 degrees) (0 being north) (will be the direction of the wind in the zone below the convergence line)
 	std::vector<float> windStrength; // Wind strength for each convergence line (0 to 1) (1 being the strongest) (will be the strength of the wind in the zone below the convergence line)
 
+
 	GlobalWorldObjects();
 	void clearGlobals();
 
+	void generateBiomes();
+	void addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validIDs, std::vector<int> excludedFrom);
 	void setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength) { convergenceLines = lines; windDirection = directions; windStrength = strength; }
 	void generateConvergenceLines(int nrLines);
 	std::vector<float> getConvergenceLines() { return convergenceLines; }
@@ -92,4 +97,33 @@ void GlobalWorldObjects::generateConvergenceLines(int nrLines)
 	setConvergenceLines(lines, directions, strength);
 }
 
+void GlobalWorldObjects::generateBiomes()
+{
+	biomes.clear();
+	// Biomes are added here
+	std::vector<std::string> names = { "Tundra", "Taiga", "Temperate Forest", "Tropical Rainforest", "Desert", "Savanna", "Grassland", "Shrubland", "Boreal Forest", "Chaparral", "Alpine", "Wetland", "Mangrove", "Coral Reef", "Kelp Forest", "Open Ocean", "Deep Ocean", "Ice Shelf", "Iceberg" };
+	std::vector<float> avgTemps = { -20.f, -10.f, 10.f, 25.f, 30.f, 25.f, 20.f, 15.f, 5.f, 20.f, -5.f, 10.f, 25.f, 25.f, 15.f, 10.f, 5.f, -10.f, -10.f };
+	std::vector<float> avgRains = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
+	std::vector<float> avgHumidities = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
+	std::vector<float> avgElevations = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
+	std::vector<float> avgWindStr = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
+	std::vector<std::vector<int>> valid = { {0,1,2,10,8,15,17,18}, {0,1,2,10,8} }; // Add the ids of the biomes that are valid neighbors
+	////// NEEEEEEEEEEEEEEEEEEEDS TO BE FINISHED!!!!!!!!!!!
 
+	for (int i = 0; i < names.size(); i++)
+	{
+		addBiome(names[i], avgTemps[i], avgRains[i], avgHumidities[i], avgElevations[i], avgWindStr[i], valid[i]);
+	}
+}
+
+void GlobalWorldObjects::addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validIDs, std::vector<int> validFrom = {})
+{
+	int id = biomes.size();
+	Biome biome(name, id, avgTemp, avgRain, avgHumidity, avgElevation, avgWindStr, validIDs);
+	biomes.push_back(biome);
+
+	for (int i = 0; i < validFrom.size(); i++)
+	{
+		biomes[validFrom[i]].validNeighbors.push_back(id);
+	}
+}

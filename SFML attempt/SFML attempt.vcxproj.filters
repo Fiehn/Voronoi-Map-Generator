@@ -24,7 +24,7 @@
     <ClInclude Include="cell.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="cell_objects.hpp">
+    <ClInclude Include="CellObjects.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Deprecated.h">

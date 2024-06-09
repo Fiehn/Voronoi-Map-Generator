@@ -265,13 +265,13 @@ void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float
     }
 }
 
-// Rivers
+// Rivers - needs to be rewritten to be more efficient and to add river objects to the map
 
 // First check if cells over snow line have neighbors below snow line and no rivers in their neighbors
 // Then start a river from that cell and add river to the neighbor and that one
 // Then add to the steepest neighbor and so on until you reach the sea or a lake
 // If you reach a lake, add the river to the lake and then continue from the lake
-
+// If you reach the sea, add the river to the sea and stop
 void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::vector<int>& stack, int start)
 {
     std::vector<std::pair<int,float>> HeightDiff;
