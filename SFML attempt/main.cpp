@@ -59,6 +59,9 @@ static void genWorld(GlobalWorldObjects& globals, vor::Voronoi& map, const int n
     loadText(window, text, 50, loadingText, "Calculating Temperature");
     calcTemp(map.cells, globals, map.points, MAXHEIGHT);
     smoothTemps(map.cells, 1);
+    loadText(window, text, 50, loadingText, "Calculating Percepetation");
+    calcPercepitation(map.cells, map.points, globals);
+    smoothPercepitation(map.cells, 1);
     loadText(window, text, 50, loadingText, "Calculating Rivers");
     calcRiverStart(map.cells, globals);
     return;
@@ -192,7 +195,8 @@ int main()
     smoothTemps(map.cells, 2);
 
     loadText(window,text,50,loadingText,"Calculating Percepetation");
-    calcPercepitation(map.cells, map.points, globals);
+    calcPercepitation(map.cells, map.points, globals, 1);
+    smoothPercepitation(map.cells, 1);
     
     loadText(window,text,50,loadingText,"Drawing Wind Arrows");
     sf::VertexArray windArrows = vor::windArrows(map);
@@ -219,6 +223,7 @@ int main()
     bool drawLines = false; // Set to true to draw the convergence lines of wind direction
     bool wind = false; // Set to true to draw the wind direction
     bool temp = false; // Set to true to draw the temperature lines
+    bool percep = false; // Set to true to draw the percepitation lines
 
     float zoom = 1;
     // Retrieve the window's default view
@@ -287,6 +292,36 @@ int main()
                     // TODO: update only the part of the buffer that has changed
                     updateVertex(map,vertexArray,vertexBuffer,useVertexBuffer); // There is no need to update the whole buffer, only the part that has changed (offset, n_vertices)
 
+                }
+                else if (event.key.code == sf::Keyboard::P) 
+                {
+                    { // Print Temperature
+                        if (percep == false)
+                        {
+                            percep = true;
+                            for (size_t i = 0; i < map.cells.size(); i++)
+                            {
+                                sf::Color color(0, clamp(5 * map.cells[i].percepitation, 255, 0), 0, 255);
+
+                                for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+                                {
+                                    map.vertices[j].color = color;
+                                }
+                            }
+                            updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+                        }
+                        else
+                        {
+                            percep = false;
+                            for (std::size_t i = 0; i < map.cells.size(); i++) {
+                                sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+                                for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+                                    map.vertices[j].color = color;
+                                }
+                            }
+                            updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+                        }
+                    }
                 }
                 else if (event.key.code == sf::Keyboard::N)
                 {

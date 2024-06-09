@@ -60,7 +60,7 @@ sf::Vector2f randomGradient() {
 
 template <typename T>
 inline T pop_front_i(std::vector<T>& v)
-{
+{ // has O(n) complexity, for larger vectors use a que
     if (v.empty()) { return 0; }
 
     T value = v[0];
@@ -70,7 +70,7 @@ inline T pop_front_i(std::vector<T>& v)
 
 template <typename T>
 inline T pop_random_i(std::vector<T>& v)
-{
+{ // has O(1) complexity
     if (v.empty()) { return 0; }
 
     size_t rand_index = rand_long() % v.size();
@@ -79,6 +79,50 @@ inline T pop_random_i(std::vector<T>& v)
     v.pop_back();
     return value;
 }
+
+template <typename T>
+class Queue {
+public: 
+    void push(const T& value) { m_queue.push_back(value); }
+    T pop_front() {
+        if (m_queue.empty()) 
+        { 
+            return 0; // This is not type safe
+        }
+        T value = m_queue[front_index];
+        ++front_index;
+
+        if (front_index > m_queue.size() / 2) {
+			m_queue.erase(m_queue.begin(), m_queue.begin() + front_index);
+			front_index = 0;
+		}
+        return value;
+    }
+    bool empty() const { return (front_index == m_queue.size() or m_queue.size() == 0); }
+    size_t size() const { return m_queue.size() - front_index; }
+
+    T pop_random() {
+		if (m_queue.empty()) { return 0; }
+		size_t rand_index = front_index + (rand_long() % (m_queue.size() - front_index));
+		std::swap(m_queue[rand_index], m_queue.back());
+		T value = m_queue.back();
+		m_queue.pop_back();
+		return value;
+	}
+
+    //void clear() { m_queue.clear(); front_index = 0; }
+    //T& operator[](size_t index) { return m_queue[index + front_index]; }
+    //const T& operator[](size_t index) const { return m_queue[index + front_index]; }
+    //T& front() { return m_queue[front_index]; }
+    //const T& front() const { return m_queue[front_index]; }
+    //T& back() { return m_queue[m_queue.size() - 1]; }
+    //const T& back() const { return m_queue[m_queue.size() - 1]; }
+    //void erase(size_t index) { m_queue.erase(m_queue.begin() + index + front_index); }
+    //void erase(size_t index, size_t count) { m_queue.erase(m_queue.begin() + index + front_index, m_queue.begin() + index + front_index + count); }
+private:
+    std::vector<T> m_queue;
+    std::size_t front_index = 0;
+};
 
 inline float normalized_value(float value, float max, float min) { return fabs((value - min) / (max - min)); }
 

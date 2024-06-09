@@ -454,50 +454,69 @@ void smoothTemps(std::vector<Cell>& map,int smoothTimes)
 }
 
 
-void calcPercepitation(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, GlobalWorldObjects& globals)
+void calcPercepitation(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, GlobalWorldObjects& globals,int runs = 1)
 { // Humidity, temperature, distance from sea, altitude, ocean currents (warmer=more), wind
-    std::vector<int> queue = globals.oceanCells;
-    std::vector<bool> visited(map.size(), false);
-    while (!queue.empty())
+    for (int j = 0; j < runs; j++)
     {
-		int idx = pop_front_i(queue);
-
-        if (map[idx].oceanBool) {
-            // Really just based on Azgaar.. Should be changed to something I get.
-            map[idx].percepitation = ((700 * (map[idx].temp + 0.06 * map[idx].height)) / 50 + 75) / (80 - map[idx].temp);
-            for (int i = 0; i < map[idx].neighbors.size(); i++)
-            { // Get the wind direction and add fragments of the percepitation to the neighbors based on the wind direction and strength
-                float dirOfNeighbor = atan2(points[map[idx].neighbors[i]].y - points[idx].y, points[map[idx].neighbors[i]].x - points[idx].x);
-                // Assign similarity of direction to the wind direction
-                float simDir = 1 - clamp(cos(dirOfNeighbor - radians(map[idx].windDir)), 1.f, 0.f);
-
-                map[map[idx].neighbors[i]].percepitation += map[idx].percepitation * simDir * map[idx].windStr;
-
-                if (visited[map[idx].neighbors[i]] == false)
-                {
-					visited[map[idx].neighbors[i]] = true;
-                    queue.push_back(map[idx].neighbors[i]);
-                }
-            }
-        }
-        else
+        // NEEEEds oceans to be seperately done before, then do land cells. 
+        Queue<int> queue;
+        for (int i = 0; i < globals.oceanCells.size(); i++)
         {
+			queue.push(globals.oceanCells[i]);
+		}
+        std::vector<bool> visited(map.size(), false);
+        while (!queue.empty())
+        {
+            //int idx = queue.pop_front(); // This shit is too low.
+            int idx = queue.pop_random();
+            visited[idx] = true;
+            if (map[idx].oceanBool) {
+                // Really just based on Azgaar.. Should be changed to something I get.
+                map[idx].percepitation = ((700 * (map[idx].temp)) / 50 + 125) / (80 - map[idx].temp);
+            }
             for (int i = 0; i < map[idx].neighbors.size(); i++)
             { // Get the wind direction and add fragments of the percepitation to the neighbors based on the wind direction and strength
-                float dirOfNeighbor = atan2(points[map[idx].neighbors[i]].y - points[idx].y, points[map[idx].neighbors[i]].x - points[idx].x);
-                // Assign similarity of direction to the wind direction
-                float simDir = 1 - clamp(cos(dirOfNeighbor - radians(map[idx].windDir)),1.f,0.f);
-
-                map[map[idx].neighbors[i]].percepitation += map[idx].percepitation * simDir * map[idx].windStr;
-
-                if (visited[map[idx].neighbors[i]] == false)
+                int neighbor = map[idx].neighbors[i];
+                if (visited[neighbor] == false)
                 {
-					visited[map[idx].neighbors[i]] = true;
-                    queue.push_back(map[idx].neighbors[i]);
+                    float dirOfNeighbor = atan2(points[neighbor].y - points[idx].y, points[neighbor].x - points[idx].x);
+                    // Assign similarity of direction to the wind direction
+                    float absSimAngle = std::abs(std::fmod(dirOfNeighbor - map[idx].windDir, 2 * PI) - radians(map[idx].windDir));
+                    float simDir = std::fmin(absSimAngle, std::abs(2 * PI - absSimAngle)) / PI;
+                
+                    if (map[neighbor].coastBool == true)
+                    { // If the neighbor is a coast cell, add a larger amount of percepitation 
+                        map[neighbor].percepitation += 1/5 * map[idx].percepitation * simDir * map[idx].windStr * (1 - std::exp(-1 / (0.002 * map[neighbor].distToOcean)));
+                        queue.push(neighbor);
+                        
+                    }
+                    else
+                    { // If the neighbor is not a coast cell, add a smaller amount of percepitation, but also add altitute modifier
+                        float heightPercep = map[neighbor].height < 0.8f ? map[neighbor].height * 3 : map[neighbor].height * (1);
+                        map[neighbor].percepitation += ((7 * (map[idx].temp)) / 50 + 60) / (80 - map[idx].temp) + 1 * (map[idx].percepitation * simDir * map[idx].windStr + heightPercep) * (1 - std::exp(- 1 / (0.002 * map[neighbor].distToOcean)));
+                        queue.push(neighbor);
+                    }
+                    map[neighbor].percepitation = clamp(map[neighbor].percepitation, 100.f, 0.f);
                 }
+                
             }
         }
-        
+    }
+}
+
+void smoothPercepitation(std::vector<Cell>& map, int smoothTimes)
+{
+    for (int j = 0; j < smoothTimes; j++)
+    {
+        for (int i = 0; i < map.size(); i++)
+        {
+			float percepitation = 0;
+            for (int j = 0; j < map[i].neighbors.size(); j++)
+            {
+				percepitation += map[map[i].neighbors[j]].percepitation;
+			}
+			map[i].percepitation = percepitation / map[i].neighbors.size();
+		}
 	}
 }
 
