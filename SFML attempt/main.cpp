@@ -197,6 +197,9 @@ int main()
     loadText(window,text,50,loadingText,"Calculating Percepetation");
     calcPercepitation(map.cells, map.points, globals, 1);
     smoothPercepitation(map.cells, 1);
+
+    loadText(window,text,50,loadingText,"Calculating Humidity");
+    calcHumid(map.cells);
     
     loadText(window,text,50,loadingText,"Drawing Wind Arrows");
     sf::VertexArray windArrows = vor::windArrows(map);

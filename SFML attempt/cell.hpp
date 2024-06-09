@@ -459,6 +459,7 @@ void calcPercepitation(std::vector<Cell>& map, const std::vector<sf::Vector2f>& 
     for (int j = 0; j < runs; j++)
     {
         // NEEEEds oceans to be seperately done before, then do land cells. 
+        // There seems to be a problem with direction of the wind.
         Queue<int> queue;
         for (int i = 0; i < globals.oceanCells.size(); i++)
         {
@@ -522,11 +523,15 @@ void smoothPercepitation(std::vector<Cell>& map, int smoothTimes)
 
 void calcHumid(std::vector<Cell>& map)
 {
-
+    for (int i = 0; i < map.size(); i++)
+    {
+        // smooth function to get the humidity from the percepitation, temperature // Needs work and wind.
+        map[i].humidity = 1 / (1 + exp(-0.2 * (std::logf(map[i].percepitation) + std::logf(std::abs(map[i].temp)))));
+	}
 }
 
 void calcBiome(std::vector<Cell>& map)
-{
+{ // Get the probabilities of each biome, then compare with neighbors biome's exclusions. Using a queque
 
 }
 
@@ -562,7 +567,7 @@ void calcWind(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, c
         }
 
         map[i].windDir = normalizeAngle(globals.windDirection[closestLine] + 360.f * RandomBetween(-0.3,0.3));
-        map[i].windStr = clamp(globals.windStrength[closestLine] + RandomBetween(-0.5,0.5), 1.f, 0.f);
+        map[i].windStr = clamp((globals.windStrength[closestLine] + RandomBetween(-0.5,0.5)) * (1 - clamp(map[i].height,0.6f,0.4f)) * 2, 1.f, 0.f);
 	}
     // get averages of neighbors direction and strength
     for (int i = 0; i < map.size(); i++)
@@ -590,6 +595,10 @@ void calcSnow(std::vector<Cell>& map, GlobalWorldObjects& globals)
 
 }
 
+void calcIce(std::vector<Cell>& map, GlobalWorldObjects& globals)
+{
+
+}
 
 // Will Queue up all ocean cells then evaluate neighbors and que up any that are smaller than the current distance
 void closeOceanCell(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, const GlobalWorldObjects& globals)
