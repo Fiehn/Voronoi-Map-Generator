@@ -121,6 +121,18 @@ static void updateVertex(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::Ve
 	}
 }   
 
+sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
+{
+    sf::VertexArray highlight(sf::LinesStrip, map.cells[cell].vertex.size() + 1);
+    for (size_t i = 0; i < map.cells[cell].vertex.size(); i++) {
+		highlight[i].position = sf::Vector2f(map.voronoi_points[map.cells[cell].vertex[i]].x, map.voronoi_points[map.cells[cell].vertex[i]].y);
+		highlight[i].color = sf::Color::Red;
+	}
+    highlight[map.cells[cell].vertex.size()].position = sf::Vector2f(map.voronoi_points[map.cells[cell].vertex[0]].x, map.voronoi_points[map.cells[cell].vertex[0]].y);
+    highlight[map.cells[cell].vertex.size()].color = sf::Color::Red;
+    return highlight;
+}
+
 int main() 
 {
     // Initialize the random seed and window
@@ -200,6 +212,9 @@ int main()
 
     loadText(window,text,50,loadingText,"Calculating Humidity");
     calcHumid(map.cells);
+
+    //loadText(window,text,50,loadingText,"Calculating Biomes");
+    //calcBiome(map.cells, globals);
     
     loadText(window,text,50,loadingText,"Drawing Wind Arrows");
     sf::VertexArray windArrows = vor::windArrows(map);
@@ -208,9 +223,9 @@ int main()
 
     bool useVertexBuffer = sf::VertexBuffer::isAvailable;
 
+    // Create the vertex map
     sf::VertexBuffer vertexBuffer;
     sf::VertexArray vertexArray;
-
     if (useVertexBuffer)
     {
         vertexBuffer = genBuffer(map);
@@ -227,10 +242,16 @@ int main()
     bool wind = false; // Set to true to draw the wind direction
     bool temp = false; // Set to true to draw the temperature lines
     bool percep = false; // Set to true to draw the percepitation lines
+    bool biomes = false; // Set to true to draw the biomes
+    bool highlightBool = false; // Set to true to highlight a cell
 
-    float zoom = 1;
     // Retrieve the window's default view
+    float zoom = 1;
     sf::View view = window.getDefaultView();
+
+    // Create empty highlighted cell
+    std::size_t highlightedCell = vor::INVALID_INDEX;
+    sf::VertexArray highlight(sf::LineStrip, 5);
 
     while (window.isOpen())
     {
@@ -240,6 +261,8 @@ int main()
             switch (event.type) {
             case sf::Event::Closed:
                 window.close();
+
+            // Mouse buttons
             case sf::Event::MouseButtonPressed:
                 // Mouse button is pressed, get the position and set moving as active
                 if (event.mouseButton.button == 0) {
@@ -272,8 +295,12 @@ int main()
                 break;
 
             case sf::Event::KeyPressed:
+
+                // Close Program
 				if (event.key.code == sf::Keyboard::Escape)
 				    window.close();
+
+                // Debug:: Draw Cells in Triangles
                 else if (event.key.code == sf::Keyboard::A)
                 { // paint the cells triangles in vertexBuffer
                     
@@ -296,6 +323,8 @@ int main()
                     updateVertex(map,vertexArray,vertexBuffer,useVertexBuffer); // There is no need to update the whole buffer, only the part that has changed (offset, n_vertices)
 
                 }
+
+                // Percepitation map
                 else if (event.key.code == sf::Keyboard::P) 
                 {
                     { // Print Temperature
@@ -326,6 +355,8 @@ int main()
                         }
                     }
                 }
+
+                // Generate a new Map
                 else if (event.key.code == sf::Keyboard::N)
                 {
                     // Delete the map and draw a new one
@@ -341,11 +372,15 @@ int main()
                     }
                     windArrows = vor::windArrows(map); // NEEEEEDS to be fixed so that it works with the new map
                 }
+
+                // Draw Lines
                 else if (event.key.code == sf::Keyboard::L)
                 {
                     // Display lines
                     drawLines = !drawLines;
                 }
+
+                // Wind Map
                 else if (event.key.code == sf::Keyboard::W)
                 {
                     if (wind == false)
@@ -374,6 +409,8 @@ int main()
                         updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
                     }
                 }
+
+                // Temperature map
                 else if (event.key.code == sf::Keyboard::T)
                 { // Print Temperature
                     if (temp == false)
@@ -402,18 +439,79 @@ int main()
                         updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
                     }
                 }
+
+                // Display Biomes
+                else if (event.key.code == sf::Keyboard::B) {
+                    if (biomes == false)
+                    {
+                        biomes = true;
+                        for (size_t i = 0; i < map.cells.size(); i++)
+                        {
+                            
+                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+                            {
+                                map.vertices[j].color = globals.biomes[map.cells[i].biome].color;
+                            }
+                        }
+                        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+                    }
+                    else
+                    {
+                        temp = false;
+                        for (std::size_t i = 0; i < map.cells.size(); i++) {
+                            sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+                                map.vertices[j].color = color;
+                            }
+                        }
+                        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+                    }
+                    }
+                
+                // activate arrows for wind direction
                 else if (event.key.code == sf::Keyboard::Comma)
-                { // activate arrows for wind direction
+                { 
                     wind = !wind;
+                }
+
+                // Activate Cell Highlighting
+                else if (event.key.code == sf::Keyboard::H) 
+                {
+                    highlightBool = !highlightBool;
+                    highlight.clear();
                 }
 				break;
 
+            // Mouse Movement
             case sf::Event::MouseMoved:
             {
-                // Ignore mouse movement unless a button is pressed (see above)
+                // If no button is down, we are not moving the view
                 if (!moving) {
+                    // Highlight Cells if active 
+                    if (highlightBool)
+                    {
+                        // Get the position of the mouse in window coordinates
+                        const sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
+                        // Convert the position to world coordinates
+                        const sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos);
+                        // Find the cell that contains the mouse
+                        const std::size_t cellIndex = map.getCellIndex(worldPos);
+                        // If the mouse is over a cell, highlight it
+                        if (cellIndex != vor::INVALID_INDEX)
+                        {
+                            // Highlight the cell
+                            highlightedCell = cellIndex;
+                            highlight = drawHighlightCell(map, highlightedCell);
+                        }
+                        else
+                        {
+                            highlightedCell = vor::INVALID_INDEX;
+                            highlight.clear();
+                        }
+                    }
                     break;
                 }
+
                 // Determine the new position in world coordinates
                 const sf::Vector2f newPos = window.mapPixelToCoords(sf::Vector2i(event.mouseMove.x, event.mouseMove.y));
                 // Determine how the cursor has moved
@@ -437,6 +535,8 @@ int main()
                 oldPos = window.mapPixelToCoords(sf::Vector2i(event.mouseMove.x, event.mouseMove.y));
                 break;
             }
+
+            // Zoom
             case sf::Event::MouseWheelScrolled:
                 // Ignore the mouse wheel unless we're not moving
                 if (moving) { break; }
@@ -493,6 +593,9 @@ int main()
 		}
         if (wind) {
 			window.draw(windArrows);
+		}
+        if (highlightedCell != vor::INVALID_INDEX) {
+			window.draw(highlight);
 		}
 
         window.display();

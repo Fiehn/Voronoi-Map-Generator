@@ -30,7 +30,7 @@ public:
 	void clearGlobals();
 
 	void generateBiomes();
-	void addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validIDs, std::vector<int> excludedFrom);
+	void addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validIDs, sf::Color color, std::vector<int> excludedFrom);
 	void setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength) { convergenceLines = lines; windDirection = directions; windStrength = strength; }
 	void generateConvergenceLines(int nrLines);
 	std::vector<float> getConvergenceLines() { return convergenceLines; }
@@ -97,29 +97,10 @@ void GlobalWorldObjects::generateConvergenceLines(int nrLines)
 	setConvergenceLines(lines, directions, strength);
 }
 
-void GlobalWorldObjects::generateBiomes()
-{
-	biomes.clear();
-	// Biomes are added here
-	std::vector<std::string> names = { "Tundra", "Taiga", "Temperate Forest", "Tropical Rainforest", "Desert", "Savanna", "Grassland", "Shrubland", "Boreal Forest", "Chaparral", "Alpine", "Wetland", "Mangrove", "Coral Reef", "Kelp Forest", "Open Ocean", "Deep Ocean", "Ice Shelf", "Iceberg" };
-	std::vector<float> avgTemps = { -20.f, -10.f, 10.f, 25.f, 30.f, 25.f, 20.f, 15.f, 5.f, 20.f, -5.f, 10.f, 25.f, 25.f, 15.f, 10.f, 5.f, -10.f, -10.f };
-	std::vector<float> avgRains = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
-	std::vector<float> avgHumidities = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
-	std::vector<float> avgElevations = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
-	std::vector<float> avgWindStr = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
-	std::vector<std::vector<int>> valid = { {0,1,2,10,8,15,17,18}, {0,1,2,10,8} }; // Add the ids of the biomes that are valid neighbors
-	////// NEEEEEEEEEEEEEEEEEEEDS TO BE FINISHED!!!!!!!!!!!
-
-	for (int i = 0; i < names.size(); i++)
-	{
-		addBiome(names[i], avgTemps[i], avgRains[i], avgHumidities[i], avgElevations[i], avgWindStr[i], valid[i]);
-	}
-}
-
-void GlobalWorldObjects::addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validIDs, std::vector<int> validFrom = {})
+void GlobalWorldObjects::addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validIDs, sf::Color color, std::vector<int> validFrom = {})
 {
 	int id = biomes.size();
-	Biome biome(name, id, avgTemp, avgRain, avgHumidity, avgElevation, avgWindStr, validIDs);
+	Biome biome(name, id, avgTemp, avgRain, avgHumidity, avgElevation, avgWindStr, validIDs, color);
 	biomes.push_back(biome);
 
 	for (int i = 0; i < validFrom.size(); i++)
@@ -127,3 +108,36 @@ void GlobalWorldObjects::addBiome(std::string name, float avgTemp, float avgRain
 		biomes[validFrom[i]].validNeighbors.push_back(id);
 	}
 }
+
+void GlobalWorldObjects::generateBiomes()
+{
+	biomes.clear();
+	// Biomes are added here
+	//										0		1		2					3						4		5			6			7				8				9			10			11			12		13				14				15			16				17			18			
+	//std::vector<std::string> names = { "Tundra", "Taiga", "Temperate Forest", "Tropical Rainforest", "Desert", "Savanna", "Grassland", "Shrubland", "Boreal Forest", "Chaparral", "Alpine", "Wetland", "Mangrove", "Coral Reef", "Kelp Forest", "Open Ocean", "Deep Ocean", "Ice Shelf", "Iceberg" };
+	//std::vector<float> avgTemps = { -20.f, -10.f, 10.f, 25.f, 30.f, 25.f, 20.f, 15.f, 5.f, 20.f, -5.f, 10.f, 25.f, 25.f, 15.f, 10.f, 5.f, -10.f, -10.f };
+	//std::vector<float> avgRains = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
+	//std::vector<float> avgHumidities = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
+	//std::vector<float> avgElevations = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
+	//std::vector<float> avgWindStr = { 0.1f, 0.3f, 0.6f, 0.9f, 0.1f, 0.3f, 0.4f, 0.5f, 0.3f, 0.4f, 0.2f, 0.7f, 0.8f, 0.9f, 0.8f, 0.7f, 0.6f, 0.1f, 0.1f };
+	//std::vector<std::vector<int>> valid = { {0,1,2,8,10,15,17,18}, {0,1,2,8,10,15}, {0,1,2,6,7,8,9,10,11,15}, {3,5,6,7,8,9,12,13,14,15}, {3,4,5,7,9}, {4,5,6,7,9}, {2,3,4,5,6,7}, {2,3,4,5,6,7,9,11,12,15}, {} }; // Add the ids of the biomes that are valid neighbors
+	//											"Tundra"			"Taiga"			"Temperate Forest"			"Tropical Rainforest"		"Desert"	"Savanna"  "Grassland"			"Shrubland			
+	////// NEEEEEEEEEEEEEEEEEEEDS TO BE FINISHED!!!!!!!!!!!
+
+	std::vector<std::string> names = { "Taiga", "Temperate Forest", "Grasslands", "Desert", "Ocean" };
+	std::vector<float> avgTemps = { -10.f, 10.f, 20.f, 30.f, 10.f };
+	std::vector<float> avgRains = { 0.3f, 0.6f, 0.4f, 0.1f, 0.9f };
+	std::vector<float> avgHumidities = { 0.3f, 0.6f, 0.4f, 0.1f, 0.9f };
+	std::vector<float> avgElevations = { 0.3f, 0.6f, 0.4f, 0.1f, 0.9f };
+	std::vector<float> avgWindStr = { 0.3f, 0.6f, 0.4f, 0.1f, 0.9f };
+	std::vector<std::vector<int>> valid = { {1, 2}, {0, 2}, {0, 1}, {3,4}, {0,1,2,3,4} };
+
+	std::vector<sf::Color> colors = { sf::Color(0, 255, 0), sf::Color(0, 0, 255), sf::Color(255, 0, 0), sf::Color(255, 255, 0), sf::Color(0, 255, 255) };
+
+	for (int i = 0; i < names.size(); i++)
+	{
+		addBiome(names[i], avgTemps[i], avgRains[i], avgHumidities[i], avgElevations[i], avgWindStr[i], valid[i],colors[i]);
+	}
+}
+
+

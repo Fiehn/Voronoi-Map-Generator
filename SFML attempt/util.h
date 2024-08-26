@@ -296,3 +296,21 @@ std::vector<float> scalarMultiplication(const std::vector<float>& vec, float sca
     return result;
 }
 
+int chooseIndex(std::vector<float> probabilities) {
+	// Generate a random number between 0 and 1
+	float random = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+	// Find the index of the probability that the random number falls within
+	float sum = 0;
+    for (int i = 0; i < probabilities.size(); i++) {
+		sum += probabilities[i];
+        if (random < sum) {
+			return i;
+		}
+	}
+	// If the random number is 1, return the last index
+	return probabilities.size() - 1;
+}
+
+sf::Color randomColor() {
+	return sf::Color(rand() % 256, rand() % 256, rand() % 256);
+}

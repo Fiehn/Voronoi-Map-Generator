@@ -9,6 +9,8 @@ public:
 	std::string name = "Biome"; // Name of biome
 	int id = 0; // ID of biome
 
+	sf::Color color = sf::Color::White; // Color of biome
+
 	int vegetationType = 0; // Primary type of vegetation in biome
 	int vegetationDensity = 0; // Density of vegetation in biome
 	int vegetationHeight = 0; // Height of vegetation in biome
@@ -24,7 +26,7 @@ public:
 	std::vector<int> validNeighbors; // Biome ID's that can be next to this biome
 
 	// Constructor
-	Biome(std::string name, int id, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validNeighbors) {
+	Biome(std::string name, int id, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validNeighbors, sf::Color color) {
 		this->name = name;
 		this->id = id;
 		this->avgTemp = avgTemp;
@@ -33,6 +35,7 @@ public:
 		this->avgElevation = avgElevation;
 		this->avgWindStr = avgWindStr;
 		this->validNeighbors = validNeighbors;
+		this->color = color;
 	}
 
 	// Returns the probability of biome in cell (0-1)
@@ -89,6 +92,3 @@ float Biome::probabilityOfBiome(float temp, float rain, float humidity, float el
 	float windStrProb = 1 - abs(avgWindStr - windStr) / 100;
 	return (tempProb + rainProb + humidityProb + elevationProb + windStrProb) / 5;
 }
-
-
-

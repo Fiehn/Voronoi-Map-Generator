@@ -25,6 +25,8 @@ public:
     float humidity = 1.f; // Humidity of the cell (0 to 1)
     float percepitation = 0.f; // Percepitation of the cell ( > 0 )
 
+    int biome; // Biome of the cell
+
     float distToOcean = std::numeric_limits<float>::max();
 
     bool oceanBool = false; // Is an ocean
@@ -530,9 +532,23 @@ void calcHumid(std::vector<Cell>& map)
 	}
 }
 
-void calcBiome(std::vector<Cell>& map)
+void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals)
 { // Get the probabilities of each biome, then compare with neighbors biome's exclusions. Using a queque
-
+    for (int i = 0; i < map.size(); i++)
+    {
+        std::vector<float> probs(globals.biomes.size(), 0);
+        float prob = 0;
+        for (int j = 0; j < globals.biomes.size(); j++)
+        {
+            probs[j] = globals.biomes[j].probabilityOfBiome(map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr);
+			prob += probs[j];
+		}
+        for (int j = 0; j < probs.size(); j++)
+        {
+			probs[j] /= prob;
+		}
+        map[i].biome = globals.biomes[chooseIndex(probs)].id;
+    }
 }
 
 void calcLakes(std::vector<Cell>& map)
