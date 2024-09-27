@@ -141,6 +141,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cell.hpp" />
+    <ClInclude Include="clustering.hpp" />
     <ClInclude Include="GlobalWorldObjects.hpp" />
     <ClInclude Include="Voronoi.hpp" />
     <ClInclude Include="CellObjects.hpp" />

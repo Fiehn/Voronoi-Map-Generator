@@ -636,8 +636,8 @@ namespace vor {
             insert_unique(cells[i0].neighbors, i2);
             insert_unique(cells[i1].neighbors, i0);
             insert_unique(cells[i1].neighbors, i2);
-            insert_unique(cells[i2].neighbors, i1);
             insert_unique(cells[i2].neighbors, i0);
+            insert_unique(cells[i2].neighbors, i1);
 
             // add voroni points to list of vertex
             cells[i0].vertex.push_back(j);

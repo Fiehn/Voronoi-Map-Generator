@@ -11,6 +11,8 @@ public:
 
 	sf::Color color = sf::Color::White; // Color of biome
 
+	bool isOcean = false; // If biome is ocean
+
 	int vegetationType = 0; // Primary type of vegetation in biome
 	int vegetationDensity = 0; // Density of vegetation in biome
 	int vegetationHeight = 0; // Height of vegetation in biome
@@ -23,10 +25,10 @@ public:
 	int animalColor = 0; // Color of animals in biome
 	float animalVariety = 0; // Variety of animals in biome
 
-	std::vector<int> validNeighbors; // Biome ID's that can be next to this biome
+	std::vector<bool> exclusions; // Biome ID's that can be next to this biome
 
 	// Constructor
-	Biome(std::string name, int id, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validNeighbors, sf::Color color) {
+	Biome(std::string name, int id, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, bool isWater, std::vector<bool> validNeighbors, sf::Color color) {
 		this->name = name;
 		this->id = id;
 		this->avgTemp = avgTemp;
@@ -34,12 +36,13 @@ public:
 		this->avgHumidity = avgHumidity;
 		this->avgElevation = avgElevation;
 		this->avgWindStr = avgWindStr;
-		this->validNeighbors = validNeighbors;
+		this->exclusions = validNeighbors;
 		this->color = color;
+		this->isOcean = isWater;
 	}
 
 	// Returns the probability of biome in cell (0-1)
-	float probabilityOfBiome(float temp, float rain, float humidity, float elevation, float windStr);
+	float probabilityOfBiome(float temp, float rain, float humidity, float elevation, float windStr, bool oceanBool);
 
 	// Getters
 	float getAvgTemp() { return avgTemp; }
@@ -64,6 +67,19 @@ public:
 		animalVariety = variety;
 	}
 
+	void setValues(std::vector<float> values) {
+		avgTemp = values[0];
+		avgRain = values[1];
+		avgHumidity = values[2];
+		avgElevation = values[3];
+		avgWindStr = values[4];
+		if (values.size() > 5) {
+			if (values[5] > 100) {
+				isOcean = true;
+			}
+		}
+	}
+
 private:
 	// Values that are used to determine the probability for biome in cell
 	float avgTemp = 0;
@@ -83,12 +99,11 @@ public:
 };
 
 
-
-float Biome::probabilityOfBiome(float temp, float rain, float humidity, float elevation, float windStr) {
-	float tempProb = 1 - abs(avgTemp - temp) / 100;
-	float rainProb = 1 - abs(avgRain - rain) / 100;
-	float humidityProb = 1 - abs(avgHumidity - humidity) / 100;
-	float elevationProb = 1 - abs(avgElevation - elevation) / 100;
-	float windStrProb = 1 - abs(avgWindStr - windStr) / 100;
-	return (tempProb + rainProb + humidityProb + elevationProb + windStrProb) / 5;
+float Biome::probabilityOfBiome(float temp, float rain, float humidity, float elevation, float windStr, bool oceanBool) {
+	float tempProb = abs(avgTemp - temp) / 30;
+	float rainProb = abs(avgRain - rain) / 30;
+	float humidityProb = abs(avgHumidity - humidity);
+	float elevationProb = abs(avgElevation - elevation);
+	float windStrProb = abs(avgWindStr - windStr);
+	return clamp((oceanBool != isOcean) * (-1000) + 1 / (tempProb + rainProb + humidityProb + elevationProb + windStrProb), 100.f, 0.f);
 }

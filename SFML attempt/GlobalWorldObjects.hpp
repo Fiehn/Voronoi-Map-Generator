@@ -30,7 +30,7 @@ public:
 	void clearGlobals();
 
 	void generateBiomes();
-	void addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validIDs, sf::Color color, std::vector<int> excludedFrom);
+	void addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, bool isWater, std::vector<bool> excludes, sf::Color color);
 	void setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength) { convergenceLines = lines; windDirection = directions; windStrength = strength; }
 	void generateConvergenceLines(int nrLines);
 	std::vector<float> getConvergenceLines() { return convergenceLines; }
@@ -97,16 +97,12 @@ void GlobalWorldObjects::generateConvergenceLines(int nrLines)
 	setConvergenceLines(lines, directions, strength);
 }
 
-void GlobalWorldObjects::addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, std::vector<int> validIDs, sf::Color color, std::vector<int> validFrom = {})
+void GlobalWorldObjects::addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, bool isWater, std::vector<bool> excludes, sf::Color color)
 {
 	int id = biomes.size();
-	Biome biome(name, id, avgTemp, avgRain, avgHumidity, avgElevation, avgWindStr, validIDs, color);
+	Biome biome(name, id, avgTemp, avgRain, avgHumidity, avgElevation, avgWindStr, isWater, excludes, color);
 	biomes.push_back(biome);
 
-	for (int i = 0; i < validFrom.size(); i++)
-	{
-		biomes[validFrom[i]].validNeighbors.push_back(id);
-	}
 }
 
 void GlobalWorldObjects::generateBiomes()
@@ -124,19 +120,21 @@ void GlobalWorldObjects::generateBiomes()
 	//											"Tundra"			"Taiga"			"Temperate Forest"			"Tropical Rainforest"		"Desert"	"Savanna"  "Grassland"			"Shrubland			
 	////// NEEEEEEEEEEEEEEEEEEEDS TO BE FINISHED!!!!!!!!!!!
 
-	std::vector<std::string> names = { "Taiga", "Temperate Forest", "Grasslands", "Desert", "Ocean" };
-	std::vector<float> avgTemps = { -10.f, 10.f, 20.f, 30.f, 10.f };
-	std::vector<float> avgRains = { 0.3f, 0.6f, 0.4f, 0.1f, 0.9f };
-	std::vector<float> avgHumidities = { 0.3f, 0.6f, 0.4f, 0.1f, 0.9f };
-	std::vector<float> avgElevations = { 0.3f, 0.6f, 0.4f, 0.1f, 0.9f };
-	std::vector<float> avgWindStr = { 0.3f, 0.6f, 0.4f, 0.1f, 0.9f };
-	std::vector<std::vector<int>> valid = { {1, 2}, {0, 2}, {0, 1}, {3,4}, {0,1,2,3,4} };
+	std::vector<std::string> names = { "Taiga", "Temperate Forest", "Grasslands", "Desert", "Ocean", "Deep Ocean"};
+	std::vector<float> avgTemps = { -10.f, 10.f, 20.f, 30.f, 10.f, 0.f };
+	std::vector<float> avgRains = { 1.f, 10.f, 5.f, 0.01f, 1.f, 0.f };
+	std::vector<float> avgHumidities = { 0.01f, 0.9f, 0.5f, 0.0001f, 1.f, 0.f };
+	std::vector<float> avgElevations = { 0.7f, 0.5f, 0.6f, 0.5f, 0.1f, 0.f };
+	std::vector<float> avgWindStr = { 0.9f, 0.2f, 0.8f, 0.6f, 1.f, 0.f };
+	std::vector<bool> isWater = { false, false, false, false, true, true };
+	std::vector<std::vector<bool>> exclusions = { {true, true, true, false, true, false}, {true, true, true, false, true, false}, {true, true, true, true, true, false}, {false, false, true, true, true, false}, {true, true, true, true, true, true}, {true, true, true, true, true, true} };
 
-	std::vector<sf::Color> colors = { sf::Color(0, 255, 0), sf::Color(0, 0, 255), sf::Color(255, 0, 0), sf::Color(255, 255, 0), sf::Color(0, 255, 255) };
+	std::vector<sf::Color> colors = { sf::Color(0, 0, 255), sf::Color(0, 255, 0), sf::Color(255, 255, 0), sf::Color(255, 0, 0), sf::Color(0, 255, 255), sf::Color(125, 125, 255) };
+
 
 	for (int i = 0; i < names.size(); i++)
 	{
-		addBiome(names[i], avgTemps[i], avgRains[i], avgHumidities[i], avgElevations[i], avgWindStr[i], valid[i],colors[i]);
+		addBiome(names[i], avgTemps[i], avgRains[i], avgHumidities[i], avgElevations[i], avgWindStr[i], isWater[i], exclusions[i], colors[i]);
 	}
 }
 

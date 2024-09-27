@@ -147,3 +147,167 @@ float perlin(float x, float y) {
     value = interpolate(ix0, ix1, sy);
     return (value + 1); // returns value between -1 and 1
 }
+
+/// OVERLAY!
+
+class panel : public sf::Drawable
+{
+public:
+    panel(std::size_t id, sf::FloatRect rect);
+    explicit panel(std::size_t id);
+
+
+    //void setMouseCursor(sf::Cursor::Type cursor);
+    //void add_widget(std::size_t id, std::shared_ptr<ui_text_widget> widget);
+    //bool get_widget(std::size_t id, std::shared_ptr<ui_text_widget>& widget);
+
+    bool is_visible();
+
+    void on_update();
+    void on_key(char c);
+    void on_mouse_pressed(bool left, sf::Vector2f v);
+    void on_mouse_released(bool left, sf::Vector2f v);
+    void on_mouse_moved(sf::Vector2f v);
+
+    void set_pos(sf::Vector2f pos);
+    void set_size(sf::Vector2f size);
+    void toggle();
+
+    std::size_t get_id();
+private:
+    std::size_t m_id;
+    bool m_visible = false;
+
+    sf::RectangleShape m_background;
+    sf::RectangleShape m_titlebar;
+
+    sf::Vector2f m_pressed;
+    bool m_title_bar_pressed = false;
+
+    //std::unordered_map<std::size_t, std::shared_ptr<ui_text_widget>> m_widgets;
+
+    std::size_t m_widget_with_focus_id = 0;
+
+    virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;
+};
+
+class ui_manager
+{
+public:
+    ui_manager(sf::RenderWindow& window);
+
+    void clear();
+
+    void add_panel(std::shared_ptr<panel> panel);
+    std::shared_ptr<panel> get_panel(std::size_t id);
+
+    bool handle_event(sf::Event::EventType type, sf::Vector2f mouse_pos);
+    void on_update();
+    void on_draw();
+
+private:
+    sf::RenderWindow& m_window;
+    std::vector<std::shared_ptr<panel>> m_panels;
+    std::shared_ptr<panel> m_active_panel;
+    bool m_mouse_down = false;
+};
+
+namespace ovr
+{
+    class ValuesMenuOverlay
+    {
+
+    private:
+        void set_values()
+        {
+            if (!font.loadFromFile("arial.ttf"))
+            {
+                std::cout << "Error loading font\n";
+            }
+            text.setFont(font);
+            text.setCharacterSize(30);
+            text.setFillColor(sf::Color::White);
+            bgRect.setFillColor(sf::Color(0, 0, 0, 200));
+
+            text.setString("basd");
+            text.setPosition(10, 10);
+
+            bgRect.setSize(sf::Vector2f(box_width, box_height));
+            bgRect.setPosition(box_x, box_y);
+        };
+        void draw_values(sf::RenderWindow& window)
+        {
+            window.draw(bgRect);
+            window.draw(text);
+        };
+
+    public:
+        float box_x = 100;
+        float box_y = 100;
+        int box_width = 500;
+        int box_height = 500;
+        bool show = true;
+
+        sf::Font font;
+        sf::Text text;
+        sf::RectangleShape bgRect;
+
+        void run_menu(sf::RenderWindow& window)
+        {
+
+            if (show)
+            {
+                set_values();
+                draw_values(window);
+            }
+        };
+        void toggle() {
+            show = !show;
+        };
+        void update()
+        {
+
+        };
+        void set_text(std::string str)
+        {
+            text.setString(str);
+        };
+        void set_position(int x, int y)
+        {
+            box_x = x;
+            box_y = y;
+        };
+        void set_size(int width, int height)
+        {
+            box_width = width;
+            box_height = height;
+        };
+        void set_font(std::string font_path)
+        {
+            if (!font.loadFromFile(font_path))
+            {
+                std::cout << "Error loading font\n";
+            }
+        };
+        void set_font_size(int size)
+        {
+            text.setCharacterSize(size);
+        };
+        void set_font_color(sf::Color color)
+        {
+            text.setFillColor(color);
+        };
+        void set_bg_color(sf::Color color)
+        {
+            bgRect.setFillColor(color);
+        };
+        ValuesMenuOverlay() {};
+        ValuesMenuOverlay(sf::RenderWindow& window)
+        {
+            run_menu(window);
+        };
+        ~ValuesMenuOverlay() {};
+    };
+
+
+} // namespace Overlay

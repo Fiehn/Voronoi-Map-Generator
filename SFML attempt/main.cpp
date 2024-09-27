@@ -1,15 +1,18 @@
 #pragma once
 #include <SFML/Graphics.hpp>
-#include "Voronoi.hpp"
-#include "cell.hpp"
+#include <iostream>
+#include <string>
 #include <time.h>
 #include <cstdlib>
-#include <iostream>
+#include "Voronoi.hpp"
+
+
+// Øhm shit, ui.cpp and ui.hpp er excluded from project, så find dem lige tilbage for at lave den
 
 // There is some inspiration to get from the following (particularly for threading):
 // https://gitlab.gbar.dtu.dk/s164179/Microbots/blob/dc8b5b4b883fa1fe572fd82d44fbf291d7f81153/SFML-2.5.0/examples/island/Island.cpp
 
-void loadText(sf::RenderWindow& window, sf::Text& text, int fontsize, std::string& displayText, std::string newText)
+static void loadText(sf::RenderWindow& window, sf::Text& text, int fontsize, std::string& displayText, std::string newText)
 {
     displayText = displayText.substr(0, displayText.length() - 3) + "(X)" + "\n" + newText + " (0)";
     text.setString(displayText);
@@ -121,7 +124,7 @@ static void updateVertex(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::Ve
 	}
 }   
 
-sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
+static sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
 {
     sf::VertexArray highlight(sf::LinesStrip, map.cells[cell].vertex.size() + 1);
     for (size_t i = 0; i < map.cells[cell].vertex.size(); i++) {
@@ -147,6 +150,7 @@ int main()
     GlobalWorldObjects globals;
     globals.generateConvergenceLines(5);
     
+    // Generate Global Lines // NEEDS TO BE MOVED TO GLOBAL OBJECTS
     sf::VertexArray lines(sf::Lines, 10);
     for (int i = 0; i < 10; i++)
     {
@@ -159,7 +163,6 @@ int main()
             lines.append(sf::Vertex(sf::Vector2f(windowWidth, globals.convergenceLines[std::floor(i / 2)] * windowHeight), sf::Color::Green));
         }
 	}
-
     std::cout << "Wind Directions: " << globals.windDirection[0] << " " << globals.windDirection[1] << " " << globals.windDirection[2] << " " << globals.windDirection[3] << " " << globals.windDirection[4] << std::endl;
     std::cout << "Global Avereage Temp: " << globals.globalTempAvg << " " << "Sea Level: " << globals.seaLevel << std::endl;
 
@@ -213,8 +216,13 @@ int main()
     loadText(window,text,50,loadingText,"Calculating Humidity");
     calcHumid(map.cells);
 
-    //loadText(window,text,50,loadingText,"Calculating Biomes");
-    //calcBiome(map.cells, globals);
+    loadText(window,text,50,loadingText,"Calculating Biomes");
+    calcBiome(map.cells, globals);
+    std::cout << "Biomes: " << std::endl;
+    for (int i = 0; i < globals.biomes.size(); i++)
+    {
+        std::cout << globals.biomes[i].name << " : " << " Temperature: " << globals.biomes[i].getAvgTemp() << " : " << " Percepitation: " << globals.biomes[i].getAvgRain() << " Humidity: " << globals.biomes[i].getAvgHumidity() << " Height: " << globals.biomes[i].getAvgElevation() << " Wind Str: " << globals.biomes[i].getAvgWindStr() << " Ocean: " << globals.biomes[i].isOcean << std::endl;
+	}
     
     loadText(window,text,50,loadingText,"Drawing Wind Arrows");
     sf::VertexArray windArrows = vor::windArrows(map);
@@ -253,6 +261,7 @@ int main()
     std::size_t highlightedCell = vor::INVALID_INDEX;
     sf::VertexArray highlight(sf::LineStrip, 5);
 
+
     while (window.isOpen())
     {
         sf::Event event;
@@ -278,6 +287,7 @@ int main()
                         std::cout << "Temp: " << map.cells[cellIndex].temp << " Percip: " << map.cells[cellIndex].percepitation << " Humidity: " << map.cells[cellIndex].humidity << std::endl;
                         std::cout << "Wind direction: " << map.cells[cellIndex].windDir << " Wind speed: " << map.cells[cellIndex].windStr << std::endl;
                         std::cout << "Distance to Ocean: " << map.cells[cellIndex].distToOcean << std::endl;
+                        std::cout << "Biome: " << globals.biomes[map.cells[cellIndex].biome].name << std::endl;
                         std::cout << std::endl;
                     }
                     else {
@@ -457,7 +467,7 @@ int main()
                     }
                     else
                     {
-                        temp = false;
+                        biomes = false;
                         for (std::size_t i = 0; i < map.cells.size(); i++) {
                             sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
                             for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
@@ -480,6 +490,7 @@ int main()
                     highlightBool = !highlightBool;
                     highlight.clear();
                 }
+
 				break;
 
             // Mouse Movement
@@ -598,7 +609,9 @@ int main()
 			window.draw(highlight);
 		}
 
+
         window.display();
+        
     }
 
     return 0;

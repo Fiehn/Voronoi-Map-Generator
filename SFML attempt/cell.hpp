@@ -7,6 +7,7 @@
 #include "util.h"
 #include "Voronoi.hpp"
 #include "GlobalWorldObjects.hpp"
+#include "clustering.hpp"
 
 class Cell 
 {  
@@ -25,7 +26,7 @@ public:
     float humidity = 1.f; // Humidity of the cell (0 to 1)
     float percepitation = 0.f; // Percepitation of the cell ( > 0 )
 
-    int biome; // Biome of the cell
+    int biome = 0; // Biome of the cell
 
     float distToOcean = std::numeric_limits<float>::max();
 
@@ -486,22 +487,22 @@ void calcPercepitation(std::vector<Cell>& map, const std::vector<sf::Vector2f>& 
                     // Assign similarity of direction to the wind direction
                     float absSimAngle = std::abs(std::fmod(dirOfNeighbor - map[idx].windDir, 2 * PI) - radians(map[idx].windDir));
                     float simDir = std::fmin(absSimAngle, std::abs(2 * PI - absSimAngle)) / PI;
-                
+
                     if (map[neighbor].coastBool == true)
                     { // If the neighbor is a coast cell, add a larger amount of percepitation 
-                        map[neighbor].percepitation += 1/5 * map[idx].percepitation * simDir * map[idx].windStr * (1 - std::exp(-1 / (0.002 * map[neighbor].distToOcean)));
+                        map[neighbor].percepitation += 1 / 5 * map[idx].percepitation * simDir * map[idx].windStr * (1 - std::exp(-1 / (0.002 * map[neighbor].distToOcean)));
                         queue.push(neighbor);
-                        
+
                     }
                     else
                     { // If the neighbor is not a coast cell, add a smaller amount of percepitation, but also add altitute modifier
                         float heightPercep = map[neighbor].height < 0.8f ? map[neighbor].height * 3 : map[neighbor].height * (1);
-                        map[neighbor].percepitation += ((7 * (map[idx].temp)) / 50 + 60) / (80 - map[idx].temp) + 1 * (map[idx].percepitation * simDir * map[idx].windStr + heightPercep) * (1 - std::exp(- 1 / (0.002 * map[neighbor].distToOcean)));
+                        map[neighbor].percepitation += ((7 * (map[idx].temp)) / 50 + 60) / (80 - map[idx].temp) + 1 * (map[idx].percepitation * simDir * map[idx].windStr + heightPercep) * (1 - std::exp(-1 / (0.002 * map[neighbor].distToOcean)));
                         queue.push(neighbor);
                     }
                     map[neighbor].percepitation = clamp(map[neighbor].percepitation, 100.f, 0.f);
                 }
-                
+
             }
         }
     }
@@ -513,14 +514,14 @@ void smoothPercepitation(std::vector<Cell>& map, int smoothTimes)
     {
         for (int i = 0; i < map.size(); i++)
         {
-			float percepitation = 0;
+            float percepitation = 0;
             for (int j = 0; j < map[i].neighbors.size(); j++)
             {
-				percepitation += map[map[i].neighbors[j]].percepitation;
-			}
-			map[i].percepitation = percepitation / map[i].neighbors.size();
-		}
-	}
+                percepitation += map[map[i].neighbors[j]].percepitation;
+            }
+            map[i].percepitation = percepitation / map[i].neighbors.size();
+        }
+    }
 }
 
 void calcHumid(std::vector<Cell>& map)
@@ -528,27 +529,76 @@ void calcHumid(std::vector<Cell>& map)
     for (int i = 0; i < map.size(); i++)
     {
         // smooth function to get the humidity from the percepitation, temperature // Needs work and wind.
-        map[i].humidity = 1 / (1 + exp(-0.2 * (std::logf(map[i].percepitation) + std::logf(std::abs(map[i].temp)))));
-	}
+        float humid = 1 + exp(-0.2 * (std::logf(map[i].percepitation) + std::logf(std::abs(map[i].temp))));
+        if (humid == 0.f || isinf(humid) || isnan(humid))
+        {
+            humid = 0.5;
+        }
+
+        map[i].humidity = 1 / humid;
+    }
 }
 
-void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals)
+void calcBiome_old(std::vector<Cell>& map, GlobalWorldObjects& globals)
 { // Get the probabilities of each biome, then compare with neighbors biome's exclusions. Using a queque
+    // Generate initial biomes:
+    globals.generateBiomes();
+
     for (int i = 0; i < map.size(); i++)
     {
-        std::vector<float> probs(globals.biomes.size(), 0);
-        float prob = 0;
+        std::vector<float> rates(globals.biomes.size(), 0);
+
         for (int j = 0; j < globals.biomes.size(); j++)
         {
-            probs[j] = globals.biomes[j].probabilityOfBiome(map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr);
-			prob += probs[j];
-		}
-        for (int j = 0; j < probs.size(); j++)
+            rates[j] = globals.biomes[j].probabilityOfBiome(map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool);
+        }
+
+        for (int j = 0; j < map[i].neighbors.size(); j++)
         {
-			probs[j] /= prob;
-		}
-        map[i].biome = globals.biomes[chooseIndex(probs)].id;
+            for (int k = 0; k < globals.biomes.size(); k++)
+            {
+                if (globals.biomes[k].exclusions[map[map[i].neighbors[j]].biome] == 0)
+                {
+                    rates[k] = 0;
+                }
+            }
+        }
+
+        map[i].biome = globals.biomes[chooseIndex(rates)].id;
     }
+}
+
+void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
+    // get vectors of the variables for the biomes
+    std::vector<std::vector<float>> temporary;
+    temporary.resize(map.size());
+
+    for (int i = 0; i < 10; i++) {
+        globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, { true }, randomColor());
+    }
+    
+
+    for (int i = 0; i < map.size(); i++) {
+
+		temporary[i].resize(globals.biomes.size(), 0);
+        temporary[i] = { map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool * 1000.f}; // , float(map[i].oceanBool)
+	}
+
+    // k-means that stuff
+    int iters = 5;
+    KMeans temp(globals.biomes.size(), temporary[0].size(), iters);
+    temp.setData(temporary);
+    temp.run();
+
+    for (int i = 0; i < map.size(); i++) {
+		map[i].biome = temp.getClusterId(i);
+	}
+
+    // set the biomes values to the averages 
+    for (int i = 0; i < globals.biomes.size(); i++) {
+		globals.biomes[i].setValues(temp.getCentroid(i));
+	}
+
 }
 
 void calcLakes(std::vector<Cell>& map)
