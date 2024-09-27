@@ -65,6 +65,8 @@ static void genWorld(GlobalWorldObjects& globals, vor::Voronoi& map, const int n
     loadText(window, text, 50, loadingText, "Calculating Percepetation");
     calcPercepitation(map.cells, map.points, globals);
     smoothPercepitation(map.cells, 1);
+    loadText(window, text, 50, loadingText, "Calculating Biomes");
+    calcBiome(map.cells, globals);
     loadText(window, text, 50, loadingText, "Calculating Rivers");
     calcRiverStart(map.cells, globals);
     return;

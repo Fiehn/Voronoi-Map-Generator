@@ -75,6 +75,7 @@ void GlobalWorldObjects::clearGlobals()
 	lakeCells.clear();
 	coastCells.clear();
 	oceanCells.clear();
+	biomes.clear();
 }
 
 void GlobalWorldObjects::generateConvergenceLines(int nrLines)

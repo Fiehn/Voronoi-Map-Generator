@@ -569,6 +569,10 @@ void calcBiome_old(std::vector<Cell>& map, GlobalWorldObjects& globals)
 }
 
 void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
+    if (globals.biomes.size() == 0) {
+		globals.generateBiomes();
+	}
+
     // get vectors of the variables for the biomes
     std::vector<std::vector<float>> temporary;
     temporary.resize(map.size());
