@@ -12,6 +12,7 @@ The Voronoi was then created from the dual graph of the triangulation.
 * Height generation, noising and smoothing
 * River generation (Lacking)
 * Wind speed and direction for each cell (Based on convergence lines, and then randomly assigns strength and direction based on region. Then averaging to smooth)
+* Expandable custom biome generation using k-means clustering (The biomes will be unnamed and randomly generated so there will be a need to create a naming system.)
 ![image](https://github.com/Fiehn/Voronoi-Map-Generator/assets/81577064/3fbc5b37-b68e-408e-9fb7-a7658099e2dd)
 ## Features being worked on
 
