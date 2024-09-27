@@ -148,9 +148,10 @@ int main()
 
     // Create the global world objects
     GlobalWorldObjects globals;
-    globals.generateConvergenceLines(5);
+    
     
     // Generate Global Lines // NEEDS TO BE MOVED TO GLOBAL OBJECTS
+    globals.generateConvergenceLines(5);
     sf::VertexArray lines(sf::Lines, 10);
     for (int i = 0; i < 10; i++)
     {
@@ -163,8 +164,15 @@ int main()
             lines.append(sf::Vertex(sf::Vector2f(windowWidth, globals.convergenceLines[std::floor(i / 2)] * windowHeight), sf::Color::Green));
         }
 	}
+
+    // Print initials:
     std::cout << "Wind Directions: " << globals.windDirection[0] << " " << globals.windDirection[1] << " " << globals.windDirection[2] << " " << globals.windDirection[3] << " " << globals.windDirection[4] << std::endl;
     std::cout << "Global Avereage Temp: " << globals.globalTempAvg << " " << "Sea Level: " << globals.seaLevel << std::endl;
+
+    // Create empty Biomes // NEEDS to be reworked to work better with K-means, and to be moved to global objects
+    for (int i = 0; i < 10; i++) {
+        globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, { true }, randomColor());
+    }
 
     // Create the loading screen
     std::string loadingText = "Initializing (0)";

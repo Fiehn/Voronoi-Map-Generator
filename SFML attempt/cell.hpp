@@ -573,11 +573,6 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
     std::vector<std::vector<float>> temporary;
     temporary.resize(map.size());
 
-    for (int i = 0; i < 10; i++) {
-        globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, { true }, randomColor());
-    }
-    
-
     for (int i = 0; i < map.size(); i++) {
 
 		temporary[i].resize(globals.biomes.size(), 0);
