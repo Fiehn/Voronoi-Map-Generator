@@ -434,6 +434,21 @@ std::vector<sf::Color> randomColors(int numColors) {
 	return colorTable.getRandomColors(numColors);
 }
 
+std::string colorName(sf::Color color) {
+	ColorTable colorTable;
+	return colorTable.getName(color);
+}
+
+std::string closestColorName(sf::Color color) {
+	ColorTable colorTable;
+	return colorTable.getClosestName(color);
+}
+
+sf::Color colorByName(std::string name) {
+	ColorTable colorTable;
+	return colorTable.getColor(name);
+}
+
 
 
 

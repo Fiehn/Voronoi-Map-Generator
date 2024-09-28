@@ -172,9 +172,11 @@ int main()
     std::cout << "Global Avereage Temp: " << globals.globalTempAvg << " " << "Sea Level: " << globals.seaLevel << std::endl;
 
     // Create empty Biomes // NEEDS to be reworked to work better with K-means, and to be moved to global objects
+    std::vector<sf::Color> biomeColors = randomColors(10);
     for (int i = 0; i < 10; i++) {
-        globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, { true }, randomColor());
+        globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, { true }, biomeColors[i]);
     }
+    biomeColors.clear();
 
     // Create the loading screen
     std::string loadingText = "Initializing (0)";
@@ -231,7 +233,7 @@ int main()
     std::cout << "Biomes: " << std::endl;
     for (int i = 0; i < globals.biomes.size(); i++)
     {
-        std::cout << globals.biomes[i].name << " : " << " Temperature: " << globals.biomes[i].getAvgTemp() << " : " << " Percepitation: " << globals.biomes[i].getAvgRain() << " Humidity: " << globals.biomes[i].getAvgHumidity() << " Height: " << globals.biomes[i].getAvgElevation() << " Wind Str: " << globals.biomes[i].getAvgWindStr() << " Ocean: " << globals.biomes[i].isOcean << std::endl;
+        std::cout << globals.biomes[i].name << ": " << std::endl << "Color: " << colorName(globals.biomes[i].color) << " Temperature: " << globals.biomes[i].getAvgTemp() << " Percepitation: " << globals.biomes[i].getAvgRain() << " Humidity: " << globals.biomes[i].getAvgHumidity() << " Height: " << globals.biomes[i].getAvgElevation() << " Wind Str: " << globals.biomes[i].getAvgWindStr() << " Ocean: " << globals.biomes[i].isOcean << std::endl;
 	}
     
     loadText(window,text,50,loadingText,"Drawing Wind Arrows");
