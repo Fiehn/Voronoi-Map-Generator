@@ -323,10 +323,116 @@ int chooseIndex(std::vector<float> rates) {
     return rates.size() - 1;
 }
 
+// Color table with names from https://www.rapidtables.com/web/color/RGB_Color.html
+class ColorTable {
+private:
+    std::map<std::string, sf::Color> colorMap;
+public:
+    sf::Color getColor(std::string name) {
+		return colorMap[name];
+	}
+    std::string getName(sf::Color color) {
+        for (auto const& pair : colorMap) {
+            if (pair.second == color) {
+				return pair.first;
+			}
+		}
+		return "unknown";
+	}
+    std::string getClosestName(sf::Color color)
+    {
+        float minDist = std::numeric_limits<float>::max();
+        std::string minIndex = "Unknown";
+        for (auto const& pair : colorMap) {
+			float dist = sqrt(pow(color.r - pair.second.r, 2) + pow(color.g - pair.second.g, 2) + pow(color.b - pair.second.b, 2));
+            if (dist < minDist) {
+				minDist = dist;
+				minIndex = pair.first;
+			}
+		}
+        return minIndex;
+    }
+    sf::Color getRandomColor() {
+		int index = rand() % colorMap.size();
+		auto it = colorMap.begin();
+		std::advance(it, index);
+		return it->second;
+	}
+    std::vector<sf::Color> getRandomColors(int numColors) {
+        // Without replacement
+        if (numColors > colorMap.size()) {
+            throw std::invalid_argument("Number of colors requested exceeds number of colors in the map");
+        }
+        std::vector<sf::Color> colors;
+        int size = colorMap.size();
+        std::vector<int> usedIndex = {};
+        for (auto const& pair : colorMap) {
+            int index = rand() % size;
+            while (std::find(usedIndex.begin(), usedIndex.end(), index) != usedIndex.end()) {
+				index = rand() % size;
+			}
+            auto it = colorMap.begin();
+            std::advance(it, index);
+            colors.push_back(it->second);
+            usedIndex.push_back(index);
+        }
+		return colors;
+    }
+    ColorTable() {
+		colorMap["red"] = sf::Color(255, 0, 0);
+		colorMap["green"] = sf::Color(0, 128, 0);
+		colorMap["blue"] = sf::Color(0, 0, 255);
+		colorMap["yellow"] = sf::Color(255, 255, 0);
+		colorMap["orange"] = sf::Color(255, 165, 0);
+		colorMap["purple"] = sf::Color(128, 0, 128);
+		colorMap["cyan"] = sf::Color(0, 255, 255);
+		colorMap["magenta"] = sf::Color(255, 0, 255);
+		colorMap["lime"] = sf::Color(0, 255, 0);
+		colorMap["pink"] = sf::Color(255, 192, 203);
+		colorMap["teal"] = sf::Color(0, 128, 128);
+		colorMap["lavender"] = sf::Color(230, 230, 250);
+		colorMap["brown"] = sf::Color(165, 42, 42);
+		colorMap["beige"] = sf::Color(245, 245, 220);
+		colorMap["maroon"] = sf::Color(128, 0, 0);
+		colorMap["mint"] = sf::Color(189, 252, 201);
+		colorMap["apricot"] = sf::Color(251, 206, 177);
+		colorMap["navy"] = sf::Color(0, 0, 128);
+		colorMap["grey"] = sf::Color(128, 128, 128);
+		colorMap["white"] = sf::Color(255, 255, 255);
+		colorMap["black"] = sf::Color(0, 0, 0);
+        colorMap["gold"] = sf::Color(255, 215, 0);
+        colorMap["silver"] = sf::Color(192, 192, 192);
+        colorMap["bronze"] = sf::Color(205, 127, 50);
+        colorMap["lightblue"] = sf::Color(173, 216, 230);
+        colorMap["lightgreen"] = sf::Color(144, 238, 144);
+        colorMap["lightyellow"] = sf::Color(255, 255, 224);
+        colorMap["lightorange"] = sf::Color(255, 160, 122);
+        colorMap["lightpurple"] = sf::Color(221, 160, 221);
+        colorMap["lightcyan"] = sf::Color(224, 255, 255);
+        colorMap["lightmagenta"] = sf::Color(255, 224, 255);
+        colorMap["lightlime"] = sf::Color(144, 238, 144);
+        colorMap["lightpink"] = sf::Color(255, 182, 193);
+        colorMap["lightteal"] = sf::Color(173, 216, 230);
+        colorMap["lightlavender"] = sf::Color(230, 230, 250);
+        colorMap["lightbrown"] = sf::Color(165, 42, 42);
+        colorMap["lightbeige"] = sf::Color(245, 245, 220);
+        colorMap["lightmaroon"] = sf::Color(128, 0, 0);
+        colorMap["lightmint"] = sf::Color(189, 252, 201);
+        colorMap["lightapricot"] = sf::Color(251, 206, 177);
+        colorMap["lightnavy"] = sf::Color(0, 0, 128);
+        colorMap["lightgrey"] = sf::Color(128, 128, 128); 
+	}
+};
+
 sf::Color randomColor() {
-	return sf::Color(rand() % 256, rand() % 256, rand() % 256);
+	ColorTable colorTable;
+    return colorTable.getRandomColor();
 }
 
+std::vector<sf::Color> randomColors(int numColors) {
+	ColorTable colorTable;
+	return colorTable.getRandomColors(numColors);
+}
 
 
 
