@@ -54,9 +54,10 @@ private:
 	std::vector<std::vector<float>> data;
 
 	std::vector<int> clusterIds;
+	std::vector<int> clusterSizes;
 
 public:
-	KMeans(int k, int dimensions, int iters) : k(k), dimensions(dimensions), iters(iters) {}
+	KMeans(int k, int dimensions, int iters) : k(k), dimensions(dimensions), iters(iters) { clusterSizes.resize(k, 0); }
 
 	void setData(const std::vector<std::vector<float>>& data) {
 		this->data = data;
@@ -141,27 +142,10 @@ public:
 				newCentroid[k] /= numPoints;
 			}
 
+			clusterSizes[i] = clusters[i].getSize();
+
 			clusters[i].setCentroid(newCentroid);
 			clusters[i].clearPoints();
-		}
-	}
-
-	void fillClusterIds()
-	{
-		clusterIds.clear();
-		for (int i = 0; i < data.size(); ++i) {
-			std::vector<float> point = data[i];
-			int clusterId = -1;
-			float minDistance = std::numeric_limits<float>::max();
-			for (int j = 0; j < clusters.size(); ++j) {
-				std::vector<float> centroid = clusters[j].getCentroid();
-				float distance = this->distance(point, centroid);
-				if (distance < minDistance) {
-					minDistance = distance;
-					clusterId = j;
-				}
-			}
-			clusterIds.push_back(clusterId);
 		}
 	}
 
@@ -174,7 +158,6 @@ public:
 			updateCentroids();
 			iter++;
 		}
-		//fillClusterIds();
 	}
 
 	int getClusterId(int index) const {
@@ -184,6 +167,10 @@ public:
 	std::vector<float> getCentroid(int clusterId)
 	{
 		return clusters[clusterId].getCentroid();
+	}
+
+	std::vector<int> getClusterSizes() const {
+		return clusterSizes;
 	}
 
 };

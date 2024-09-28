@@ -568,6 +568,30 @@ void calcBiome_old(std::vector<Cell>& map, GlobalWorldObjects& globals)
     }
 }
 
+void removeBiome(int id, GlobalWorldObjects& globals, std::vector<Cell>& map)
+{
+    // if the biome is used in any cell, the cell is set to the default biome
+    // all other biomes have their index updated to match the new list and the id of all cells is updated
+    // the biome is removed from the list
+
+    for (int i = 0; i < map.size(); i++)
+    {
+        if (map[i].biome == id)
+        {
+            map[i].biome = 0;
+        }
+        else if (map[i].biome > id)
+        {
+            map[i].biome = (map[i].biome - 1);
+        }
+    }
+    globals.biomes.erase(globals.biomes.begin() + id);
+    for (int i = 0; i < globals.biomes.size(); i++)
+    {
+        globals.biomes[i].setId(i);
+    }
+}
+
 void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
     if (globals.biomes.size() == 0) {
 		globals.generateBiomes();
@@ -578,7 +602,6 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
     temporary.resize(map.size());
 
     for (int i = 0; i < map.size(); i++) {
-
 		temporary[i].resize(globals.biomes.size(), 0);
         temporary[i] = { map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool * 1000.f}; // , float(map[i].oceanBool)
 	}
@@ -595,8 +618,23 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
 
     // set the biomes values to the averages 
     for (int i = 0; i < globals.biomes.size(); i++) {
-		globals.biomes[i].setValues(temp.getCentroid(i));
+        globals.biomes[i].setValues(temp.getCentroid(i));
 	}
+
+    // remove biomes with 0 cluster size
+    std::vector<int> toRemove;
+    std::vector<int> clusterSizes = temp.getClusterSizes();
+
+    for (int i = 0; i < globals.biomes.size(); i++) {
+        std::cout << clusterSizes[i] << std::endl;
+        if (clusterSizes[i] == 0) {
+			toRemove.push_back(i);
+		}
+	}
+    for (int i = 0; i < toRemove.size(); i++) {
+        removeBiome(toRemove[i] - i, globals, map);
+    }
+
 
 }
 

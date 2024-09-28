@@ -177,6 +177,7 @@ int main()
         globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, { true }, biomeColors[i]);
     }
     biomeColors.clear();
+    
 
     // Create the loading screen
     std::string loadingText = "Initializing (0)";
