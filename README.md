@@ -1,10 +1,9 @@
 # Voronoi-Map-Generator
 A C++ SFML implementation of a Voronoi diagram, for future map generation implementations. 
-The project was inspired by Azgaar's fantasy map generator (azgaar.github.io).
+The project was inspired by [Azgaar's fantasy map generator](azgaar.github.io) and to a certain degree [Undiscovered Worlds](https://undiscoveredworlds.blogspot.com/)
 ## Voronoi
-Code for the Delaunay triangulation was adapted to work with SFML from delfrrr's implementation of the algorithm (https://github.com/delfrrr/delaunator-cpp).
-Used under the MIT lisence.
-The Voronoi was then created from the dual graph of the triangulation.
+Code for the Delaunay triangulation was adapted to work with SFML from [delfrrr's implementation of the algorithm](https://github.com/delfrrr/delaunator-cpp). The GUI is created using [Dear ImGui](https://github.com/ocornut/imgui?tab=readme-ov-file#dear-imgui) with the seperate [SFML backend](https://github.com/SFML/imgui-sfml)
+All used under the MIT lisence.
 
 ## Features
 * Voronoi Diagram with SFML
@@ -29,6 +28,7 @@ The Voronoi was then created from the dual graph of the triangulation.
 ### UI
 * UI system to alter the map while the program is running
 * Making a new button, seed inserter, altering parameters perhaps with sliders
+* Display values of hovered cell.
 
 ### Generation
 * Rivers / Lakes
