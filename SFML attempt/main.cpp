@@ -6,8 +6,8 @@
 #include <cstdlib>
 #include "Voronoi.hpp"
 
-
-// Øhm shit, ui.cpp and ui.hpp er excluded from project, så find dem lige tilbage for at lave den
+#include "imgui.h"
+#include "imgui-SFML.h"
 
 // There is some inspiration to get from the following (particularly for threading):
 // https://gitlab.gbar.dtu.dk/s164179/Microbots/blob/dc8b5b4b883fa1fe572fd82d44fbf291d7f81153/SFML-2.5.0/examples/island/Island.cpp
@@ -26,7 +26,7 @@ static void genWorld(GlobalWorldObjects& globals, vor::Voronoi& map, const int n
 {
     std::string loadingText = "Initializing (0)";
     sf::Font font;
-    if (!font.loadFromFile("arial.ttf"))
+    if (!font.loadFromFile("Fonts/arial.ttf"))
     {
         std::cout << "Could not load font" << std::endl;
     }
@@ -147,6 +147,7 @@ int main()
 
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML");
     window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
+    ImGui::SFML::Init(window);
 
     // Create the global world objects
     GlobalWorldObjects globals;
@@ -182,7 +183,7 @@ int main()
     // Create the loading screen
     std::string loadingText = "Initializing (0)";
     sf::Font font;
-    if (!font.loadFromFile("arial.ttf"))
+    if (!font.loadFromFile("Roboto-Medium.ttf"))
     {
 		std::cout << "Could not load font" << std::endl;
 	}
@@ -275,12 +276,14 @@ int main()
     std::size_t highlightedCell = vor::INVALID_INDEX;
     sf::VertexArray highlight(sf::LineStrip, 5);
 
-
+    sf::Clock deltaClock;
     while (window.isOpen())
     {
         sf::Event event;
         while (window.pollEvent(event))
         {
+            ImGui::SFML::ProcessEvent(window, event);
+
             switch (event.type) {
             case sf::Event::Closed:
                 window.close();
@@ -602,6 +605,13 @@ int main()
 
         }
 
+        ImGui::SFML::Update(window, deltaClock.restart());
+
+        ImGui::Begin("Hello, world!");
+        ImGui::Button("Look at this pretty button");
+        ImGui::End();
+
+
         window.clear();
         
         // TODO: Draw only the cells that are visible in the window (use the view to determine which cells are visible) (Low priority since draws are not the bottleneck)
@@ -623,11 +633,12 @@ int main()
         if (highlightedCell != vor::INVALID_INDEX) {
 			window.draw(highlight);
 		}
-
+        ImGui::SFML::Render(window);
 
         window.display();
         
     }
+    ImGui::SFML::Shutdown();
 
     return 0;
 }
