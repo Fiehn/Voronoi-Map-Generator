@@ -234,7 +234,8 @@ int main()
     std::cout << "Biomes: " << std::endl;
     for (int i = 0; i < globals.biomes.size(); i++)
     {
-        std::cout << globals.biomes[i].name << ": " << std::endl << "Color: " << colorName(globals.biomes[i].color) << " Temperature: " << globals.biomes[i].getAvgTemp() << " Percepitation: " << globals.biomes[i].getAvgRain() << " Humidity: " << globals.biomes[i].getAvgHumidity() << " Height: " << globals.biomes[i].getAvgElevation() << " Wind Str: " << globals.biomes[i].getAvgWindStr() << " Ocean: " << globals.biomes[i].isOcean << std::endl;
+        std::cout << globals.biomes[i].name << ": " << std::endl;
+        std::cout << "Color: " << colorName(globals.biomes[i].color) << ", Temperature: " << globals.biomes[i].getAvgTemp() << ", Percepitation: " << globals.biomes[i].getAvgRain() << ", Humidity: " << globals.biomes[i].getAvgHumidity() << ", Height: " << globals.biomes[i].getAvgElevation() << ", Wind Str: " << globals.biomes[i].getAvgWindStr() << ", Ocean: " << globals.biomes[i].isOcean << std::endl;
 	}
     
     loadText(window,text,50,loadingText,"Drawing Wind Arrows");
@@ -561,7 +562,7 @@ int main()
             }
 
             // Zoom
-            case sf::Event::MouseWheelScrolled:
+            case sf::Event::MouseWheelScrolled: {
                 // Ignore the mouse wheel unless we're not moving
                 if (moving) { break; }
 
@@ -586,16 +587,17 @@ int main()
                 if ((view.getCenter().x) - zoom * windowWidth / 2 < 0) {
                     view_center.x = zoom * windowWidth / 2;
                 }
-                if ((view.getCenter().y) + zoom * windowHeight / 2 > windowHeight) { 
+                if ((view.getCenter().y) + zoom * windowHeight / 2 > windowHeight) {
                     view_center.y = windowHeight - zoom * windowHeight / 2;
                 }
                 if (view.getCenter().y - zoom * windowHeight / 2 < 0) {
                     view_center.y = zoom * windowHeight / 2;
                 }
                 view.setCenter(view_center);
-               
+
                 window.setView(view);
                 break;
+            }
             }
 
         }
