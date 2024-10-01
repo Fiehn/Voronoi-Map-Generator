@@ -138,6 +138,62 @@ static sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
     return highlight;
 }
 
+static void drawTempMap(vor::Voronoi& map, bool& temp, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer) {
+    if (temp == false)
+    {
+        temp = true;
+        for (size_t i = 0; i < map.cells.size(); i++)
+        {
+            sf::Color color(255, 255 / 2 + clamp(5 * map.cells[i].temp, 255 / 2, -255), 0, 255);
+
+            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+            {
+                map.vertices[j].color = color;
+            }
+        }
+        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+    }
+    else
+    {
+        temp = false;
+        for (std::size_t i = 0; i < map.cells.size(); i++) {
+            sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+                map.vertices[j].color = color;
+            }
+        }
+        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+    }
+}
+
+static void drawBiomeMap(vor::Voronoi& map, GlobalWorldObjects globals, bool& biomes, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
+{
+    if (biomes == false)
+    {
+        biomes = true;
+        for (size_t i = 0; i < map.cells.size(); i++)
+        {
+
+            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+            {
+                map.vertices[j].color = globals.biomes[map.cells[i].biome].color;
+            }
+        }
+        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+    }
+    else
+    {
+        biomes = false;
+        for (std::size_t i = 0; i < map.cells.size(); i++) {
+            sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+                map.vertices[j].color = color;
+            }
+        }
+        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+    }
+}
+
 int main() 
 {
     // Initialize the random seed and window
@@ -286,7 +342,10 @@ int main()
 
             switch (event.type) {
             case sf::Event::Closed:
+            {
                 window.close();
+                break;
+            }
 
             // Mouse buttons
             case sf::Event::MouseButtonPressed:
@@ -324,8 +383,11 @@ int main()
             case sf::Event::KeyPressed:
 
                 // Close Program
-				if (event.key.code == sf::Keyboard::Escape)
-				    window.close();
+                if (event.key.code == sf::Keyboard::Escape)
+                {
+                    window.close();
+                    break;
+                }
 
                 // Debug:: Draw Cells in Triangles
                 else if (event.key.code == sf::Keyboard::A)
@@ -438,62 +500,10 @@ int main()
                 }
 
                 // Temperature map
-                else if (event.key.code == sf::Keyboard::T)
-                { // Print Temperature
-                    if (temp == false)
-                    {
-                        temp = true;
-                        for (size_t i = 0; i < map.cells.size(); i++)
-                        {
-                            sf::Color color(255, 255/2 + clamp(5 * map.cells[i].temp,255/2,-255), 0, 255);
-
-                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-                            {
-                                map.vertices[j].color = color;
-                            }
-                        }
-                        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
-                    }
-                    else
-                    {
-                        temp = false;
-                        for (std::size_t i = 0; i < map.cells.size(); i++) {
-                            sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-                                map.vertices[j].color = color;
-                            }
-                        }
-                        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
-                    }
-                }
+                else if (event.key.code == sf::Keyboard::T) { drawTempMap(map, temp, vertexArray, vertexBuffer, useVertexBuffer); }
 
                 // Display Biomes
-                else if (event.key.code == sf::Keyboard::B) {
-                    if (biomes == false)
-                    {
-                        biomes = true;
-                        for (size_t i = 0; i < map.cells.size(); i++)
-                        {
-                            
-                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-                            {
-                                map.vertices[j].color = globals.biomes[map.cells[i].biome].color;
-                            }
-                        }
-                        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
-                    }
-                    else
-                    {
-                        biomes = false;
-                        for (std::size_t i = 0; i < map.cells.size(); i++) {
-                            sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-                                map.vertices[j].color = color;
-                            }
-                        }
-                        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
-                    }
-                    }
+                else if (event.key.code == sf::Keyboard::B) { drawBiomeMap(map, globals, biomes, vertexArray, vertexBuffer, useVertexBuffer); }
                 
                 // activate arrows for wind direction
                 else if (event.key.code == sf::Keyboard::Comma)
@@ -605,10 +615,19 @@ int main()
 
         }
 
+        if (!window.isOpen()) {
+            window.clear();
+
+            ImGui::SFML::Shutdown(window);
+
+            break;
+        }
+
         ImGui::SFML::Update(window, deltaClock.restart());
 
         ImGui::Begin("Hello, world!");
-        ImGui::Button("Look at this pretty button");
+        if (ImGui::Button("Temperature Map")) { drawTempMap(map, temp, vertexArray, vertexBuffer, useVertexBuffer); };
+        if (ImGui::Button("Biome Map")) { drawBiomeMap(map, globals, biomes, vertexArray, vertexBuffer, useVertexBuffer); }
         ImGui::End();
 
 
@@ -633,12 +652,12 @@ int main()
         if (highlightedCell != vor::INVALID_INDEX) {
 			window.draw(highlight);
 		}
+
         ImGui::SFML::Render(window);
 
         window.display();
         
     }
-    ImGui::SFML::Shutdown();
 
     return 0;
 }
