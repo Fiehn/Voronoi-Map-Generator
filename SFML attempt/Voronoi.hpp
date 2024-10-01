@@ -280,7 +280,7 @@ namespace vor {
 
             ids.push_back(i);
             // Added this myself!!!
-            cells.push_back(Cell(i)); // Need to do something about the cells
+            cells.emplace_back(i); // Need to do something about the cells
             // Stopped adding this here
         }
         // Center of the cells of points
