@@ -82,8 +82,7 @@ public:
 	void setId(int id) {
 		this->id = id;
 	}
-
-private:
+	
 	// Values that are used to determine the probability for biome in cell
 	float avgTemp = 0;
 	float avgRain = 0;

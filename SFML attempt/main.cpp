@@ -194,6 +194,37 @@ static void drawBiomeMap(vor::Voronoi& map, GlobalWorldObjects globals, bool& bi
     }
 }
 
+static void drawPercepitationMap(vor::Voronoi& map, bool& percep, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
+{
+    {
+        if (percep == false)
+        {
+            percep = true;
+            for (size_t i = 0; i < map.cells.size(); i++)
+            {
+                sf::Color color(0, clamp(5 * map.cells[i].percepitation, 255, 0), 0, 255);
+
+                for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+                {
+                    map.vertices[j].color = color;
+                }
+            }
+            updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+        }
+        else
+        {
+            percep = false;
+            for (std::size_t i = 0; i < map.cells.size(); i++) {
+                sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+                for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+                    map.vertices[j].color = color;
+                }
+            }
+            updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+        }
+    }
+}
+
 int main() 
 {
     // Initialize the random seed and window
@@ -416,33 +447,7 @@ int main()
                 // Percepitation map
                 else if (event.key.code == sf::Keyboard::P) 
                 {
-                    { // Print Temperature
-                        if (percep == false)
-                        {
-                            percep = true;
-                            for (size_t i = 0; i < map.cells.size(); i++)
-                            {
-                                sf::Color color(0, clamp(5 * map.cells[i].percepitation, 255, 0), 0, 255);
-
-                                for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-                                {
-                                    map.vertices[j].color = color;
-                                }
-                            }
-                            updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
-                        }
-                        else
-                        {
-                            percep = false;
-                            for (std::size_t i = 0; i < map.cells.size(); i++) {
-                                sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-                                for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-                                    map.vertices[j].color = color;
-                                }
-                            }
-                            updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
-                        }
-                    }
+                    drawPercepitationMap(map, percep, vertexArray, vertexBuffer, useVertexBuffer);
                 }
 
                 // Generate a new Map
@@ -627,9 +632,88 @@ int main()
 
         ImGui::Begin("Hello, world!");
         if (ImGui::Button("Temperature Map")) { drawTempMap(map, temp, vertexArray, vertexBuffer, useVertexBuffer); };
-        if (ImGui::Button("Biome Map")) { drawBiomeMap(map, globals, biomes, vertexArray, vertexBuffer, useVertexBuffer); }
+        ImGui::SameLine();
+        if (ImGui::Button("Biome Map")) { drawBiomeMap(map, globals, biomes, vertexArray, vertexBuffer, useVertexBuffer); };
+        ImGui::SameLine();
+        if (ImGui::Button("Percepitation Map")) { drawPercepitationMap(map, percep, vertexArray, vertexBuffer, useVertexBuffer); };
+
+        ImGui::Checkbox("Draw Lines", &drawLines);
+        ImGui::Checkbox("Wind Arrows", &wind);
+        ImGui::Checkbox("Highlight Cells", &highlightBool);
+
+        if (ImGui::Button("Reset View")) {
+			view.setCenter(windowWidth / 2, windowHeight / 2);
+			view.setSize(window.getDefaultView().getSize());
+			view.zoom(1.f);
+			window.setView(view);
+		}
+
+        // Display the number of cells, nr of biomes same line
+        ImGui::Text("Number of cells: %d", map.cells.size());
+        ImGui::Text("Number of biomes: %d", globals.biomes.size());
+        ImGui::Text("Sealevel: %.2f", globals.seaLevel);
+        ImGui::Text("Global Temperature: %.2f", globals.globalTempAvg);
+        ImGui::Text("Global Precipitation: %.2f", globals.globalPercepitation);
+        ImGui::Text("Global Snow Line: %.2f", globals.globalSnowline);
+
+
+        // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position
+        if (highlightedCell != vor::INVALID_INDEX) {
+			const Cell& cell = map.cells[highlightedCell];
+			ImGui::Text("Cell %d", highlightedCell);
+			ImGui::Text("Temp: %.2f", cell.temp);
+            ImGui::Text("Precipitation: %.2f", cell.percepitation);
+            ImGui::Text("Elevation: %.2f", cell.height);
+            const Biome& biome = globals.biomes[cell.biome];
+            ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
+            ImGui::Text("Biome: %s", biome.name.c_str());
+            ImGui::SameLine();
+            ImGui::ColorEdit4("", (float*)&color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip);
+            ImGui::Text("Wind: %.2f, %.2f", cell.windDir, cell.windStr);
+		}
+        
+        if (biomes)
+        {
+            bool change = true; // If the user changes the color of a biome, we need to update the map
+            for (int i = 0; i < globals.biomes.size(); i++)
+            {
+                Biome& biome = globals.biomes[i];
+                float color[4];
+                color[0] = biome.color.r / 255.0f;
+                color[1] = biome.color.g / 255.0f;
+                color[2] = biome.color.b / 255.0f;
+                color[3] = 1.0f;
+                ImGui::PushID(i);
+                ImGui::Text("%s", biome.name.c_str());
+                ImGui::SameLine();
+                ImGui::ColorEdit4("", color, ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs);
+                ImGui::SameLine();
+                ImGui::Text("Temp: %.2f", biome.avgTemp);
+                ImGui::SameLine();
+                ImGui::Text("Precip: %.2f", biome.avgRain);
+                ImGui::SameLine();
+                ImGui::Text("Elevation: %.2f", biome.avgElevation);
+                ImGui::PopID();
+
+                if (color[0] != biome.color.r / 255.0f || color[1] != biome.color.g / 255.0f || color[2] != biome.color.b / 255.0f) {
+					change = false;
+                    biome.color.r = color[0] * 255;
+                    biome.color.g = color[1] * 255;
+                    biome.color.b = color[2] * 255;
+				}
+            }
+
+            if (!change) {
+				drawBiomeMap(map, globals, change, vertexArray, vertexBuffer, useVertexBuffer);
+			}
+        }
+
         ImGui::End();
 
+        if (!highlightBool) {
+            highlight.clear();
+            highlightedCell = vor::INVALID_INDEX;
+        }
 
         window.clear();
         
@@ -658,6 +742,7 @@ int main()
         window.display();
         
     }
+    ImGui::SFML::Shutdown(window);
 
     return 0;
 }
