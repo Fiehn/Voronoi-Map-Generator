@@ -140,8 +140,7 @@ static sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
     return highlight;
 }
 
-static void drawTempMap(vor::Voronoi& map, bool& temp, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer) {
-    temp = true;
+static void drawTempMap(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer) {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
         sf::Color color(255, 255 / 2 + clamp(5 * map.cells[i].temp, 255 / 2, -255), 0, 255);
@@ -154,9 +153,8 @@ static void drawTempMap(vor::Voronoi& map, bool& temp, sf::VertexArray& vertexAr
     updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
 }
 
-static void drawBiomeMap(vor::Voronoi& map, GlobalWorldObjects globals, bool& biomes, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
+static void drawBiomeMap(vor::Voronoi& map, GlobalWorldObjects globals, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
 {
-    biomes = true;
     for (size_t i = 0; i < map.cells.size(); i++)
     {
 
@@ -168,9 +166,8 @@ static void drawBiomeMap(vor::Voronoi& map, GlobalWorldObjects globals, bool& bi
     updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
 }
 
-static void drawPercepitationMap(vor::Voronoi& map, bool& percep, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
+static void drawPercepitationMap(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
 {
-    percep = true;
     for (size_t i = 0; i < map.cells.size(); i++)
     {
         sf::Color color(0, clamp(5 * map.cells[i].percepitation, 255, 0), 0, 255);
@@ -319,9 +316,6 @@ int main()
     bool moving = false;
     bool drawLines = false; // Set to true to draw the convergence lines of wind direction
     bool wind = false; // Set to true to draw the wind direction
-    bool temp = false; // Set to true to draw the temperature lines
-    bool percep = false; // Set to true to draw the percepitation lines
-    bool biomes = false; // Set to true to draw the biomes
     bool highlightBool = false; // Set to true to highlight a cell
     int mapType = 0; int mapTypeOld = 0;
 
@@ -417,7 +411,7 @@ int main()
                 // Percepitation map
                 else if (event.key.code == sf::Keyboard::P) 
                 {
-                    drawPercepitationMap(map, percep, vertexArray, vertexBuffer, useVertexBuffer);
+                    drawPercepitationMap(map, vertexArray, vertexBuffer, useVertexBuffer);
                 }
 
                 // Generate a new Map
@@ -475,10 +469,10 @@ int main()
                 }
 
                 // Temperature map
-                else if (event.key.code == sf::Keyboard::T) { drawTempMap(map, temp, vertexArray, vertexBuffer, useVertexBuffer); }
+                else if (event.key.code == sf::Keyboard::T) { drawTempMap(map, vertexArray, vertexBuffer, useVertexBuffer); }
 
                 // Display Biomes
-                else if (event.key.code == sf::Keyboard::B) { drawBiomeMap(map, globals, biomes, vertexArray, vertexBuffer, useVertexBuffer); }
+                else if (event.key.code == sf::Keyboard::B) { drawBiomeMap(map, globals, vertexArray, vertexBuffer, useVertexBuffer); }
                 
                 // activate arrows for wind direction
                 else if (event.key.code == sf::Keyboard::Comma)
@@ -600,27 +594,15 @@ int main()
 
         ImGui::SFML::Update(window, deltaClock.restart());
 
-        ImGui::Begin("Hello, world!");
-        if (ImGui::Button("Temperature Map")) { drawTempMap(map, temp, vertexArray, vertexBuffer, useVertexBuffer); };
-        ImGui::SameLine();
-        if (ImGui::Button("Biome Map")) { drawBiomeMap(map, globals, biomes, vertexArray, vertexBuffer, useVertexBuffer); };
-        ImGui::SameLine();
-        if (ImGui::Button("Percepitation Map")) { drawPercepitationMap(map, percep, vertexArray, vertexBuffer, useVertexBuffer); };
+        ImGui::Begin("Map Controls");
 
-
-        if (ImGui::BeginTable("Map Chooser",4))
-        {
-            // Radio Buttons for the different maps
-            ImGui::TableNextColumn();
-            ImGui::RadioButton("Height", &mapType, 0);
-            ImGui::TableNextColumn();
-            ImGui::RadioButton("Temperature", &mapType, 1);
-            ImGui::TableNextColumn();
-            ImGui::RadioButton("Biome", &mapType, 2);
-            ImGui::TableNextColumn();
-            ImGui::RadioButton("Percepitation", &mapType, 3);
-            ImGui::EndTable();
-        }
+        
+        // Radio Buttons for the different maps
+        ImGui::RadioButton("Height", &mapType, 0); ImGui::SameLine();
+        ImGui::RadioButton("Temperature", &mapType, 1); ImGui::SameLine();
+        ImGui::RadioButton("Biome", &mapType, 2); ImGui::SameLine();
+        ImGui::RadioButton("Percepitation", &mapType, 3); 
+            
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
 			mapTypeOld = mapType;
@@ -629,13 +611,13 @@ int main()
 				drawHeightMap(map, vertexArray, vertexBuffer, useVertexBuffer);
 				break;
 			case 1:
-				drawTempMap(map, temp, vertexArray, vertexBuffer, useVertexBuffer);
+				drawTempMap(map, vertexArray, vertexBuffer, useVertexBuffer);
 				break;
 			case 2:
-				drawBiomeMap(map, globals, biomes, vertexArray, vertexBuffer, useVertexBuffer);
+				drawBiomeMap(map, globals, vertexArray, vertexBuffer, useVertexBuffer);
 				break;
 			case 3:
-				drawPercepitationMap(map, percep, vertexArray, vertexBuffer, useVertexBuffer);
+				drawPercepitationMap(map, vertexArray, vertexBuffer, useVertexBuffer);
 				break;
 			}
 		}
@@ -702,7 +684,8 @@ int main()
             }
 
             if (!change) {
-				drawBiomeMap(map, globals, change, vertexArray, vertexBuffer, useVertexBuffer);
+				drawBiomeMap(map, globals, vertexArray, vertexBuffer, useVertexBuffer);
+                change = true;
 			}
         }
 
