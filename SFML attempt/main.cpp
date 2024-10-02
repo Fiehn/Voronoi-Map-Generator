@@ -9,6 +9,8 @@
 #include "imgui.h"
 #include "imgui-SFML.h"
 
+// FOR UI, create new game and make all values editable, also tighten up the code to make it more readable 
+
 // There is some inspiration to get from the following (particularly for threading):
 // https://gitlab.gbar.dtu.dk/s164179/Microbots/blob/dc8b5b4b883fa1fe572fd82d44fbf291d7f81153/SFML-2.5.0/examples/island/Island.cpp
 
@@ -139,90 +141,57 @@ static sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
 }
 
 static void drawTempMap(vor::Voronoi& map, bool& temp, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer) {
-    if (temp == false)
+    temp = true;
+    for (size_t i = 0; i < map.cells.size(); i++)
     {
-        temp = true;
-        for (size_t i = 0; i < map.cells.size(); i++)
-        {
-            sf::Color color(255, 255 / 2 + clamp(5 * map.cells[i].temp, 255 / 2, -255), 0, 255);
+        sf::Color color(255, 255 / 2 + clamp(5 * map.cells[i].temp, 255 / 2, -255), 0, 255);
 
-            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-            {
-                map.vertices[j].color = color;
-            }
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+        {
+            map.vertices[j].color = color;
         }
-        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
     }
-    else
-    {
-        temp = false;
-        for (std::size_t i = 0; i < map.cells.size(); i++) {
-            sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-                map.vertices[j].color = color;
-            }
-        }
-        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
-    }
+    updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
 }
 
 static void drawBiomeMap(vor::Voronoi& map, GlobalWorldObjects globals, bool& biomes, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
 {
-    if (biomes == false)
+    biomes = true;
+    for (size_t i = 0; i < map.cells.size(); i++)
     {
-        biomes = true;
-        for (size_t i = 0; i < map.cells.size(); i++)
-        {
 
-            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-            {
-                map.vertices[j].color = globals.biomes[map.cells[i].biome].color;
-            }
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+        {
+            map.vertices[j].color = globals.biomes[map.cells[i].biome].color;
         }
-        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
     }
-    else
-    {
-        biomes = false;
-        for (std::size_t i = 0; i < map.cells.size(); i++) {
-            sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-                map.vertices[j].color = color;
-            }
-        }
-        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
-    }
+    updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
 }
 
 static void drawPercepitationMap(vor::Voronoi& map, bool& percep, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
 {
+    percep = true;
+    for (size_t i = 0; i < map.cells.size(); i++)
     {
-        if (percep == false)
-        {
-            percep = true;
-            for (size_t i = 0; i < map.cells.size(); i++)
-            {
-                sf::Color color(0, clamp(5 * map.cells[i].percepitation, 255, 0), 0, 255);
+        sf::Color color(0, clamp(5 * map.cells[i].percepitation, 255, 0), 0, 255);
 
-                for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-                {
-                    map.vertices[j].color = color;
-                }
-            }
-            updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
-        }
-        else
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
-            percep = false;
-            for (std::size_t i = 0; i < map.cells.size(); i++) {
-                sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-                for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-                    map.vertices[j].color = color;
-                }
-            }
-            updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+            map.vertices[j].color = color;
         }
     }
+    updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+}
+
+static void drawHeightMap(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
+{
+    for (std::size_t i = 0; i < map.cells.size(); i++) {
+        sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+            map.vertices[j].color = color;
+        }
+    }
+    updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
 }
 
 int main() 
@@ -354,6 +323,7 @@ int main()
     bool percep = false; // Set to true to draw the percepitation lines
     bool biomes = false; // Set to true to draw the biomes
     bool highlightBool = false; // Set to true to highlight a cell
+    int mapType = 0; int mapTypeOld = 0;
 
     // Retrieve the window's default view
     float zoom = 1;
@@ -637,16 +607,44 @@ int main()
         ImGui::SameLine();
         if (ImGui::Button("Percepitation Map")) { drawPercepitationMap(map, percep, vertexArray, vertexBuffer, useVertexBuffer); };
 
+
+        if (ImGui::BeginTable("Map Chooser",4))
+        {
+            // Radio Buttons for the different maps
+            ImGui::TableNextColumn();
+            ImGui::RadioButton("Height", &mapType, 0);
+            ImGui::TableNextColumn();
+            ImGui::RadioButton("Temperature", &mapType, 1);
+            ImGui::TableNextColumn();
+            ImGui::RadioButton("Biome", &mapType, 2);
+            ImGui::TableNextColumn();
+            ImGui::RadioButton("Percepitation", &mapType, 3);
+            ImGui::EndTable();
+        }
+        if (mapType != mapTypeOld) {
+            std::cout << "Map Type: " << mapType << std::endl;
+			mapTypeOld = mapType;
+            switch (mapType) {
+			case 0:
+				drawHeightMap(map, vertexArray, vertexBuffer, useVertexBuffer);
+				break;
+			case 1:
+				drawTempMap(map, temp, vertexArray, vertexBuffer, useVertexBuffer);
+				break;
+			case 2:
+				drawBiomeMap(map, globals, biomes, vertexArray, vertexBuffer, useVertexBuffer);
+				break;
+			case 3:
+				drawPercepitationMap(map, percep, vertexArray, vertexBuffer, useVertexBuffer);
+				break;
+			}
+		}
+        
+
         ImGui::Checkbox("Draw Lines", &drawLines);
         ImGui::Checkbox("Wind Arrows", &wind);
         ImGui::Checkbox("Highlight Cells", &highlightBool);
 
-        if (ImGui::Button("Reset View")) {
-			view.setCenter(windowWidth / 2, windowHeight / 2);
-			view.setSize(window.getDefaultView().getSize());
-			view.zoom(1.f);
-			window.setView(view);
-		}
 
         // Display the number of cells, nr of biomes same line
         ImGui::Text("Number of cells: %d", map.cells.size());
@@ -672,7 +670,7 @@ int main()
             ImGui::Text("Wind: %.2f, %.2f", cell.windDir, cell.windStr);
 		}
         
-        if (biomes)
+        if (mapType==2)
         {
             bool change = true; // If the user changes the color of a biome, we need to update the map
             for (int i = 0; i < globals.biomes.size(); i++)
