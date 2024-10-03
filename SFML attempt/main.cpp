@@ -28,14 +28,14 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
     sf::VertexArray& windArrows,
     sf::VertexArray& lines,
     const sf::Font& font,
-    const int& n_convergence_lines,
-    const int& kmeans_k, 
-    const int& ncellx, 
-    const int& ncelly, 
-    const int& MAXWIDTH, 
-    const int& MAXHEIGHT, 
+    const unsigned int& n_convergence_lines,
+    const unsigned int& kmeans_k,
+    const unsigned int& ncellx,
+    const unsigned int& ncelly,
+    const unsigned int& MAXWIDTH,
+    const unsigned int& MAXHEIGHT,
     const float& point_jitter, 
-    const int& npeaks,
+    const unsigned int& npeaks,
     const float& sealevel,
     const float& global_temp_avg,
     const float& delta_max_neg,
@@ -44,17 +44,22 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
     const float& dist_from_mainland,
     const int& height_method,
     const float& rise_threshold,
-    const int& height_smooth_repeats,
+    const unsigned int& height_smooth_repeats,
     const int& smooth_method,
-    const int& height_noise_repeats,
+    const unsigned int& height_noise_repeats,
     const float& delta_coast_line,
-    const int& temp_smooth_repeats,
-    const int& percepitation_repeats,
-    const int& percepitation_smooth_repeats,
-    const int& kmeans_max_iter,
+    const unsigned int& temp_smooth_repeats,
+    const unsigned int& percepitation_repeats,
+    const unsigned int& percepitation_smooth_repeats,
+    const unsigned int& kmeans_max_iter,
     const float& windstr_alpha,
-    const float& windstr_beta
+    const float& windstr_beta,
+    unsigned int seed
 ) {
+    // Seed
+    if (seed == 0) { seed = time(NULL); }
+    std::srand(seed);
+
     // Globals
     globals.clearGlobals();
     globals.setSeaLevel(sealevel); // RandomBetween(0.4f, 0.6f)
@@ -210,48 +215,47 @@ static void drawWindMap(vor::Voronoi& map, VertexMap& vertexMap) {
 
 int main() 
 {
-    // Initialize the random seed and window
-    unsigned int seed = time(NULL);
-    std::srand(seed);
-    int windowWidth = 2500;
-    int windowHeight = 1500;
+    // Initate seed and window size
+    std::srand(time(NULL));
+    unsigned int seed = 0; // for changing the seed
+    unsigned int windowWidth = 2500;
+    unsigned int windowHeight = 1500;
 
     // For map generation
-    float point_jitter = 8.f; // How much to jitter the points after grid placement
-    int ncellx = 200; // Number of cells in x direction
-    int ncelly = 150; // Number of cells in y direction
-    // Total cells are ncellx * ncelly
+    float point_jitter = 7.f; // How much to jitter the points after grid placement
+    unsigned int ncellx = 150; // Number of cells in x direction
+    unsigned int ncelly = 100; // Number of cells in y direction
 
     // Height generation
-    int npeaks = 10; // Number of peaks to generate in the heightmap
+    unsigned int npeaks = 10; // Number of peaks to generate in the heightmap
     float delta_max_neg = 0.04; // The maximum amount of random height added in the negative direction
     float delta_max_pos = 0.02; // The maximum amount of random height added in the positive direction
     float prob_of_island = 0.01; // small probability of random height increase when away from mainland 
     float dist_from_mainland = 1.0; // The distance from the mainland where the probability of random height increase begins, Represented by the sum of height of all neighbors
     int height_method = 1; // Method 1 is random, method 2 is first in first out, needs more methods (Simplex, diamond, perlin, etc)
     float rise_threshold = 0.09; // The minimum rise value where a cell height is smoothed 
-    int height_smooth_repeats = 15; // amount of height smoothing iterations
+    unsigned int height_smooth_repeats = 15; // amount of height smoothing iterations
     int smooth_method = 1; // method 1 is random the other is front
-    int height_noise_repeats = 2; // amount of height noise iterations, happens after smoothing
+    unsigned int height_noise_repeats = 2; // amount of height noise iterations, happens after smoothing
     float delta_coast_line = 0.05; // the range around sealevel that is considered coast (below and above)
 
     // Temperature
     float global_temp_avg = RandomBetween(25.f, 45.f); // not the actual average but a value that determines the temperature range
-    int temp_smooth_repeats = 2; // amount of temperature smoothing iterations
+    unsigned int temp_smooth_repeats = 2; // amount of temperature smoothing iterations
 
     // Sealevel
     float sealevel = RandomBetween(0.4f, 0.6f); // The height at which the ocean starts
     
     // Percepitation
-    int percepitation_repeats = 1; // amount of percepitation iterations (NEEDs to be above 1)
-    int percepitation_smooth_repeats = 2; // amount of percepitation smoothing iterations
+    unsigned int percepitation_repeats = 1; // amount of percepitation iterations (NEEDs to be above 1)
+    unsigned int percepitation_smooth_repeats = 2; // amount of percepitation smoothing iterations
     
     // Biomes
-    int kmeans_max_iter = 5; // The maximum amount of iterations for the kmeans algorithm
-    int kmeans_k = 8; // The amount of clusters for the kmeans algorithm (amount of biomes)
+    unsigned int kmeans_max_iter = 5; // The maximum amount of iterations for the kmeans algorithm
+    unsigned int kmeans_k = 8; // The amount of clusters for the kmeans algorithm (amount of biomes)
 
     // Wind
-    int n_convergence_lines = 5; // The amount of convergence lines to generate Needs 
+    unsigned int n_convergence_lines = 5; // The amount of convergence lines to generate Needs 
     float windstr_alpha = 2;
     float windstr_beta = 2;
 
@@ -311,7 +315,7 @@ int main()
         smooth_method, height_noise_repeats,
         delta_coast_line, temp_smooth_repeats,
         percepitation_repeats, percepitation_smooth_repeats,
-        kmeans_max_iter, windstr_alpha, windstr_beta);
+        kmeans_max_iter, windstr_alpha, windstr_beta, seed);
 
     while (window.isOpen())
     {
@@ -335,20 +339,7 @@ int main()
                     oldPos = window.mapPixelToCoords(sf::Vector2i(event.mouseButton.x, event.mouseButton.y));
                 }
                 if (event.mouseButton.button == 1) {
-                    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-                    std::size_t cellIndex = map.getCellIndex(mousePos);
-                    if(cellIndex != vor::INVALID_INDEX) {
-                        std::cout << "ID: " << cellIndex << " Height: " << map.cells[cellIndex].height << " riverBool: " << map.cells[cellIndex].riverBool << " oceanBool: " << map.cells[cellIndex].oceanBool << " snowBool: " << map.cells[cellIndex].snowBool << " lakeBool: " << map.cells[cellIndex].lakeBool << std::endl;
-                        std::cout << "Coordinates: " << map.points[cellIndex].x << " " << map.points[cellIndex].y << std::endl;
-                        std::cout << "Temp: " << map.cells[cellIndex].temp << " Percip: " << map.cells[cellIndex].percepitation << " Humidity: " << map.cells[cellIndex].humidity << std::endl;
-                        std::cout << "Wind direction: " << map.cells[cellIndex].windDir << " Wind speed: " << map.cells[cellIndex].windStr << std::endl;
-                        std::cout << "Distance to Ocean: " << map.cells[cellIndex].distToOcean << std::endl;
-                        std::cout << "Biome: " << globals.biomes[map.cells[cellIndex].biome].name << std::endl;
-                        std::cout << std::endl;
-                    }
-                    else {
-                        std::cout << "Out of Bounds!" << std::endl;
-                    }
+                    // This will need to be a values changer.
                 }
                 break;
 
@@ -364,29 +355,6 @@ int main()
 
                 // Close Program
                 if (event.key.code == sf::Keyboard::Escape) { window.close(); break; }
-
-                // Debug:: Draw Cells in Triangles
-                else if (event.key.code == sf::Keyboard::A)
-                { // paint the cells triangles in vertexBuffer
-                    
-                    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-                    
-                    std::size_t cellIndex = map.getCellIndex(mousePos);
-                    if (cellIndex == vor::INVALID_INDEX) {
-						break;
-					}
-                    unsigned int offset = map.cells[cellIndex].vertex_offset;
-                    int n_vertices = map.cells[cellIndex].vertex.size();
-
-                    // now change color on vertex
-                    sf::Color color(100,100,100,255);
-                    for (int i = 0; i < n_vertices * 3; i++)
-                    {
-                        map.vertices[offset + i].color = color;
-                    }
-                    // TODO: update only the part of the buffer that has changed
-                    vertexMap.update(map); // There is no need to update the whole buffer, only the part that has changed (offset, n_vertices)
-                }
 
                 // Generate a new Map
                 else if (event.key.code == sf::Keyboard::N)
@@ -404,7 +372,7 @@ int main()
                         smooth_method, height_noise_repeats,
                         delta_coast_line, temp_smooth_repeats,
                         percepitation_repeats, percepitation_smooth_repeats,
-                        kmeans_max_iter, windstr_alpha, windstr_beta);
+                        kmeans_max_iter, windstr_alpha, windstr_beta, seed);
                 }
 
                 // Draw Lines
@@ -591,7 +559,11 @@ int main()
 			ImGui::Text("Cell %d", highlightedCell);
 			ImGui::Text("Temp: %.2f", cell.temp);
             ImGui::Text("Precipitation: %.2f", cell.percepitation);
-            ImGui::Text("Elevation: %.2f", cell.height);
+            ImGui::Text("Elevation: %.2f", cell.height); ImGui::SameLine();
+            ImGui::Text("Rise: %.2f", cell.rise);
+            ImGui::Text("Distance to Ocean: %.2f", cell.distToOcean);
+            ImGui::Text("Coast Cell: %.d", cell.coastBool);
+            ImGui::Text("Ocean Cell: %.d", cell.oceanBool);
             const Biome& biome = globals.biomes[cell.biome];
             ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
             ImGui::Text("Biome: %s", biome.name.c_str());
@@ -651,9 +623,165 @@ int main()
         if (newMap)
         {
             ImGui::Begin("New Map Controls");
-            
-        }
+            // push a color on the generate new map button
 
+            if (ImGui::Button("Generate New Map", {200,50})) {
+                genWorld(map, globals, window, vertexMap,
+                    windArrows, lines, font,
+                    n_convergence_lines,
+                    kmeans_k, ncellx, ncelly,
+                    windowWidth, windowHeight,
+                    point_jitter, npeaks, sealevel,
+                    global_temp_avg, delta_max_neg,
+                    delta_max_pos, prob_of_island,
+                    dist_from_mainland, height_method,
+                    rise_threshold, height_smooth_repeats,
+                    smooth_method, height_noise_repeats,
+                    delta_coast_line, temp_smooth_repeats,
+                    percepitation_repeats, percepitation_smooth_repeats,
+                    kmeans_max_iter, windstr_alpha, windstr_beta, seed);
+                newMap = false;
+            }
+
+            ImGui::Text("The map will have around %.d cells", ncellx * ncelly);
+
+            ImGui::PushItemWidth(150.f);
+
+            ImGui::InputUInt("Cells x", &ncellx); 
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Number of cells in the x direction. \nKeep at least above 100 or it starts to break down.");
+                ImGui::EndTooltip(); }
+
+            ImGui::InputUInt("Cells y", &ncelly);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Number of cells in the y direction. \nKeep at least above 100 or it starts to break down.");
+                ImGui::EndTooltip(); }
+
+            ImGui::DragFloat("Jitter of the cells", &point_jitter,0.5f,0.0f,10.f);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Amount each cell is jittered from their grid position");
+                ImGui::EndTooltip(); }
+
+            ImGui::DragFloat("Sea Level", &sealevel, 0.01f, 0.0f, 1.0f);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("The height of the sealevel across map, between 0 and 1.");
+                ImGui::EndTooltip(); }
+
+            ImGui::DragFloat("Global Temp Avg", &global_temp_avg, 0.5f, -30.0f, 100.0f);
+            if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::Text("This is an initializer for global temperature modifier, \naround 30-50 will give realistic values (to earth) depending on the size of the map.");
+				ImGui::EndTooltip(); }
+
+            ImGui::InputUInt("Number of Peaks", &npeaks);
+            if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::Text("Number of peaks to generate on the map.");
+				ImGui::EndTooltip(); }
+
+            ImGui::InputUInt("Nr of Convergence Lines", &n_convergence_lines);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Defines lines that split the prevailing winds. \nDirections and strengths are then concluded randomly, Earth has 6 zones so input 6.");
+                ImGui::EndTooltip(); }
+
+            ImGui::InputUInt("Amount of Biomes", &kmeans_k);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Amount of biomes to generate initially. \nLarge maps will often have a lot of ocean biomes.");
+                ImGui::EndTooltip(); }
+
+            ImGui::InputUInt("Height Smooths", &height_smooth_repeats);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Amount of times the heihgt map is smoothed. \nShould be above 2 ideally more. \nThis is relatively intensive.");
+                ImGui::EndTooltip(); }
+
+            ImGui::InputUInt("Height Noisers", &height_noise_repeats);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("This is the amount of times the height values are renoised after the smoothing, \nthis gives a more realistic height map. \nShould not be used more times than smoothing.");
+                ImGui::EndTooltip(); }
+
+            ImGui::InputUInt("Temp Smooths", &temp_smooth_repeats);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("This is the amount of times temperature is smoothed out.");
+                ImGui::EndTooltip(); }
+
+            ImGui::InputUInt("Percepitations", &percepitation_repeats);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("This is the amount of times percepitation is calculated. \nShould not be more than 1 unless you want high contrast.");
+                ImGui::EndTooltip(); }
+            if (percepitation_repeats == 0) { percepitation_repeats = 1; }
+
+            ImGui::InputUInt("Percepitation Smooths", &percepitation_smooth_repeats);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("This is the amount of times percepitation is smoothed.");
+                ImGui::EndTooltip(); }
+            
+            //ImGui::Checkbox("Advanced Settings", &advancedSettings);
+
+            if (ImGui::CollapsingHeader("Advanced Settings")) {
+                ImGui::InputUInt("Seed", &seed);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Seed for the random number generator. \nKeep at 0 for random seed.");
+                    ImGui::EndTooltip();
+                }
+                ImGui::DragFloat("Delta Max Neg", &delta_max_neg, 0.01f, 0.0f, 1.0f);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("The maximum amount of random height added in the negative direction. \nIncreasing will make the map more steepely falling");
+                    ImGui::EndTooltip();
+                }
+                ImGui::DragFloat("Delta Max Pos", &delta_max_pos, 0.01f, 0.0f, 1.0f);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("The maximum amount of random height added in the positive direction. \nIncreasing will make the map more steepely falling");
+                    ImGui::EndTooltip();}
+                ImGui::DragFloat("Islands", &prob_of_island, 0.01f, 0.0f, 1.0f);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("small probability of random height increase when away from mainland. \nIncrease to make more islands at a short distance from shore.");
+                    ImGui::EndTooltip(); }
+                ImGui::DragFloat("Distance from land", &dist_from_mainland, 0.04f, 0.0f, 5.0f);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("The distance from the mainland where the probability of random height increase begins,\n Represented by the sum of height of all neighbors");
+                    ImGui::EndTooltip(); }
+                ImGui::DragFloat("Rise Threshold", &rise_threshold, 0.01f, 0.0f, 1.0f);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("The 'rise' that is the maximal allowed under height smoothening.");
+                    ImGui::EndTooltip(); }
+                ImGui::DragFloat("Coast Line", &delta_coast_line, 0.01f, 0.0f, 1.0f);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("The amount above or below sealine that defines a coast.");
+                    ImGui::EndTooltip(); }
+                ImGui::DragFloat("Wind str alpha", &windstr_alpha, 1.0f, 0.0f, 10.0f);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Alpha value for the beta distribution of wind strenght.");
+                    ImGui::EndTooltip(); }
+                ImGui::DragFloat("Wind str beta", &windstr_beta, 1.0f, 0.0f, 10.0f);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Beta value for the beta distribution of wind strenght.");
+                    ImGui::EndTooltip(); }
+            }
+
+            ImGui::PopItemWidth();
+
+            ImGui::End();
+        }
 
         if (!highlightBool) {
             highlight.clear();

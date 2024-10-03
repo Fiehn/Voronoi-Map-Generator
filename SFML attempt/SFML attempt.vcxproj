@@ -155,6 +155,7 @@
     <ClInclude Include="cell.hpp" />
     <ClInclude Include="clustering.hpp" />
     <ClInclude Include="GlobalWorldObjects.hpp" />
+    <ClInclude Include="Include\Dear ImGUI\imgui.h" />
     <ClInclude Include="vertex.hpp" />
     <ClInclude Include="Voronoi.hpp" />
     <ClInclude Include="CellObjects.hpp" />

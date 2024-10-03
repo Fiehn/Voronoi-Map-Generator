@@ -132,7 +132,7 @@ public:
 		#pragma omp parallel for reduction(&&: done) num_threads(16) schedule(static)
 		for (int i = 0; i < data.size(); ++i) {
 			const std::vector<float>& point = data[i];
-			int bestCluster = -1;
+			int bestCluster = 0; // NEEDS to be -1 
 			float minDistance = std::numeric_limits<float>::max();
 
 			for (int j = 0; j < clusters.size(); ++j) {
@@ -143,6 +143,7 @@ public:
 					bestCluster = j;
 				}
 			}
+			// How does bestCluster end up being -1? Percepitation is nan so dist does not work..
 			
 			if (clusterIds[i] != bestCluster) {
 				done = false;
