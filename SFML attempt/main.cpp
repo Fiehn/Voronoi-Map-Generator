@@ -1,10 +1,10 @@
 #pragma once
-#include <SFML/Graphics.hpp>
 #include <iostream>
 #include <string>
 #include <time.h>
 #include <cstdlib>
 #include "Voronoi.hpp"
+#include "vertex.hpp"
 
 #include "imgui.h"
 #include "imgui-SFML.h"
@@ -24,14 +24,65 @@ static void loadText(sf::RenderWindow& window, sf::Text& text, int fontsize, std
     window.display();
 }
 
-static void genWorld(GlobalWorldObjects& globals, vor::Voronoi& map, const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float point_jitter, int peaks,sf::RenderWindow& window)
-{
-    std::string loadingText = "Initializing (0)";
-    sf::Font font;
-    if (!font.loadFromFile("Fonts/arial.ttf"))
+static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderWindow& window, VertexMap& vertexMap,
+    sf::VertexArray& windArrows,
+    sf::VertexArray& lines,
+    const sf::Font& font,
+    const int& n_convergence_lines,
+    const int& kmeans_k, 
+    const int& ncellx, 
+    const int& ncelly, 
+    const int& MAXWIDTH, 
+    const int& MAXHEIGHT, 
+    const float& point_jitter, 
+    const int& npeaks,
+    const float& sealevel,
+    const float& global_temp_avg,
+    const float& delta_max_neg,
+    const float& delta_max_pos,
+    const float& prob_of_island,
+    const float& dist_from_mainland,
+    const int& height_method,
+    const float& rise_threshold,
+    const int& height_smooth_repeats,
+    const int& smooth_method,
+    const int& height_noise_repeats,
+    const float& delta_coast_line,
+    const int& temp_smooth_repeats,
+    const int& percepitation_repeats,
+    const int& percepitation_smooth_repeats,
+    const int& kmeans_max_iter,
+    const float& windstr_alpha,
+    const float& windstr_beta
+) {
+    // Globals
+    globals.clearGlobals();
+    globals.setSeaLevel(sealevel); // RandomBetween(0.4f, 0.6f)
+    globals.setGlobalTemp(global_temp_avg);
+    globals.generateConvergenceLines(n_convergence_lines, windstr_alpha, windstr_beta);
+    lines.clear();
+    lines.resize(2 * n_convergence_lines);
+    for (int i = 0; i < n_convergence_lines * 2; i++)
     {
-        std::cout << "Could not load font" << std::endl;
+        if (i % 2 == 0)
+        {
+            lines.append(sf::Vertex(sf::Vector2f(0, globals.convergenceLines[std::floor(i / 2)] * MAXHEIGHT), sf::Color::Green));
+        }
+        else
+        {
+            lines.append(sf::Vertex(sf::Vector2f(MAXWIDTH, globals.convergenceLines[std::floor(i / 2)] * MAXHEIGHT), sf::Color::Green));
+        }
     }
+    std::vector<sf::Color> biomeColors = randomColors(kmeans_k);
+    for (int i = 0; i < kmeans_k; i++) {
+        globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, { true }, biomeColors[i]);
+    }
+    biomeColors.clear();
+
+
+
+    // Initialize the loading screen
+    std::string loadingText = "Initializing (0)";
     sf::Text text(loadingText, font, 50);
     text.setFillColor(sf::Color::White);
     text.setPosition(MAXWIDTH / 2 - text.getGlobalBounds().width / 2, MAXHEIGHT / 2 - text.getGlobalBounds().height / 2);
@@ -40,93 +91,46 @@ static void genWorld(GlobalWorldObjects& globals, vor::Voronoi& map, const int n
     window.draw(text);
     window.display();
 
+    // Create the map
     map.clearMap();
     map.fillMap(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, point_jitter);
-    globals.clearGlobals();
-    globals.generateConvergenceLines(5);
-    globals.setSeaLevel(RandomBetween(0.4f, 0.6f));
-    globals.setGlobalTemp(RandomBetween(25.f, 45.f));
-    std::cout << "Wind Directions: " << globals.windDirection[0] << " " << globals.windDirection[1] << " " << globals.windDirection[2] << " " << globals.windDirection[3] << std::endl;
-    std::cout << "Global Avereage Temp: " << globals.globalTempAvg << " " << "Sea Level: " << globals.seaLevel << std::endl;
+
 
     loadText(window, text, 50, loadingText, "Generating Heightmap");
-    random_height_gen(map.cells, peaks, 0.04, 0.02, 0.01, 1.0, 1);
+    random_height_gen(map.cells, npeaks, delta_max_neg, delta_max_pos, prob_of_island, dist_from_mainland, height_method);
     loadText(window, text, 50, loadingText, "Smoothing Heightmap");
-    smooth_height(map.cells, 0.09, 15, 1);
-    loadText(window, text, 50, loadingText, "Generating Noise");
-    noise_height(map.cells, 2);
-    loadText(window, text, 50, loadingText, "Calculating Heights");
-    calcHeightValues(map.cells, globals, 0.05);
+    smooth_height(map.cells, rise_threshold, height_smooth_repeats, smooth_method);
+    loadText(window, text, 50, loadingText, "Adding Noise to Heightmap");
+    noise_height(map.cells, height_noise_repeats);
+    loadText(window, text, 50, loadingText, "Calculating Height Values");
+    calcHeightValues(map.cells, globals, delta_coast_line);
     loadText(window, text, 50, loadingText, "Distance To Oceans");
     closeOceanCell(map.cells, map.points, globals);
     loadText(window, text, 50, loadingText, "Calculating Wind");
-    calcWind(map.cells,map.points, MAXHEIGHT, globals);
-    loadText(window, text, 50, loadingText, "Calculating Temperature");
-    calcTemp(map.cells, globals, map.points, MAXHEIGHT);
-    smoothTemps(map.cells, 1);
-    loadText(window, text, 50, loadingText, "Calculating Percepetation");
-    calcPercepitation(map.cells, map.points, globals);
-    smoothPercepitation(map.cells, 1);
-    loadText(window, text, 50, loadingText, "Calculating Biomes");
-    calcBiome(map.cells, globals);
-    loadText(window, text, 50, loadingText, "Calculating Rivers");
+    calcWind(map.cells, map.points, MAXHEIGHT, globals);
+    loadText(window, text, 50, loadingText, "Calculating River");
     calcRiverStart(map.cells, globals);
+    loadText(window, text, 50, loadingText, "Calculating Temperatures");
+    calcTemp(map.cells, globals, map.points, MAXHEIGHT);
+    smoothTemps(map.cells, temp_smooth_repeats);
+    loadText(window, text, 50, loadingText, "Calculating Percepetation");
+    calcPercepitation(map.cells, map.points, globals, percepitation_repeats);
+    smoothPercepitation(map.cells, percepitation_smooth_repeats);
+    loadText(window, text, 50, loadingText, "Calculating Humidity");
+    calcHumid(map.cells);
+    loadText(window, text, 50, loadingText, "Calculating Biomes");
+    calcBiome(map.cells, globals, kmeans_max_iter);
+    loadText(window, text, 50, loadingText, "Drawing Wind Arrows");
+    windArrows.clear();
+    windArrows = vor::windArrows(map);
+    loadText(window, text, 50, loadingText, "Generating Vertex Buffer");
+    vertexMap.clear();
+    vertexMap.create(map);
+    vertexMap.genVertexMap(map);
+    loadText(window, text ,50, loadingText,"Drawing Map");
+
     return;
 }
-static sf::VertexBuffer genBuffer(vor::Voronoi& map)
-{
-	sf::VertexBuffer vertexBuffer(sf::Triangles, sf::VertexBuffer::Dynamic);
-	vertexBuffer.create(map.vertexCount * 3);
-	
-	// Attempt VertexBuffer
-    if (sf::VertexBuffer::isAvailable()) {
-		std::cout << "Vertex buffer is available" << std::endl;
-	}
-    else {
-		std::cout << "Vertex buffer is not available" << std::endl;
-		vertexBuffer;
-	}
-	// Fill vertex buffer / draw triangles from map.vertices
-    for (std::size_t i = 0; i < map.cells.size(); i++) {
-		sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-			map.vertices[j].color = color;
-		}
-	}
-	vertexBuffer.update(map.vertices.data());
-	return vertexBuffer;
-}
-static sf::VertexArray genArray(vor::Voronoi& map)
-{
-    sf::VertexArray vertexArray(sf::Triangles, map.vertexCount * 3);
-
-    for (std::size_t i = 0; i < map.cells.size(); i++) {
-		sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-			map.vertices[j].color = color;
-		}
-	}
-    // Fill vertex array / draw triangles from map.vertices
-    for (std::size_t i = 0; i < map.vertices.size(); i++) {
-        vertexArray.append(map.vertices[i]);
-    }
-    return vertexArray;
-}
-
-static void updateVertex(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
-{
-    if (useVertexBuffer)
-    {
-		vertexBuffer.update(map.vertices.data());
-	}
-    else
-    {
-		vertexArray.clear();
-        for (std::size_t i = 0; i < map.vertices.size(); i++) {
-			vertexArray.append(map.vertices[i]);
-		}
-	}
-}   
 
 static sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
 {
@@ -140,7 +144,7 @@ static sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
     return highlight;
 }
 
-static void drawTempMap(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer) {
+static void drawTempMap(vor::Voronoi& map, VertexMap& vertexMap) {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
         sf::Color color(255, 255 / 2 + clamp(5 * map.cells[i].temp, 255 / 2, -255), 0, 255);
@@ -150,10 +154,10 @@ static void drawTempMap(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::Ver
             map.vertices[j].color = color;
         }
     }
-    updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+    vertexMap.update(map);
 }
 
-static void drawBiomeMap(vor::Voronoi& map, GlobalWorldObjects globals, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
+static void drawBiomeMap(vor::Voronoi& map, GlobalWorldObjects globals, VertexMap& vertexMap)
 {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
@@ -163,10 +167,10 @@ static void drawBiomeMap(vor::Voronoi& map, GlobalWorldObjects globals, sf::Vert
             map.vertices[j].color = globals.biomes[map.cells[i].biome].color;
         }
     }
-    updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+    vertexMap.update(map);
 }
 
-static void drawPercepitationMap(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
+static void drawPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
@@ -177,10 +181,10 @@ static void drawPercepitationMap(vor::Voronoi& map, sf::VertexArray& vertexArray
             map.vertices[j].color = color;
         }
     }
-    updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+    vertexMap.update(map);
 }
 
-static void drawHeightMap(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::VertexBuffer& vertexBuffer, bool useVertexBuffer)
+static void drawHeightMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
     for (std::size_t i = 0; i < map.cells.size(); i++) {
         sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
@@ -188,15 +192,68 @@ static void drawHeightMap(vor::Voronoi& map, sf::VertexArray& vertexArray, sf::V
             map.vertices[j].color = color;
         }
     }
-    updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
+    vertexMap.update(map);
+}
+
+static void drawWindMap(vor::Voronoi& map, VertexMap& vertexMap) {
+    for (size_t i = 0; i < map.cells.size(); i++)
+    {
+        sf::Color color(255 * map.cells[i].windDir / 360, 255 * map.cells[i].windStr, 0, 255);
+
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+        {
+            map.vertices[j].color = color;
+        }
+    }
+    vertexMap.update(map);
 }
 
 int main() 
 {
     // Initialize the random seed and window
-    std::srand(time(NULL));
+    unsigned int seed = time(NULL);
+    std::srand(seed);
     int windowWidth = 2500;
     int windowHeight = 1500;
+
+    // For map generation
+    float point_jitter = 8.f; // How much to jitter the points after grid placement
+    int ncellx = 200; // Number of cells in x direction
+    int ncelly = 150; // Number of cells in y direction
+    // Total cells are ncellx * ncelly
+
+    // Height generation
+    int npeaks = 10; // Number of peaks to generate in the heightmap
+    float delta_max_neg = 0.04; // The maximum amount of random height added in the negative direction
+    float delta_max_pos = 0.02; // The maximum amount of random height added in the positive direction
+    float prob_of_island = 0.01; // small probability of random height increase when away from mainland 
+    float dist_from_mainland = 1.0; // The distance from the mainland where the probability of random height increase begins, Represented by the sum of height of all neighbors
+    int height_method = 1; // Method 1 is random, method 2 is first in first out, needs more methods (Simplex, diamond, perlin, etc)
+    float rise_threshold = 0.09; // The minimum rise value where a cell height is smoothed 
+    int height_smooth_repeats = 15; // amount of height smoothing iterations
+    int smooth_method = 1; // method 1 is random the other is front
+    int height_noise_repeats = 2; // amount of height noise iterations, happens after smoothing
+    float delta_coast_line = 0.05; // the range around sealevel that is considered coast (below and above)
+
+    // Temperature
+    float global_temp_avg = RandomBetween(25.f, 45.f); // not the actual average but a value that determines the temperature range
+    int temp_smooth_repeats = 2; // amount of temperature smoothing iterations
+
+    // Sealevel
+    float sealevel = RandomBetween(0.4f, 0.6f); // The height at which the ocean starts
+    
+    // Percepitation
+    int percepitation_repeats = 1; // amount of percepitation iterations (NEEDs to be above 1)
+    int percepitation_smooth_repeats = 2; // amount of percepitation smoothing iterations
+    
+    // Biomes
+    int kmeans_max_iter = 5; // The maximum amount of iterations for the kmeans algorithm
+    int kmeans_k = 8; // The amount of clusters for the kmeans algorithm (amount of biomes)
+
+    // Wind
+    int n_convergence_lines = 5; // The amount of convergence lines to generate Needs 
+    float windstr_alpha = 2;
+    float windstr_beta = 2;
 
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML");
     window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
@@ -205,111 +262,25 @@ int main()
     // Create the global world objects
     GlobalWorldObjects globals;
     
+    // Empty additionals
+    sf::VertexArray windArrows;
+    sf::VertexArray lines;
+    lines.setPrimitiveType(sf::Lines);
+
+    // Create empty highlighted cell
+    std::size_t highlightedCell = vor::INVALID_INDEX;
+    sf::VertexArray highlight(sf::LineStrip, 5);
     
-    // Generate Global Lines // NEEDS TO BE MOVED TO GLOBAL OBJECTS
-    globals.generateConvergenceLines(5);
-    sf::VertexArray lines(sf::Lines, 10);
-    for (int i = 0; i < 10; i++)
-    {
-        if (i % 2 == 0)
-        {
-            lines.append(sf::Vertex(sf::Vector2f(0, globals.convergenceLines[std::floor(i / 2)] * windowHeight), sf::Color::Green));
-        }
-        else 
-        {
-            lines.append(sf::Vertex(sf::Vector2f(windowWidth, globals.convergenceLines[std::floor(i / 2)] * windowHeight), sf::Color::Green));
-        }
-	}
-
-    // Print initials:
-    std::cout << "Wind Directions: " << globals.windDirection[0] << " " << globals.windDirection[1] << " " << globals.windDirection[2] << " " << globals.windDirection[3] << " " << globals.windDirection[4] << std::endl;
-    std::cout << "Global Avereage Temp: " << globals.globalTempAvg << " " << "Sea Level: " << globals.seaLevel << std::endl;
-
-    // Create empty Biomes // NEEDS to be reworked to work better with K-means, and to be moved to global objects
-    std::vector<sf::Color> biomeColors = randomColors(10);
-    for (int i = 0; i < 10; i++) {
-        globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, { true }, biomeColors[i]);
-    }
-    biomeColors.clear();
-    
-
-    // Create the loading screen
-    std::string loadingText = "Initializing (0)";
+    // Load font!
     sf::Font font;
-    if (!font.loadFromFile("Roboto-Medium.ttf"))
-    {
-		std::cout << "Could not load font" << std::endl;
-	}
-    sf::Text text(loadingText, font, 50);
-    text.setFillColor(sf::Color::White);
-    text.setPosition(windowWidth / 2 - text.getGlobalBounds().width / 2, windowHeight / 2 - text.getGlobalBounds().height / 2);
-    // Draw the loading screen
-    window.clear();
-    window.draw(text);
-    window.display();
+    if (!font.loadFromFile("Roboto-Medium.ttf")) { std::cout << "Could not load font" << std::endl; }
 
-    // Create the map
-    vor::Voronoi map(200, 150, windowWidth, windowHeight, 8.f);
+    // Init the map
+    vor::Voronoi map;
     
-    loadText(window,text,50,loadingText,"Generating Heightmap");
-    random_height_gen(map.cells, 10, 0.04, 0.02, 0.01, 1.0, 1);
-
-    loadText(window,text,50,loadingText,"Smoothing Heightmap");
-    smooth_height(map.cells, 0.09, 15, 1);
-
-    loadText(window,text,50,loadingText,"Adding Noise to Heightmap");
-    noise_height(map.cells, 2);
-
-    loadText(window,text,50,loadingText,"Calculating Height Values");
-    calcHeightValues(map.cells, globals, 0.05);
-
-    loadText(window,text,50,loadingText,"Distance To Oceans");
-    closeOceanCell(map.cells, map.points, globals);
-
-    loadText(window,text,50,loadingText,"Calculating Wind");
-    calcWind(map.cells, map.points, windowHeight, globals);
-
-    loadText(window,text,50,loadingText,"Calculating River");
-    calcRiverStart(map.cells, globals);
-
-    loadText(window, text, 50, loadingText, "Calculating Temperatures");
-    calcTemp(map.cells, globals, map.points, windowHeight);
-    smoothTemps(map.cells, 2);
-
-    loadText(window,text,50,loadingText,"Calculating Percepetation");
-    calcPercepitation(map.cells, map.points, globals, 1);
-    smoothPercepitation(map.cells, 1);
-
-    loadText(window,text,50,loadingText,"Calculating Humidity");
-    calcHumid(map.cells);
-
-    loadText(window,text,50,loadingText,"Calculating Biomes");
-    calcBiome(map.cells, globals);
-    std::cout << "Biomes: " << std::endl;
-    for (int i = 0; i < globals.biomes.size(); i++)
-    {
-        std::cout << globals.biomes[i].name << ": " << std::endl;
-        std::cout << "Color: " << colorName(globals.biomes[i].color) << ", Temperature: " << globals.biomes[i].getAvgTemp() << ", Percepitation: " << globals.biomes[i].getAvgRain() << ", Humidity: " << globals.biomes[i].getAvgHumidity() << ", Height: " << globals.biomes[i].getAvgElevation() << ", Wind Str: " << globals.biomes[i].getAvgWindStr() << ", Ocean: " << globals.biomes[i].isOcean << std::endl;
-	}
-    
-    loadText(window,text,50,loadingText,"Drawing Wind Arrows");
-    sf::VertexArray windArrows = vor::windArrows(map);
-
-    loadText(window,text,50,loadingText,"Generating Vertex Buffer");
-
-    bool useVertexBuffer = sf::VertexBuffer::isAvailable;
-
     // Create the vertex map
-    sf::VertexBuffer vertexBuffer;
-    sf::VertexArray vertexArray;
-    if (useVertexBuffer)
-    {
-        vertexBuffer = genBuffer(map);
-    }
-    else
-    {
-        vertexArray = genArray(map);
-    }
+    VertexMap vertexMap;
+    std::cout << "Vertex Buffer Available? " << vertexMap.useVertexBuffer << std::endl;
 
     // Create the view
     sf::Vector2f oldPos;
@@ -318,16 +289,30 @@ int main()
     bool wind = false; // Set to true to draw the wind direction
     bool highlightBool = false; // Set to true to highlight a cell
     int mapType = 0; int mapTypeOld = 0;
+    bool newMap = false; // Get window to draw new map
 
     // Retrieve the window's default view
     float zoom = 1;
     sf::View view = window.getDefaultView();
 
-    // Create empty highlighted cell
-    std::size_t highlightedCell = vor::INVALID_INDEX;
-    sf::VertexArray highlight(sf::LineStrip, 5);
-
     sf::Clock deltaClock;
+
+    // Generate the actual map:
+    genWorld(map, globals, window, vertexMap,
+        windArrows, lines, font,
+        n_convergence_lines,
+        kmeans_k, ncellx, ncelly,
+        windowWidth, windowHeight,
+        point_jitter, npeaks, sealevel,
+        global_temp_avg, delta_max_neg,
+        delta_max_pos, prob_of_island,
+        dist_from_mainland, height_method,
+        rise_threshold, height_smooth_repeats,
+        smooth_method, height_noise_repeats,
+        delta_coast_line, temp_smooth_repeats,
+        percepitation_repeats, percepitation_smooth_repeats,
+        kmeans_max_iter, windstr_alpha, windstr_beta);
+
     while (window.isOpen())
     {
         sf::Event event;
@@ -378,11 +363,7 @@ int main()
             case sf::Event::KeyPressed:
 
                 // Close Program
-                if (event.key.code == sf::Keyboard::Escape)
-                {
-                    window.close();
-                    break;
-                }
+                if (event.key.code == sf::Keyboard::Escape) { window.close(); break; }
 
                 // Debug:: Draw Cells in Triangles
                 else if (event.key.code == sf::Keyboard::A)
@@ -404,88 +385,48 @@ int main()
                         map.vertices[offset + i].color = color;
                     }
                     // TODO: update only the part of the buffer that has changed
-                    updateVertex(map,vertexArray,vertexBuffer,useVertexBuffer); // There is no need to update the whole buffer, only the part that has changed (offset, n_vertices)
-
-                }
-
-                // Percepitation map
-                else if (event.key.code == sf::Keyboard::P) 
-                {
-                    drawPercepitationMap(map, vertexArray, vertexBuffer, useVertexBuffer);
+                    vertexMap.update(map); // There is no need to update the whole buffer, only the part that has changed (offset, n_vertices)
                 }
 
                 // Generate a new Map
                 else if (event.key.code == sf::Keyboard::N)
                 {
-                    // Delete the map and draw a new one
-                    
-                    genWorld(globals, map, 200, 150, windowWidth, windowHeight, 8.f, 10, window);
-                    if (useVertexBuffer)
-                    {
-                        vertexBuffer = genBuffer(map);
-                    }
-                    else
-                    {
-                        vertexArray = genArray(map);
-                    }
-                    windArrows = vor::windArrows(map); // NEEEEEDS to be fixed so that it works with the new map
+                    genWorld(map, globals, window, vertexMap,
+                        windArrows, lines, font,
+                        n_convergence_lines,
+                        kmeans_k, ncellx, ncelly,
+                        windowWidth, windowHeight,
+                        point_jitter, npeaks, sealevel,
+                        global_temp_avg, delta_max_neg,
+                        delta_max_pos, prob_of_island,
+                        dist_from_mainland, height_method,
+                        rise_threshold, height_smooth_repeats,
+                        smooth_method, height_noise_repeats,
+                        delta_coast_line, temp_smooth_repeats,
+                        percepitation_repeats, percepitation_smooth_repeats,
+                        kmeans_max_iter, windstr_alpha, windstr_beta);
                 }
 
                 // Draw Lines
-                else if (event.key.code == sf::Keyboard::L)
-                {
-                    // Display lines
-                    drawLines = !drawLines;
-                }
+                else if (event.key.code == sf::Keyboard::L) { drawLines = !drawLines; }
 
                 // Wind Map
-                else if (event.key.code == sf::Keyboard::W)
-                {
-                    if (wind == false)
-                    {
-						wind = true;
-                        for (size_t i = 0; i < map.cells.size(); i++)
-                        {
-                            sf::Color color(255 * map.cells[i].windDir / 360, 255 * map.cells[i].windStr, 0, 255);
-
-                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-                            {
-                                map.vertices[j].color = color;
-                            }
-                        }
-                        updateVertex(map,vertexArray,vertexBuffer,useVertexBuffer);
-					}
-                    else
-                    {
-						wind = false;
-                        for (std::size_t i = 0; i < map.cells.size(); i++) {
-                            sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-                            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-                                map.vertices[j].color = color;
-                            }
-                        }
-                        updateVertex(map, vertexArray, vertexBuffer, useVertexBuffer);
-                    }
-                }
+                else if (event.key.code == sf::Keyboard::W) { mapType = 4; }
 
                 // Temperature map
-                else if (event.key.code == sf::Keyboard::T) { drawTempMap(map, vertexArray, vertexBuffer, useVertexBuffer); }
+                else if (event.key.code == sf::Keyboard::T) { mapType = 1; }
 
-                // Display Biomes
-                else if (event.key.code == sf::Keyboard::B) { drawBiomeMap(map, globals, vertexArray, vertexBuffer, useVertexBuffer); }
+                // Biome Map
+                else if (event.key.code == sf::Keyboard::B) { mapType = 2; }
+
+                // Percepitation map
+                else if (event.key.code == sf::Keyboard::P) { mapType = 3; }
                 
                 // activate arrows for wind direction
-                else if (event.key.code == sf::Keyboard::Comma)
-                { 
-                    wind = !wind;
-                }
+                else if (event.key.code == sf::Keyboard::Comma) { wind = !wind; }
 
                 // Activate Cell Highlighting
-                else if (event.key.code == sf::Keyboard::H) 
-                {
-                    highlightBool = !highlightBool;
-                    highlight.clear();
-                }
+                else if (event.key.code == sf::Keyboard::H) { highlightBool = !highlightBool; highlight.clear(); }
 
 				break;
 
@@ -596,39 +537,46 @@ int main()
 
         ImGui::Begin("Map Controls");
 
-        
         // Radio Buttons for the different maps
         ImGui::RadioButton("Height", &mapType, 0); ImGui::SameLine();
         ImGui::RadioButton("Temperature", &mapType, 1); ImGui::SameLine();
         ImGui::RadioButton("Biome", &mapType, 2); ImGui::SameLine();
-        ImGui::RadioButton("Percepitation", &mapType, 3); 
+        ImGui::RadioButton("Percepitation", &mapType, 3);
+        ImGui::RadioButton("Wind", &mapType, 4);
+
             
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
 			mapTypeOld = mapType;
             switch (mapType) {
 			case 0:
-				drawHeightMap(map, vertexArray, vertexBuffer, useVertexBuffer);
+				drawHeightMap(map, vertexMap);
+                wind = false;
 				break;
 			case 1:
-				drawTempMap(map, vertexArray, vertexBuffer, useVertexBuffer);
+				drawTempMap(map, vertexMap);
+                wind = false;
 				break;
 			case 2:
-				drawBiomeMap(map, globals, vertexArray, vertexBuffer, useVertexBuffer);
+				drawBiomeMap(map, globals, vertexMap);
+                wind = false;
 				break;
 			case 3:
-				drawPercepitationMap(map, vertexArray, vertexBuffer, useVertexBuffer);
+				drawPercepitationMap(map, vertexMap);
+                wind = false;
+				break;
+            case 4:
+				drawWindMap(map, vertexMap);
+                wind = true;
 				break;
 			}
 		}
-        
 
         ImGui::Checkbox("Draw Lines", &drawLines);
         ImGui::Checkbox("Wind Arrows", &wind);
         ImGui::Checkbox("Highlight Cells", &highlightBool);
 
 
-        // Display the number of cells, nr of biomes same line
         ImGui::Text("Number of cells: %d", map.cells.size());
         ImGui::Text("Number of biomes: %d", globals.biomes.size());
         ImGui::Text("Sealevel: %.2f", globals.seaLevel);
@@ -673,6 +621,10 @@ int main()
                 ImGui::Text("Precip: %.2f", biome.avgRain);
                 ImGui::SameLine();
                 ImGui::Text("Elevation: %.2f", biome.avgElevation);
+                ImGui::SameLine();
+                ImGui::Text("Wind Str: %.2f", biome.avgWindStr);
+                ImGui::SameLine();
+                ImGui::Text("Ocean: %d", biome.isOcean);
                 ImGui::PopID();
 
                 if (color[0] != biome.color.r / 255.0f || color[1] != biome.color.g / 255.0f || color[2] != biome.color.b / 255.0f) {
@@ -684,12 +636,24 @@ int main()
             }
 
             if (!change) {
-				drawBiomeMap(map, globals, vertexArray, vertexBuffer, useVertexBuffer);
+				drawBiomeMap(map, globals, vertexMap);
                 change = true;
 			}
         }
 
+        ImGui::Checkbox("Draw New Map", &newMap);
+
+        if(ImGui::Button("Switch origin of vertexMap")) { vertexMap.switchOrigin(map); };
+        if (ImGui::Button("Check vertexMap")) { std::cout << vertexMap.useVertexBuffer << " : Array: " << vertexMap.vertexArray.getVertexCount() << " : Buffer: " << vertexMap.vertexBuffer.getVertexCount() << std::endl; };
+
         ImGui::End();
+
+        if (newMap)
+        {
+            ImGui::Begin("New Map Controls");
+            
+        }
+
 
         if (!highlightBool) {
             highlight.clear();
@@ -698,15 +662,7 @@ int main()
 
         window.clear();
         
-        // TODO: Draw only the cells that are visible in the window (use the view to determine which cells are visible) (Low priority since draws are not the bottleneck)
-        if (useVertexBuffer)
-        {
-            window.draw(vertexBuffer);
-        }
-        else
-        {
-            window.draw(vertexArray);
-        }
+        vertexMap.draw(window);
         
         if (drawLines) {
 			window.draw(lines);

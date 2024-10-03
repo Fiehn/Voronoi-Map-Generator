@@ -592,7 +592,7 @@ void removeBiome(int id, GlobalWorldObjects& globals, std::vector<Cell>& map)
     }
 }
 
-void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
+void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_max_iter=5) {
     if (globals.biomes.size() == 0) {
 		globals.generateBiomes();
 	}
@@ -607,18 +607,19 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
 	}
 
     // k-means that stuff
-    int iters = 5;
-    KMeans temp(globals.biomes.size(), temporary[0].size(), iters);
+    KMeans temp(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
     temp.setData(temporary);
     temp.run();
 
     for (int i = 0; i < map.size(); i++) {
-		map[i].biome = temp.getClusterId(i);
+        int cluster = temp.getClusterId(i);
+		map[i].biome = cluster;
+        globals.biomes[cluster].numCells += 1;
 	}
 
     // set the biomes values to the averages 
     for (int i = 0; i < globals.biomes.size(); i++) {
-        globals.biomes[i].setValues(temp.getCentroid(i));
+        globals.biomes[i].setValues(temp.getCentroidUnstandard(i));
 	}
 
     // remove biomes with 0 cluster size
@@ -626,7 +627,6 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
     std::vector<int> clusterSizes = temp.getClusterSizes();
 
     for (int i = 0; i < globals.biomes.size(); i++) {
-        std::cout << clusterSizes[i] << std::endl;
         if (clusterSizes[i] == 0) {
 			toRemove.push_back(i);
 		}
@@ -634,7 +634,6 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
     for (int i = 0; i < toRemove.size(); i++) {
         removeBiome(toRemove[i] - i, globals, map);
     }
-
 
 }
 

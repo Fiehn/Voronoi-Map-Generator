@@ -8,6 +8,7 @@ class Biome {
 public:
 	std::string name = "Biome"; // Name of biome
 	int id = 0; // ID of biome
+	unsigned int numCells = 0; // Number of cells in biome
 
 	sf::Color color = sf::Color::White; // Color of biome
 

@@ -63,7 +63,7 @@ namespace vor {
         vor::Grid grid_cells;
         int cell_size = 50;
 
-        Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter);
+        Voronoi() {};
 
         int getCellIndex(sf::Vector2f point);
 
@@ -107,25 +107,6 @@ namespace vor {
 
         void voronoi(const std::vector<std::size_t> triangles);
     };
-
-    Voronoi::Voronoi(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter)
-    {
-
-        generatePoints(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, jitter);
-        
-        std::vector<std::size_t> triangles = delaunay();
-        // Generate the Voronoi points after Delaunay triangulation is done
-        voronoi(triangles);
-        //Sort the verticies of each cell so they can be drawn
-        for (std::size_t i = 0, size = cells.size(); i < size; i++) {
-            if (cells[i].vertex.size() == 0) { continue; };
-            cells[i].sort_angles(points, voronoi_points);
-        }
-        //Generate the vertices for the cells
-        vertexGen();
-        //Generate the grid
-        genGrid(MAXWIDTH, MAXHEIGHT);
-    }
 
     void Voronoi::fillMap(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float point_jitter)
     {
@@ -215,6 +196,8 @@ namespace vor {
 		voronoi_points.clear();
 		vertices.clear();
 		grid_cells.clear();
+
+        vertexCount = 0;
 	}
 
     Voronoi::~Voronoi()
@@ -224,6 +207,8 @@ namespace vor {
         voronoi_points.clear();
         vertices.clear();
         grid_cells.clear();
+
+        vertexCount = 0;
     };
 
     void Voronoi::generatePoints(const int ncellx, const int ncelly, const int MAXWIDTH, const int MAXHEIGHT, const float jitter) 

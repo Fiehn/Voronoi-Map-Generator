@@ -57,5 +57,8 @@
     <ClInclude Include="clustering.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="vertex.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
