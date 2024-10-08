@@ -32,7 +32,7 @@ public:
 	void generateBiomes();
 	void addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, bool isWater, std::vector<bool> excludes, sf::Color color);
 	void setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength) { convergenceLines = lines; windDirection = directions; windStrength = strength; }
-	void generateConvergenceLines(int nrLines);
+	void generateConvergenceLines(int nrLines, float windstr_alpha, float windstr_beta);
 	std::vector<float> getConvergenceLines() { return convergenceLines; }
 	void setGlobalTemp(float temp);
 	void setSeaLevel(float level);
@@ -78,7 +78,7 @@ void GlobalWorldObjects::clearGlobals()
 	biomes.clear();
 }
 
-void GlobalWorldObjects::generateConvergenceLines(int nrLines)
+void GlobalWorldObjects::generateConvergenceLines(int nrLines, float windstr_alpha = 2, float windstr_beta = 2)
 {
 	convergenceLines.clear();
 	windDirection.clear();
@@ -93,7 +93,7 @@ void GlobalWorldObjects::generateConvergenceLines(int nrLines)
 		// Pushback equally spaced lines
 		lines.push_back((float)i / (float)nrLines);
 		directions.push_back(RandomBetween(0.f, 360.f));
-		strength.push_back(RandomBetween(0.2f, 0.9f));
+		strength.push_back(betaDist(windstr_alpha,windstr_beta));
 	}
 	setConvergenceLines(lines, directions, strength);
 }

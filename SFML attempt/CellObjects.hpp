@@ -8,6 +8,7 @@ class Biome {
 public:
 	std::string name = "Biome"; // Name of biome
 	int id = 0; // ID of biome
+	unsigned int numCells = 0; // Number of cells in biome
 
 	sf::Color color = sf::Color::White; // Color of biome
 
@@ -82,8 +83,7 @@ public:
 	void setId(int id) {
 		this->id = id;
 	}
-
-private:
+	
 	// Values that are used to determine the probability for biome in cell
 	float avgTemp = 0;
 	float avgRain = 0;

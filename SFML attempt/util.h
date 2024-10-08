@@ -2,7 +2,8 @@
 #include <vector>
 #include <string>
 #include <SFML/System/Vector2.hpp>
-
+#include <SFML/Graphics/Color.hpp>
+#include <map>
 
 inline long rand_long() // Should only be used in the case that there is a need for larger variables
 {
@@ -322,6 +323,23 @@ int chooseIndex(std::vector<float> rates) {
 	}
     return rates.size() - 1;
 }
+
+float normalDistPDF(float mean, float std)
+{
+    // Box-Muller transform
+	float u1 = (float)rand() / RAND_MAX;
+	float u2 = (float)rand() / RAND_MAX;
+	return mean + std * sqrt(-2 * log(u1)) * cos(2 * PI * u2);
+}
+
+float betaDist(float alpha, float beta)
+{
+    // Beta distribution
+	float gamma1 = std::tgammaf(alpha);
+	float gamma2 = std::tgammaf(beta);
+	return gamma1 / (gamma1 + gamma2);
+}
+
 
 // Color table with names from https://www.rapidtables.com/web/color/RGB_Color.html
 class ColorTable {

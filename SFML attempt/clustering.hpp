@@ -56,12 +56,16 @@ private:
 	std::vector<int> clusterIds;
 	std::vector<int> clusterSizes;
 
+	std::vector<float> mean;
+	std::vector<float> stdDev;
+
 public:
 	KMeans(int k, int dimensions, int iters) : k(k), dimensions(dimensions), iters(iters) { clusterSizes.resize(k, 0); }
 
 	void setData(const std::vector<std::vector<float>>& data) {
 		this->data = data;
 		clusterIds.resize(data.size(), -1);
+		standardize();
 	}
 
 	void init() {
@@ -76,6 +80,39 @@ public:
 
 			usedIndices.push_back(index);
 			clusters.emplace_back(Cluster(i, data[index], dataSize / (k / 2)));
+		}
+	}
+	
+	void standardize() {
+		// get mean and standard deviation for each dimension
+		mean.resize(dimensions, 0);
+		stdDev.resize(dimensions, 0);
+
+		for (const auto& point : data) {
+			for (int i = 0; i < dimensions; ++i) {
+				mean[i] += point[i];
+			}
+		}
+
+		for (int i = 0; i < dimensions; ++i) {
+			mean[i] /= data.size();
+		}
+
+		for (const auto& point : data) {
+			for (int i = 0; i < dimensions; ++i) {
+				stdDev[i] += (point[i] - mean[i]) * (point[i] - mean[i]);
+			}
+		}
+
+		for (int i = 0; i < dimensions; ++i) {
+			stdDev[i] = sqrt(stdDev[i] / data.size());
+		}
+
+		// standardize data
+		for (auto& point : data) {
+			for (int i = 0; i < dimensions; ++i) {
+				point[i] = (point[i] - mean[i]) / stdDev[i];
+			}
 		}
 	}
 
@@ -95,7 +132,7 @@ public:
 		#pragma omp parallel for reduction(&&: done) num_threads(16) schedule(static)
 		for (int i = 0; i < data.size(); ++i) {
 			const std::vector<float>& point = data[i];
-			int bestCluster = -1;
+			int bestCluster = 0; // NEEDS to be -1 
 			float minDistance = std::numeric_limits<float>::max();
 
 			for (int j = 0; j < clusters.size(); ++j) {
@@ -106,6 +143,7 @@ public:
 					bestCluster = j;
 				}
 			}
+			// How does bestCluster end up being -1? Percepitation is nan so dist does not work..
 			
 			if (clusterIds[i] != bestCluster) {
 				done = false;
@@ -167,6 +205,15 @@ public:
 	std::vector<float> getCentroid(int clusterId)
 	{
 		return clusters[clusterId].getCentroid();
+	}
+
+	std::vector<float> getCentroidUnstandard(int clusterId)
+	{
+		std::vector<float> centroid = clusters[clusterId].getCentroid();
+		for (int i = 0; i < dimensions; ++i) {
+			centroid[i] = centroid[i] * stdDev[i] + mean[i];
+		}
+		return centroid;
 	}
 
 	std::vector<int> getClusterSizes() const {

@@ -92,10 +92,14 @@ void Cell::sort_angles(const std::vector<sf::Vector2f>& points, const std::vecto
 void rise(std::vector<Cell>& map)
 { /* Calculate the rise by finding the tallest and shortest neighbor*/
     // Needs to be optimized or rethought
+    float max_height = std::numeric_limits<float>::min();
+    float min_height = std::numeric_limits<float>::max();
+
+    #pragma omp parallel for num_threads(16) schedule(static)
     for (size_t i = 0; i < map.size(); i++)
     {
-        float max_height = std::numeric_limits<float>::min();
-        float min_height = std::numeric_limits<float>::max();
+        max_height = std::numeric_limits<float>::min();
+        min_height = std::numeric_limits<float>::max();
 
         // Cache neighbor heights
         const std::vector<int>& neighbors = map[i].neighbors;
@@ -111,6 +115,8 @@ void rise(std::vector<Cell>& map)
             if (neighbor_height < min_height) min_height = neighbor_height;
             if (neighbor_height > max_height) max_height = neighbor_height;
         }
+
+        #pragma omp critical
         map[i].rise = max_height - min_height;
     }
 }
@@ -131,6 +137,7 @@ void random_height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04
     */
     // Active cells that have not been assigned a height yet, should be a queue of some sort
     std::vector<int> active;
+    active.reserve(map.size() - 1);
 
     for (int i = 0; i < k; i++)
     {
@@ -592,7 +599,7 @@ void removeBiome(int id, GlobalWorldObjects& globals, std::vector<Cell>& map)
     }
 }
 
-void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
+void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_max_iter=5) {
     if (globals.biomes.size() == 0) {
 		globals.generateBiomes();
 	}
@@ -607,18 +614,19 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
 	}
 
     // k-means that stuff
-    int iters = 5;
-    KMeans temp(globals.biomes.size(), temporary[0].size(), iters);
+    KMeans temp(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
     temp.setData(temporary);
     temp.run();
 
     for (int i = 0; i < map.size(); i++) {
-		map[i].biome = temp.getClusterId(i);
+        int cluster = temp.getClusterId(i);
+		map[i].biome = cluster;
+        globals.biomes[cluster].numCells += 1;
 	}
 
     // set the biomes values to the averages 
     for (int i = 0; i < globals.biomes.size(); i++) {
-        globals.biomes[i].setValues(temp.getCentroid(i));
+        globals.biomes[i].setValues(temp.getCentroidUnstandard(i));
 	}
 
     // remove biomes with 0 cluster size
@@ -626,7 +634,6 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
     std::vector<int> clusterSizes = temp.getClusterSizes();
 
     for (int i = 0; i < globals.biomes.size(); i++) {
-        std::cout << clusterSizes[i] << std::endl;
         if (clusterSizes[i] == 0) {
 			toRemove.push_back(i);
 		}
@@ -634,7 +641,6 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals) {
     for (int i = 0; i < toRemove.size(); i++) {
         removeBiome(toRemove[i] - i, globals, map);
     }
-
 
 }
 
