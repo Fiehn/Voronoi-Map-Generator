@@ -92,10 +92,14 @@ void Cell::sort_angles(const std::vector<sf::Vector2f>& points, const std::vecto
 void rise(std::vector<Cell>& map)
 { /* Calculate the rise by finding the tallest and shortest neighbor*/
     // Needs to be optimized or rethought
+    float max_height = std::numeric_limits<float>::min();
+    float min_height = std::numeric_limits<float>::max();
+
+    #pragma omp parallel for num_threads(16) schedule(static)
     for (size_t i = 0; i < map.size(); i++)
     {
-        float max_height = std::numeric_limits<float>::min();
-        float min_height = std::numeric_limits<float>::max();
+        max_height = std::numeric_limits<float>::min();
+        min_height = std::numeric_limits<float>::max();
 
         // Cache neighbor heights
         const std::vector<int>& neighbors = map[i].neighbors;
@@ -111,6 +115,8 @@ void rise(std::vector<Cell>& map)
             if (neighbor_height < min_height) min_height = neighbor_height;
             if (neighbor_height > max_height) max_height = neighbor_height;
         }
+
+        #pragma omp critical
         map[i].rise = max_height - min_height;
     }
 }
@@ -131,6 +137,7 @@ void random_height_gen(std::vector<Cell>& map, int k=5, float delta_max_neg=0.04
     */
     // Active cells that have not been assigned a height yet, should be a queue of some sort
     std::vector<int> active;
+    active.reserve(map.size() - 1);
 
     for (int i = 0; i < k; i++)
     {

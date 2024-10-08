@@ -9,7 +9,7 @@
 #include "imgui.h"
 #include "imgui-SFML.h"
 
-// FOR UI, create new game and make all values editable, also tighten up the code to make it more readable 
+// FOR UI, Create a Biome generator view for an existing Voronoi map
 
 // There is some inspiration to get from the following (particularly for threading):
 // https://gitlab.gbar.dtu.dk/s164179/Microbots/blob/dc8b5b4b883fa1fe572fd82d44fbf291d7f81153/SFML-2.5.0/examples/island/Island.cpp
