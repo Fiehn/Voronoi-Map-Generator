@@ -8,6 +8,7 @@
 #include "Voronoi.hpp"
 #include "GlobalWorldObjects.hpp"
 #include "clustering.hpp"
+#include <chrono>
 
 class Cell 
 {  
@@ -27,6 +28,7 @@ public:
     float percepitation = 0.f; // Percepitation of the cell ( > 0 )
 
     int biome = 0; // Biome of the cell
+    std::vector<float> biome_prob; // Probabilities of each biome in the cell
 
     float distToOcean = std::numeric_limits<float>::max();
 
@@ -546,35 +548,6 @@ void calcHumid(std::vector<Cell>& map)
     }
 }
 
-void calcBiome_old(std::vector<Cell>& map, GlobalWorldObjects& globals)
-{ // Get the probabilities of each biome, then compare with neighbors biome's exclusions. Using a queque
-    // Generate initial biomes:
-    globals.generateBiomes();
-
-    for (int i = 0; i < map.size(); i++)
-    {
-        std::vector<float> rates(globals.biomes.size(), 0);
-
-        for (int j = 0; j < globals.biomes.size(); j++)
-        {
-            rates[j] = globals.biomes[j].probabilityOfBiome(map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool);
-        }
-
-        for (int j = 0; j < map[i].neighbors.size(); j++)
-        {
-            for (int k = 0; k < globals.biomes.size(); k++)
-            {
-                if (globals.biomes[k].exclusions[map[map[i].neighbors[j]].biome] == 0)
-                {
-                    rates[k] = 0;
-                }
-            }
-        }
-
-        map[i].biome = globals.biomes[chooseIndex(rates)].id;
-    }
-}
-
 void removeBiome(int id, GlobalWorldObjects& globals, std::vector<Cell>& map)
 {
     // if the biome is used in any cell, the cell is set to the default biome
@@ -599,7 +572,7 @@ void removeBiome(int id, GlobalWorldObjects& globals, std::vector<Cell>& map)
     }
 }
 
-void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_max_iter=5) {
+void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_max_iter=5, int method = 1) {
     if (globals.biomes.size() == 0) {
 		globals.generateBiomes();
 	}
@@ -613,34 +586,63 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
         temporary[i] = { map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool * 1000.f}; // , float(map[i].oceanBool)
 	}
 
-    // k-means that stuff
-    KMeans temp(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
-    temp.setData(temporary);
-    temp.run();
+    auto start = std::chrono::high_resolution_clock::now();
+    // initialize a placeholder temp
+    std::unique_ptr<ClusteringMethod> clusteringMethod;
+
+    // Cluster the biomes
+    if (method == 1)
+    {
+        clusteringMethod = std::make_unique<GMM>(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
+    }
+    else if (method == 2)
+    {
+        clusteringMethod = std::make_unique<KMeans>(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
+	}
+    
+    if (clusteringMethod == nullptr) {
+		std::cout << "Error: Clustering method not found" << std::endl;
+		return;
+	}
+    
+    clusteringMethod->setData(temporary);
+    clusteringMethod->run();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Clustering for biomes took: " << duration.count() << "ms" << std::endl;
 
     for (int i = 0; i < map.size(); i++) {
-        int cluster = temp.getClusterId(i);
+        int cluster = clusteringMethod->getClusterId(i);
 		map[i].biome = cluster;
         globals.biomes[cluster].numCells += 1;
+        map[i].biome_prob = clusteringMethod->getBiomeProb(i);
 	}
 
     // set the biomes values to the averages 
     for (int i = 0; i < globals.biomes.size(); i++) {
-        globals.biomes[i].setValues(temp.getCentroidUnstandard(i));
+        globals.biomes[i].setValues(clusteringMethod->getCentroid(i));
 	}
 
     // remove biomes with 0 cluster size
     std::vector<int> toRemove;
-    std::vector<int> clusterSizes = temp.getClusterSizes();
+    std::vector<int> clusterSizes = clusteringMethod->getClusterSizes();
 
     for (int i = 0; i < globals.biomes.size(); i++) {
         if (clusterSizes[i] == 0) {
 			toRemove.push_back(i);
 		}
 	}
-    for (int i = 0; i < toRemove.size(); i++) {
-        removeBiome(toRemove[i] - i, globals, map);
-    }
+    //for (int i = 0; i < toRemove.size(); i++) {
+    //    removeBiome(toRemove[i] - i, globals, map);
+    //}
+    
+    for (int i = 0; i < globals.biomes.size(); i++) {
+		globals.biomes[i].numCells = clusterSizes[i];
+	}
+
+    // Here we observe the neighbors of each cell and check their biomes, updating the probabilities of a cells biomes and then afterwards taking the new biome with the highest probability
+    // TODO
+
 
 }
 
