@@ -572,7 +572,7 @@ void removeBiome(int id, GlobalWorldObjects& globals, std::vector<Cell>& map)
     }
 }
 
-void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_max_iter=5, int method = 1) {
+void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_max_iter=5, int method = 1, float prob_smoothing = 0.5f) {
     if (globals.biomes.size() == 0) {
 		globals.generateBiomes();
 	}
@@ -587,16 +587,21 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
 	}
 
     auto start = std::chrono::high_resolution_clock::now();
-    // initialize a placeholder temp
+    // initialize a placeholder 
     std::unique_ptr<ClusteringMethod> clusteringMethod;
+    bool smoothing = false;
 
-    // Cluster the biomes
-    if (method == 1)
+    if (method == 1 || method == 3)
     {
+        if (method == 1)
+        {
+            smoothing = true;
+        }
         clusteringMethod = std::make_unique<GMM>(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
     }
     else if (method == 2)
     {
+        smoothing = false;
         clusteringMethod = std::make_unique<KMeans>(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
 	}
     
@@ -641,8 +646,49 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
 	}
 
     // Here we observe the neighbors of each cell and check their biomes, updating the probabilities of a cells biomes and then afterwards taking the new biome with the highest probability
-    // TODO
+    if (!smoothing) { return; }
 
+    std::vector<bool> ocean_bool;
+    for (std::size_t i = 0; i < globals.biomes.size(); i++)
+    {
+		ocean_bool.push_back(globals.biomes[i].isOcean);
+	}
+
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+		std::vector<int> neighbors = map[i].neighbors;
+		std::vector<float> probs(globals.biomes.size(),0.f);
+        for (std::size_t j = 0; j < neighbors.size(); j++)
+        {
+			std::vector<float> neighbor_probs = map[neighbors[j]].biome_prob;
+            for (std::size_t k = 0; k < probs.size(); k++)
+            {
+				probs[k] += neighbor_probs[k];
+			}
+		}
+        // Take the average of the neighbors and weight them by smoothing factor
+        probs = scalarMultiplication(probs, prob_smoothing / neighbors.size());
+
+        map[i].biome_prob = elementWiseAdd(map[i].biome_prob, probs);
+        
+        // make it a probability again
+        map[i].biome_prob = scalarMultiplication(map[i].biome_prob, 1.f / sum_vec_float(map[i].biome_prob));
+
+        booleanMapVector_f(map[i].biome_prob, ocean_bool, !map[i].oceanBool);
+	}
+    // reset biomes sizes
+    for (std::size_t i = 0; i < globals.biomes.size(); i++)
+    {
+		globals.biomes[i].numCells = 0;
+	}
+    // now find the highest probability and set the biome to that
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+        std::vector<float> probs = map[i].biome_prob;
+        map[i].biome = chooseIndexMax(probs);
+
+        globals.biomes[map[i].biome].numCells += 1;
+    }
 
 }
 

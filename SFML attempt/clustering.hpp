@@ -383,15 +383,7 @@ public:
 
 		// Assign clusters
 		for (int i = 0; i < data.size(); ++i) {
-			float maxProb = 0;
-			int maxIndex = 0;
-			for (int j = 0; j < k; ++j) {
-				if (probabilities[i][j] > maxProb) {
-					maxProb = probabilities[i][j];
-					maxIndex = j;
-				}
-			}
-			clusters[i] = maxIndex;
+			clusters[i] = chooseIndexMax(probabilities[i]);
 		}
 	}
 

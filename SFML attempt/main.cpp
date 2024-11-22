@@ -254,6 +254,7 @@ int main()
     unsigned int kmeans_max_iter = 5; // The maximum amount of iterations for the kmeans algorithm
     unsigned int n_biomes = 8; // The amount of clusters for the kmeans algorithm (amount of biomes)
     unsigned int biome_method = 1; // Method 1 is GMM and method 2 is Kmeans
+    float prob_smoothing = 0.5f;
 
     // Wind
     unsigned int n_convergence_lines = 5; // The amount of convergence lines to generate Needs 
@@ -295,6 +296,7 @@ int main()
     bool highlightBool = false; // Set to true to highlight a cell
     int mapType = 0; int mapTypeOld = 0;
     bool newMap = false; // Get window to draw new map
+    bool biomeGen = false; // Get window to regenerate biomes
 
     // Retrieve the window's default view
     float zoom = 1;
@@ -639,11 +641,47 @@ int main()
         }
 
         ImGui::Checkbox("Draw New Map", &newMap);
+        ImGui::Checkbox("Generate New Biomes", &biomeGen);
 
         if(ImGui::Button("Switch origin of vertexMap")) { vertexMap.switchOrigin(map); };
         if (ImGui::Button("Check vertexMap")) { std::cout << vertexMap.useVertexBuffer << " : Array: " << vertexMap.vertexArray.getVertexCount() << " : Buffer: " << vertexMap.vertexBuffer.getVertexCount() << std::endl; };
 
         ImGui::End();
+
+        if (biomeGen)
+        {
+            ImGui::Begin("Biome Generation Controls");
+
+            if (ImGui::Button("Generate Biomes", { 200,50 })) {
+                globals.biomes.clear();
+                std::vector<sf::Color> biomeColors = randomColors(n_biomes);
+                for (int i = 0; i < n_biomes; i++) {
+                    globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, biomeColors[i]);
+                }
+                biomeColors.clear();
+				calcBiome(map.cells, globals, kmeans_max_iter, biome_method, prob_smoothing);
+			}
+            ImGui::PushItemWidth(150.f);
+            ImGui::InputUInt("KMeans Max Iterations", &kmeans_max_iter);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Amount of maximum iterations for clustering. Keep above 10");
+                ImGui::EndTooltip();
+            }
+			ImGui::SliderFloat("Probability Smoothing", &prob_smoothing, 0.0f, 5.0f);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Factor of weight neighbors have on the probability of biome for each cell");
+                ImGui::EndTooltip();
+            }
+			ImGui::InputUInt("Method", &biome_method);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Method of biome generation. 1: GMM with smoothing, 2: K-means, 3: GMM no smoothing");
+                ImGui::EndTooltip();
+            }
+            ImGui::End();
+        }
 
         if (newMap)
         {
@@ -718,12 +756,6 @@ int main()
             if (ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
                 ImGui::Text("Amount of biomes to generate initially. \nLarge maps will often have a lot of ocean biomes.");
-                ImGui::EndTooltip(); }
-
-            ImGui::InputUInt("Method of Biomes", &biome_method); //TODO, fix this input
-            if (ImGui::IsItemHovered()) {
-                ImGui::BeginTooltip();
-                ImGui::Text("Methods of biome generation. 1: GMM and probability smoothing, 2: KMeans (should be faster, is not)");
                 ImGui::EndTooltip(); }
 
             ImGui::InputUInt("Height Smooths", &height_smooth_repeats);
@@ -807,6 +839,12 @@ int main()
                     ImGui::BeginTooltip();
                     ImGui::Text("Beta value for the beta distribution of wind strenght.");
                     ImGui::EndTooltip(); }
+                ImGui::InputUInt("Method of Biomes", &biome_method); //TODO, fix this input
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Methods of biome generation. 1: GMM and probability smoothing, 2: KMeans (should be faster, is not)");
+                    ImGui::EndTooltip();
+                }
             }
 
             ImGui::PopItemWidth();
