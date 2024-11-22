@@ -81,7 +81,7 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
     }
     std::vector<sf::Color> biomeColors = randomColors(n_biomes);
     for (int i = 0; i < n_biomes; i++) {
-        globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, biomeColors[i]);
+        globals.addBiome("Biome" + std::to_string(i), biomeColors[i]);
     }
     biomeColors.clear();
 
@@ -599,6 +599,8 @@ int main()
         if (mapType==2)
         {
             bool change = true; // If the user changes the color of a biome, we need to update the map
+
+            ImGui::Begin("Biome Generation Controls");
             for (int i = 0; i < globals.biomes.size(); i++)
             {
                 Biome& biome = globals.biomes[i];
@@ -611,20 +613,31 @@ int main()
                 ImGui::Text("%s", biome.name.c_str());
                 ImGui::SameLine();
                 ImGui::ColorEdit4("", color, ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs);
-                ImGui::SameLine();
-                ImGui::Text("Temp: %.2f", biome.avgTemp);
-                ImGui::SameLine();
-                ImGui::Text("Precip: %.2f", biome.avgRain);
-                ImGui::SameLine();
-                ImGui::Text("Elevation: %.2f", biome.avgElevation);
-                ImGui::SameLine();
-                ImGui::Text("Wind Str: %.2f", biome.avgWindStr);
-                ImGui::SameLine();
-                ImGui::Text("Ocean: %d", biome.isOcean);
+                ImGui::NewLine();
+
+                int totalLength = 0;
+                for (const auto& pair : biome.values) {
+                    float intPart;
+                    float fractPart = std::modf(pair.second, &intPart);
+
+                    ImGui::SameLine();
+                    if (fractPart == 0.0)
+                    {
+                        ImGui::Text("%s: %.0f", pair.first.c_str(), pair.second);
+                    }
+                    else
+                    {
+						ImGui::Text("%s: %.2f", pair.first.c_str(), pair.second);
+					}
+					totalLength += pair.first.length() + 5;
+                    if (totalLength > 50) {
+						totalLength = 0;
+						ImGui::NewLine();
+                    }
+                }
                 ImGui::Text("Size: %d", biome.numCells);
                 
-                ImGui::PopID();
-
+                ImGui::PopID(); // HERE MAP
 
                 if (color[0] != biome.color.r / 255.0f || color[1] != biome.color.g / 255.0f || color[2] != biome.color.b / 255.0f) {
 					change = false;
@@ -638,6 +651,7 @@ int main()
 				drawBiomeMap(map, globals, vertexMap);
                 change = true;
 			}
+            ImGui::End();
         }
 
         ImGui::Checkbox("Draw New Map", &newMap);
@@ -656,7 +670,7 @@ int main()
                 globals.biomes.clear();
                 std::vector<sf::Color> biomeColors = randomColors(n_biomes);
                 for (int i = 0; i < n_biomes; i++) {
-                    globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, biomeColors[i]);
+                    globals.addBiome("Biome" + std::to_string(i), biomeColors[i]);
                 }
                 biomeColors.clear();
 				calcBiome(map.cells, globals, kmeans_max_iter, biome_method, prob_smoothing);

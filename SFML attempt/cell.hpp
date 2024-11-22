@@ -577,13 +577,16 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
 		globals.generateBiomes();
 	}
 
+    // Variable names for the clusters and biomes
+    std::vector<std::string> names = { "Temperature", "Percepitation", "Humidity", "Height", "Wind Strength", "Ocean", "Dist to Ocean"};
+    
     // get vectors of the variables for the biomes
     std::vector<std::vector<float>> temporary;
     temporary.resize(map.size());
 
     for (int i = 0; i < map.size(); i++) {
 		temporary[i].resize(globals.biomes.size(), 0);
-        temporary[i] = { map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool * 1000.f}; // , float(map[i].oceanBool)
+        temporary[i] = { map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool * 1000.f, map[i].distToOcean}; // HERE MAP
 	}
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -619,13 +622,18 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
     for (int i = 0; i < map.size(); i++) {
         int cluster = clusteringMethod->getClusterId(i);
 		map[i].biome = cluster;
-        globals.biomes[cluster].numCells += 1;
         map[i].biome_prob = clusteringMethod->getBiomeProb(i);
 	}
 
     // set the biomes values to the averages 
     for (int i = 0; i < globals.biomes.size(); i++) {
-        globals.biomes[i].setValues(clusteringMethod->getCentroid(i));
+        std::map<std::string, float> values;
+        std::vector<float> biomeValues = clusteringMethod->getCentroid(i);
+        for (int j = 0; j < names.size(); j++) {
+			values.emplace(names[j], biomeValues[j]);
+		}
+
+        globals.biomes[i].setValues(values); // HERE MAP
 	}
 
     // remove biomes with 0 cluster size

@@ -30,7 +30,7 @@ public:
 	void clearGlobals();
 
 	void generateBiomes();
-	void addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, bool isWater, sf::Color color);
+	void addBiome(std::string name, sf::Color color);
 	void setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength) { convergenceLines = lines; windDirection = directions; windStrength = strength; }
 	void generateConvergenceLines(int nrLines, float windstr_alpha, float windstr_beta);
 	std::vector<float> getConvergenceLines() { return convergenceLines; }
@@ -98,18 +98,18 @@ void GlobalWorldObjects::generateConvergenceLines(int nrLines, float windstr_alp
 	setConvergenceLines(lines, directions, strength);
 }
 
-void GlobalWorldObjects::addBiome(std::string name, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, bool isWater, sf::Color color)
+void GlobalWorldObjects::addBiome(std::string name, sf::Color color)
 {
 	int id = biomes.size();
-	Biome biome(name, id, avgTemp, avgRain, avgHumidity, avgElevation, avgWindStr, isWater, color);
+	Biome biome(name, id, color);
 	biomes.push_back(biome);
 
 }
 
 void GlobalWorldObjects::generateBiomes()
 {
-	addBiome("Tundra", -10.f, 0.1f, 0.1f, 0.1f, 0.1f, false, sf::Color::White);
-	addBiome("Forest", 0.f, 0.f, 0.f, 0.f, 0.f, false, sf::Color::Green);
+	addBiome("Tundra", sf::Color::White);
+	addBiome("Forest", sf::Color::Green);
 	//std::vector<std::string> names = { "Tundra", "Taiga", "Temperate Forest", "Tropical Rainforest", "Desert", "Savanna", "Grassland", "Shrubland", "Boreal Forest", "Chaparral", "Alpine", "Wetland", "Mangrove", "Coral Reef", "Kelp Forest", "Open Ocean", "Deep Ocean", "Ice Shelf", "Iceberg" };
 }
 
