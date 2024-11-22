@@ -26,31 +26,17 @@ public:
 	int animalColor = 0; // Color of animals in biome
 	float animalVariety = 0; // Variety of animals in biome
 
-	std::vector<bool> exclusions; // Biome ID's that can be next to this biome
-
 	// Constructor
-	Biome(std::string name, int id, float avgTemp, float avgRain, float avgHumidity, float avgElevation, float avgWindStr, bool isWater, std::vector<bool> validNeighbors, sf::Color color) {
+	Biome(std::string name, int id, sf::Color color) {
 		this->name = name;
 		this->id = id;
-		this->avgTemp = avgTemp;
-		this->avgRain = avgRain;
-		this->avgHumidity = avgHumidity;
-		this->avgElevation = avgElevation;
-		this->avgWindStr = avgWindStr;
-		this->exclusions = validNeighbors;
 		this->color = color;
-		this->isOcean = isWater;
 	}
 
-	// Returns the probability of biome in cell (0-1)
-	float probabilityOfBiome(float temp, float rain, float humidity, float elevation, float windStr, bool oceanBool);
-
 	// Getters
-	float getAvgTemp() { return avgTemp; }
-	float getAvgRain() { return avgRain; }
-	float getAvgHumidity() { return avgHumidity; }
-	float getAvgElevation() { return avgElevation; }
-	float getAvgWindStr() { return avgWindStr; }
+	std::map<std::string, float> getValues() {
+			return values;
+		}
 
 	// Setters
 	void setVegetation(int type, int density, int height, int color, float variety) {
@@ -68,29 +54,35 @@ public:
 		animalVariety = variety;
 	}
 
-	void setValues(std::vector<float> values) {
-		avgTemp = values[0];
-		avgRain = values[1];
-		avgHumidity = values[2];
-		avgElevation = values[3];
-		avgWindStr = values[4];
-		if (values.size() > 5) {
-			if (values[5] > 100) {
-				isOcean = true;
-			}
+	void setValues(const std::map<std::string, float>& value) {
+		values = value;
+		
+		if(values.at("Ocean") > 0.001f) 
+		{
+			isOcean = true;
+			values.at("Ocean") = 1;
+		}
+		else
+		{
+			isOcean = false;
+			values.at("Ocean") = 0;
 		}
 	}
 	void setId(int id) {
 		this->id = id;
 	}
 	
-	// Values that are used to determine the probability for biome in cell
-	float avgTemp = 0;
-	float avgRain = 0;
-	float avgHumidity = 0;
-	float avgElevation = 0;
-	float avgWindStr = 0;
+	// Values of the biome (average)
+	std::map<std::string, float> values = {
+		{"Temperature", 0},
+		{"Rainfall", 0},
+		{"Elevation", 0},
+		{"Wind Strength", 0},
+		{"Ocean", 0}
+	};
 };
+
+// TODO: Biomes need names: https://en.wikipedia.org/wiki/List_of_biomes
 
 class River {
 public:
@@ -100,13 +92,3 @@ public:
 	float flowSpeed = 0;
 	std::vector<int> cells;
 };
-
-
-float Biome::probabilityOfBiome(float temp, float rain, float humidity, float elevation, float windStr, bool oceanBool) {
-	float tempProb = abs(avgTemp - temp) / 30;
-	float rainProb = abs(avgRain - rain) / 30;
-	float humidityProb = abs(avgHumidity - humidity);
-	float elevationProb = abs(avgElevation - elevation);
-	float windStrProb = abs(avgWindStr - windStr);
-	return clamp((oceanBool != isOcean) * (-1000) + 1 / (tempProb + rainProb + humidityProb + elevationProb + windStrProb), 100.f, 0.f);
-}

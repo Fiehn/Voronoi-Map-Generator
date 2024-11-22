@@ -27,6 +27,7 @@ public:
     float percepitation = 0.f; // Percepitation of the cell ( > 0 )
 
     int biome = 0; // Biome of the cell
+    std::vector<float> biome_prob; // Probabilities of each biome in the cell
 
     float distToOcean = std::numeric_limits<float>::max();
 
@@ -546,35 +547,6 @@ void calcHumid(std::vector<Cell>& map)
     }
 }
 
-void calcBiome_old(std::vector<Cell>& map, GlobalWorldObjects& globals)
-{ // Get the probabilities of each biome, then compare with neighbors biome's exclusions. Using a queque
-    // Generate initial biomes:
-    globals.generateBiomes();
-
-    for (int i = 0; i < map.size(); i++)
-    {
-        std::vector<float> rates(globals.biomes.size(), 0);
-
-        for (int j = 0; j < globals.biomes.size(); j++)
-        {
-            rates[j] = globals.biomes[j].probabilityOfBiome(map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool);
-        }
-
-        for (int j = 0; j < map[i].neighbors.size(); j++)
-        {
-            for (int k = 0; k < globals.biomes.size(); k++)
-            {
-                if (globals.biomes[k].exclusions[map[map[i].neighbors[j]].biome] == 0)
-                {
-                    rates[k] = 0;
-                }
-            }
-        }
-
-        map[i].biome = globals.biomes[chooseIndex(rates)].id;
-    }
-}
-
 void removeBiome(int id, GlobalWorldObjects& globals, std::vector<Cell>& map)
 {
     // if the biome is used in any cell, the cell is set to the default biome
@@ -599,49 +571,127 @@ void removeBiome(int id, GlobalWorldObjects& globals, std::vector<Cell>& map)
     }
 }
 
-void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_max_iter=5) {
+void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_max_iter=5, int method = 1, float prob_smoothing = 0.5f) {
     if (globals.biomes.size() == 0) {
 		globals.generateBiomes();
 	}
 
+    // Variable names for the clusters and biomes
+    std::vector<std::string> names = { "Ocean", "Temperature", "Percepitation", "Humidity", "Height", "Wind Strength", "Dist to Ocean"};
+    
     // get vectors of the variables for the biomes
     std::vector<std::vector<float>> temporary;
     temporary.resize(map.size());
 
     for (int i = 0; i < map.size(); i++) {
 		temporary[i].resize(globals.biomes.size(), 0);
-        temporary[i] = { map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool * 1000.f}; // , float(map[i].oceanBool)
+        temporary[i] = { map[i].oceanBool * 100.f, map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].distToOcean};
 	}
 
-    // k-means that stuff
-    KMeans temp(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
-    temp.setData(temporary);
-    temp.run();
+    // initialize a placeholder 
+    std::unique_ptr<ClusteringMethod> clusteringMethod;
+    bool smoothing = false;
+
+    if (method == 1 || method == 3)
+    {
+        if (method == 1)
+        {
+            smoothing = true;
+        }
+        clusteringMethod = std::make_unique<GMM>(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
+    }
+    else if (method == 2)
+    {
+        smoothing = false;
+        clusteringMethod = std::make_unique<KMeans>(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
+	}
+    
+    if (clusteringMethod == nullptr) {
+		std::cout << "Error: Clustering method not found" << std::endl;
+		return;
+	}
+    
+    clusteringMethod->setData(temporary);
+    clusteringMethod->run();
 
     for (int i = 0; i < map.size(); i++) {
-        int cluster = temp.getClusterId(i);
+        int cluster = clusteringMethod->getClusterId(i);
 		map[i].biome = cluster;
-        globals.biomes[cluster].numCells += 1;
+        map[i].biome_prob = clusteringMethod->getBiomeProb(i);
 	}
 
     // set the biomes values to the averages 
     for (int i = 0; i < globals.biomes.size(); i++) {
-        globals.biomes[i].setValues(temp.getCentroidUnstandard(i));
+        std::map<std::string, float> values;
+        std::vector<float> biomeValues = clusteringMethod->getCentroid(i);
+        for (int j = 0; j < names.size(); j++) {
+			values.emplace(names[j], biomeValues[j]);
+		}
+
+        globals.biomes[i].setValues(values);
 	}
 
     // remove biomes with 0 cluster size
     std::vector<int> toRemove;
-    std::vector<int> clusterSizes = temp.getClusterSizes();
+    std::vector<int> clusterSizes = clusteringMethod->getClusterSizes();
 
     for (int i = 0; i < globals.biomes.size(); i++) {
         if (clusterSizes[i] == 0) {
 			toRemove.push_back(i);
 		}
 	}
-    for (int i = 0; i < toRemove.size(); i++) {
-        removeBiome(toRemove[i] - i, globals, map);
-    }
+    //for (int i = 0; i < toRemove.size(); i++) {
+    //    removeBiome(toRemove[i] - i, globals, map);
+    //}
+    
+    for (int i = 0; i < globals.biomes.size(); i++) {
+		globals.biomes[i].numCells = clusterSizes[i];
+	}
 
+    // Here we observe the neighbors of each cell and check their biomes, updating the probabilities of a cells biomes and then afterwards taking the new biome with the highest probability
+    if (!smoothing) { return; }
+
+    std::vector<bool> ocean_bool;
+    for (std::size_t i = 0; i < globals.biomes.size(); i++)
+    {
+		ocean_bool.push_back(globals.biomes[i].isOcean);
+	}
+
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+		std::vector<int> neighbors = map[i].neighbors;
+		std::vector<float> probs(globals.biomes.size(),0.f);
+        for (std::size_t j = 0; j < neighbors.size(); j++)
+        {
+			std::vector<float> neighbor_probs = map[neighbors[j]].biome_prob;
+            for (std::size_t k = 0; k < probs.size(); k++)
+            {
+				probs[k] += neighbor_probs[k];
+			}
+		}
+        // Take the average of the neighbors and weight them by smoothing factor
+        probs = scalarMultiplication(probs, prob_smoothing / neighbors.size());
+
+        map[i].biome_prob = elementWiseAdd(map[i].biome_prob, probs);
+        
+        // make it a probability again
+        map[i].biome_prob = scalarMultiplication(map[i].biome_prob, 1.f / (sum_vec_float(map[i].biome_prob) + 1e-8));
+
+        booleanMapVector_f(map[i].biome_prob, ocean_bool, !map[i].oceanBool);
+	}
+    // reset biomes sizes
+    for (std::size_t i = 0; i < globals.biomes.size(); i++)
+    {
+		globals.biomes[i].numCells = 0;
+	}
+    // now find the highest probability and set the biome to that
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+        std::vector<float> probs = map[i].biome_prob;
+        map[i].biome = chooseIndexMax(probs);
+
+        globals.biomes[map[i].biome].numCells += 1;
+    }
 }
 
 void calcLakes(std::vector<Cell>& map)

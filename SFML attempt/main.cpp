@@ -3,6 +3,7 @@
 #include <string>
 #include <time.h>
 #include <cstdlib>
+#include <chrono>
 #include "Voronoi.hpp"
 #include "vertex.hpp"
 
@@ -29,7 +30,7 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
     sf::VertexArray& lines,
     const sf::Font& font,
     const unsigned int& n_convergence_lines,
-    const unsigned int& kmeans_k,
+    const unsigned int& n_biomes,
     const unsigned int& ncellx,
     const unsigned int& ncelly,
     const unsigned int& MAXWIDTH,
@@ -54,6 +55,7 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
     const unsigned int& kmeans_max_iter,
     const float& windstr_alpha,
     const float& windstr_beta,
+    const unsigned int& biome_method,
     unsigned int seed
 ) {
     // Seed
@@ -78,12 +80,11 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
             lines.append(sf::Vertex(sf::Vector2f(MAXWIDTH, globals.convergenceLines[std::floor(i / 2)] * MAXHEIGHT), sf::Color::Green));
         }
     }
-    std::vector<sf::Color> biomeColors = randomColors(kmeans_k);
-    for (int i = 0; i < kmeans_k; i++) {
-        globals.addBiome("Biome" + std::to_string(i), 0.f, 0.f, 0.f, 0.f, 0.f, false, { true }, biomeColors[i]);
+    std::vector<sf::Color> biomeColors = randomColors(n_biomes);
+    for (int i = 0; i < n_biomes; i++) {
+        globals.addBiome("Biome" + std::to_string(i), biomeColors[i]);
     }
     biomeColors.clear();
-
 
 
     // Initialize the loading screen
@@ -97,41 +98,109 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
     window.display();
 
     // Create the map
+    auto start = std::chrono::high_resolution_clock::now();
     map.clearMap();
     map.fillMap(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, point_jitter);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Point Map took: " << duration.count() << "ms" << std::endl;
 
-
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Generating Heightmap");
     random_height_gen(map.cells, npeaks, delta_max_neg, delta_max_pos, prob_of_island, dist_from_mainland, height_method);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Height Gen took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Smoothing Heightmap");
     smooth_height(map.cells, rise_threshold, height_smooth_repeats, smooth_method);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Smooth Height took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Adding Noise to Heightmap");
     noise_height(map.cells, height_noise_repeats);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Noise Height took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Height Values");
     calcHeightValues(map.cells, globals, delta_coast_line);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Height Values took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Distance To Oceans");
     closeOceanCell(map.cells, map.points, globals);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Dist to Ocean took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Wind");
     calcWind(map.cells, map.points, MAXHEIGHT, globals);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Wind Calc took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating River");
     calcRiverStart(map.cells, globals);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Rivers took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Temperatures");
     calcTemp(map.cells, globals, map.points, MAXHEIGHT);
     smoothTemps(map.cells, temp_smooth_repeats);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Temperature took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Percepetation");
     calcPercepitation(map.cells, map.points, globals, percepitation_repeats);
-    smoothPercepitation(map.cells, percepitation_smooth_repeats);
+    smoothPercepitation(map.cells, percepitation_smooth_repeats); 
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Percepitatiton took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Humidity");
     calcHumid(map.cells);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Humidity took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Biomes");
-    calcBiome(map.cells, globals, kmeans_max_iter);
+    calcBiome(map.cells, globals, kmeans_max_iter, biome_method);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Biomes took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Drawing Wind Arrows");
     windArrows.clear();
     windArrows = vor::windArrows(map);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Wind took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Generating Vertex Buffer");
     vertexMap.clear();
     vertexMap.create(map);
     vertexMap.genVertexMap(map);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Vertex Map took: " << duration.count() << "ms" << std::endl;
+
     loadText(window, text ,50, loadingText,"Drawing Map");
 
     return;
@@ -252,7 +321,9 @@ int main()
     
     // Biomes
     unsigned int kmeans_max_iter = 5; // The maximum amount of iterations for the kmeans algorithm
-    unsigned int kmeans_k = 8; // The amount of clusters for the kmeans algorithm (amount of biomes)
+    unsigned int n_biomes = 8; // The amount of clusters for the kmeans algorithm (amount of biomes)
+    unsigned int biome_method = 1; // Method 1 is GMM and method 2 is Kmeans
+    float prob_smoothing = 0.5f;
 
     // Wind
     unsigned int n_convergence_lines = 5; // The amount of convergence lines to generate Needs 
@@ -294,6 +365,7 @@ int main()
     bool highlightBool = false; // Set to true to highlight a cell
     int mapType = 0; int mapTypeOld = 0;
     bool newMap = false; // Get window to draw new map
+    bool biomeGen = false; // Get window to regenerate biomes
 
     // Retrieve the window's default view
     float zoom = 1;
@@ -305,7 +377,7 @@ int main()
     genWorld(map, globals, window, vertexMap,
         windArrows, lines, font,
         n_convergence_lines,
-        kmeans_k, ncellx, ncelly,
+        n_biomes, ncellx, ncelly,
         windowWidth, windowHeight,
         point_jitter, npeaks, sealevel,
         global_temp_avg, delta_max_neg,
@@ -315,7 +387,7 @@ int main()
         smooth_method, height_noise_repeats,
         delta_coast_line, temp_smooth_repeats,
         percepitation_repeats, percepitation_smooth_repeats,
-        kmeans_max_iter, windstr_alpha, windstr_beta, seed);
+        kmeans_max_iter, windstr_alpha, windstr_beta,biome_method, seed);
 
     while (window.isOpen())
     {
@@ -362,7 +434,7 @@ int main()
                     genWorld(map, globals, window, vertexMap,
                         windArrows, lines, font,
                         n_convergence_lines,
-                        kmeans_k, ncellx, ncelly,
+                        n_biomes, ncellx, ncelly,
                         windowWidth, windowHeight,
                         point_jitter, npeaks, sealevel,
                         global_temp_avg, delta_max_neg,
@@ -372,23 +444,35 @@ int main()
                         smooth_method, height_noise_repeats,
                         delta_coast_line, temp_smooth_repeats,
                         percepitation_repeats, percepitation_smooth_repeats,
-                        kmeans_max_iter, windstr_alpha, windstr_beta, seed);
+                        kmeans_max_iter, windstr_alpha, windstr_beta, biome_method, seed);
                 }
 
                 // Draw Lines
                 else if (event.key.code == sf::Keyboard::L) { drawLines = !drawLines; }
 
                 // Wind Map
-                else if (event.key.code == sf::Keyboard::W) { mapType = 4; }
+                else if (event.key.code == sf::Keyboard::W) {
+                    if (mapType == 4) { mapType = 0; }
+                    else { mapType = 4; }
+                }
 
                 // Temperature map
-                else if (event.key.code == sf::Keyboard::T) { mapType = 1; }
+                else if (event.key.code == sf::Keyboard::T) {
+                    if (mapType == 1) { mapType = 0; }
+                    else { mapType = 1; }
+                }
 
                 // Biome Map
-                else if (event.key.code == sf::Keyboard::B) { mapType = 2; }
+                else if (event.key.code == sf::Keyboard::B) {
+                    if (mapType == 2) { mapType = 0; }
+                    else { mapType = 2; } 
+                }
 
                 // Percepitation map
-                else if (event.key.code == sf::Keyboard::P) { mapType = 3; }
+                else if (event.key.code == sf::Keyboard::P) {
+                    if (mapType == 3) { mapType = 0; }
+                    else { mapType = 3; }
+                }
                 
                 // activate arrows for wind direction
                 else if (event.key.code == sf::Keyboard::Comma) { wind = !wind; }
@@ -569,12 +653,23 @@ int main()
             ImGui::Text("Biome: %s", biome.name.c_str());
             ImGui::SameLine();
             ImGui::ColorEdit4("", (float*)&color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip);
+            if (mapType == 2)
+            {
+                ImGui::Text("Biome Probabilities: ");
+                for (int i = 0; i < cell.biome_prob.size(); i++)
+                {
+					const Biome& biome = globals.biomes[i];
+					ImGui::Text("%s: %.2f", biome.name.c_str(), cell.biome_prob[i]);
+				}
+            }
             ImGui::Text("Wind: %.2f, %.2f", cell.windDir, cell.windStr);
 		}
         
         if (mapType==2)
         {
             bool change = true; // If the user changes the color of a biome, we need to update the map
+
+            ImGui::Begin("Biome Generation Controls");
             for (int i = 0; i < globals.biomes.size(); i++)
             {
                 Biome& biome = globals.biomes[i];
@@ -587,17 +682,31 @@ int main()
                 ImGui::Text("%s", biome.name.c_str());
                 ImGui::SameLine();
                 ImGui::ColorEdit4("", color, ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs);
-                ImGui::SameLine();
-                ImGui::Text("Temp: %.2f", biome.avgTemp);
-                ImGui::SameLine();
-                ImGui::Text("Precip: %.2f", biome.avgRain);
-                ImGui::SameLine();
-                ImGui::Text("Elevation: %.2f", biome.avgElevation);
-                ImGui::SameLine();
-                ImGui::Text("Wind Str: %.2f", biome.avgWindStr);
-                ImGui::SameLine();
-                ImGui::Text("Ocean: %d", biome.isOcean);
-                ImGui::PopID();
+                ImGui::NewLine();
+
+                int totalLength = 0;
+                for (const auto& pair : biome.values) {
+                    float intPart;
+                    float fractPart = std::modf(pair.second, &intPart);
+
+                    ImGui::SameLine();
+                    if (fractPart == 0.0)
+                    {
+                        ImGui::Text("%s: %.0f", pair.first.c_str(), pair.second);
+                    }
+                    else
+                    {
+						ImGui::Text("%s: %.2f", pair.first.c_str(), pair.second);
+					}
+					totalLength += pair.first.length() + 5;
+                    if (totalLength > 60) {
+						totalLength = 0;
+						ImGui::NewLine();
+                    }
+                }
+                ImGui::Text("Size: %d", biome.numCells);
+                
+                ImGui::PopID(); // HERE MAP
 
                 if (color[0] != biome.color.r / 255.0f || color[1] != biome.color.g / 255.0f || color[2] != biome.color.b / 255.0f) {
 					change = false;
@@ -611,14 +720,57 @@ int main()
 				drawBiomeMap(map, globals, vertexMap);
                 change = true;
 			}
+            ImGui::End();
         }
 
         ImGui::Checkbox("Draw New Map", &newMap);
+        ImGui::Checkbox("Generate New Biomes", &biomeGen);
 
         if(ImGui::Button("Switch origin of vertexMap")) { vertexMap.switchOrigin(map); };
         if (ImGui::Button("Check vertexMap")) { std::cout << vertexMap.useVertexBuffer << " : Array: " << vertexMap.vertexArray.getVertexCount() << " : Buffer: " << vertexMap.vertexBuffer.getVertexCount() << std::endl; };
 
         ImGui::End();
+
+        if (biomeGen)
+        {
+            ImGui::Begin("Biome Generation Controls");
+
+            if (ImGui::Button("Generate Biomes", { 200,50 })) {
+                globals.biomes.clear();
+                std::vector<sf::Color> biomeColors = randomColors(n_biomes);
+                for (int i = 0; i < n_biomes; i++) {
+                    globals.addBiome("Biome" + std::to_string(i), biomeColors[i]);
+                }
+                biomeColors.clear();
+				calcBiome(map.cells, globals, kmeans_max_iter, biome_method, prob_smoothing);
+			}
+            ImGui::PushItemWidth(150.f);
+            ImGui::InputUInt("KMeans Max Iterations", &kmeans_max_iter);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Amount of maximum iterations for clustering. Keep above 10");
+                ImGui::EndTooltip();
+            }
+			ImGui::SliderFloat("Probability Smoothing", &prob_smoothing, 0.0f, 5.0f);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Factor of weight neighbors have on the probability of biome for each cell");
+                ImGui::EndTooltip();
+            }
+			ImGui::InputUInt("Method", &biome_method);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Method of biome generation. 1: GMM with smoothing, 2: K-means, 3: GMM no smoothing");
+                ImGui::EndTooltip();
+            }
+            ImGui::InputUInt("Amount of Biomes", &n_biomes);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Amount of biomes to generate, if all land becomes one biome generate more.");
+                ImGui::EndTooltip();
+            }
+            ImGui::End();
+        }
 
         if (newMap)
         {
@@ -629,7 +781,7 @@ int main()
                 genWorld(map, globals, window, vertexMap,
                     windArrows, lines, font,
                     n_convergence_lines,
-                    kmeans_k, ncellx, ncelly,
+                    n_biomes, ncellx, ncelly,
                     windowWidth, windowHeight,
                     point_jitter, npeaks, sealevel,
                     global_temp_avg, delta_max_neg,
@@ -639,7 +791,7 @@ int main()
                     smooth_method, height_noise_repeats,
                     delta_coast_line, temp_smooth_repeats,
                     percepitation_repeats, percepitation_smooth_repeats,
-                    kmeans_max_iter, windstr_alpha, windstr_beta, seed);
+                    kmeans_max_iter, windstr_alpha, windstr_beta, biome_method ,seed);
                 newMap = false;
             }
 
@@ -689,7 +841,7 @@ int main()
                 ImGui::Text("Defines lines that split the prevailing winds. \nDirections and strengths are then concluded randomly, Earth has 6 zones so input 6.");
                 ImGui::EndTooltip(); }
 
-            ImGui::InputUInt("Amount of Biomes", &kmeans_k);
+            ImGui::InputUInt("Amount of Biomes", &n_biomes);
             if (ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
                 ImGui::Text("Amount of biomes to generate initially. \nLarge maps will often have a lot of ocean biomes.");
@@ -776,6 +928,12 @@ int main()
                     ImGui::BeginTooltip();
                     ImGui::Text("Beta value for the beta distribution of wind strenght.");
                     ImGui::EndTooltip(); }
+                ImGui::InputUInt("Method of Biomes", &biome_method); //TODO, fix this input
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Methods of biome generation. 1: GMM and probability smoothing, 2: KMeans (should be faster, is not)");
+                    ImGui::EndTooltip();
+                }
             }
 
             ImGui::PopItemWidth();

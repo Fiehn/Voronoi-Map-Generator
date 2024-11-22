@@ -297,6 +297,35 @@ std::vector<float> scalarMultiplication(const std::vector<float>& vec, float sca
     return result;
 }
 
+template <typename T>
+std::vector<T> elementWiseAdd(const std::vector<T>& vec1, const std::vector<T>& vec2) {
+    // Add two vectors element-wise
+    if (vec1.size() != vec2.size()) {
+		throw std::invalid_argument("Vectors must be the same size");
+	}
+	std::vector<T> result;
+	result.reserve(vec1.size());
+    for (int i = 0; i < vec1.size(); i++) {
+		result.push_back(vec1[i] + vec2[i]);
+	}
+	return result;
+}
+
+void booleanMapVector_f(std::vector<float>& vec, const std::vector<bool>& mask, bool flipped=false) {
+	// Apply a boolean mask to a vector
+    if (vec.size() != mask.size()) {
+		throw std::invalid_argument("Vectors must be the same size");
+	}
+    for (int i = 0; i < vec.size(); i++) {
+        if (flipped) {
+			vec[i] = mask[i] ? 0 : vec[i];
+		}
+        else {
+			vec[i] = mask[i] ? vec[i] : 0;
+		}
+    }
+}
+
 inline float sumf(const std::vector<float>& vec) {
 	float sum = 0;
     for (float value : vec) {
@@ -307,7 +336,7 @@ inline float sumf(const std::vector<float>& vec) {
 
 int chooseIndexMax(std::vector<float> rates) {
     // get index of max value of rates
-    return std::max_element(rates.begin(), rates.end()) - rates.begin();
+    return std::distance(rates.begin(), std::max_element(rates.begin(), rates.end()));
 }
 
 int chooseIndex(std::vector<float> rates) {
