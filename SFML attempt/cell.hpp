@@ -8,7 +8,6 @@
 #include "Voronoi.hpp"
 #include "GlobalWorldObjects.hpp"
 #include "clustering.hpp"
-#include <chrono>
 
 class Cell 
 {  
@@ -589,7 +588,6 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
         temporary[i] = { map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool * 1000.f, map[i].distToOcean}; // HERE MAP
 	}
 
-    auto start = std::chrono::high_resolution_clock::now();
     // initialize a placeholder 
     std::unique_ptr<ClusteringMethod> clusteringMethod;
     bool smoothing = false;
@@ -615,9 +613,6 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
     
     clusteringMethod->setData(temporary);
     clusteringMethod->run();
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Clustering for biomes took: " << duration.count() << "ms" << std::endl;
 
     for (int i = 0; i < map.size(); i++) {
         int cluster = clusteringMethod->getClusterId(i);

@@ -3,6 +3,7 @@
 #include <string>
 #include <time.h>
 #include <cstdlib>
+#include <chrono>
 #include "Voronoi.hpp"
 #include "vertex.hpp"
 
@@ -97,41 +98,109 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
     window.display();
 
     // Create the map
+    auto start = std::chrono::high_resolution_clock::now();
     map.clearMap();
     map.fillMap(ncellx, ncelly, MAXWIDTH, MAXHEIGHT, point_jitter);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Point Map took: " << duration.count() << "ms" << std::endl;
 
-
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Generating Heightmap");
     random_height_gen(map.cells, npeaks, delta_max_neg, delta_max_pos, prob_of_island, dist_from_mainland, height_method);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Height Gen took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Smoothing Heightmap");
     smooth_height(map.cells, rise_threshold, height_smooth_repeats, smooth_method);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Smooth Height took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Adding Noise to Heightmap");
     noise_height(map.cells, height_noise_repeats);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Noise Height took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Height Values");
     calcHeightValues(map.cells, globals, delta_coast_line);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Height Values took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Distance To Oceans");
     closeOceanCell(map.cells, map.points, globals);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Dist to Ocean took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Wind");
     calcWind(map.cells, map.points, MAXHEIGHT, globals);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Wind Calc took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating River");
     calcRiverStart(map.cells, globals);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Rivers took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Temperatures");
     calcTemp(map.cells, globals, map.points, MAXHEIGHT);
     smoothTemps(map.cells, temp_smooth_repeats);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Temperature took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Percepetation");
     calcPercepitation(map.cells, map.points, globals, percepitation_repeats);
-    smoothPercepitation(map.cells, percepitation_smooth_repeats);
+    smoothPercepitation(map.cells, percepitation_smooth_repeats); 
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Percepitatiton took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Humidity");
     calcHumid(map.cells);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Humidity took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating Biomes");
     calcBiome(map.cells, globals, kmeans_max_iter, biome_method);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Biomes took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Drawing Wind Arrows");
     windArrows.clear();
     windArrows = vor::windArrows(map);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Wind took: " << duration.count() << "ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Generating Vertex Buffer");
     vertexMap.clear();
     vertexMap.create(map);
     vertexMap.genVertexMap(map);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Vertex Map took: " << duration.count() << "ms" << std::endl;
+
     loadText(window, text ,50, loadingText,"Drawing Map");
 
     return;
@@ -630,7 +699,7 @@ int main()
 						ImGui::Text("%s: %.2f", pair.first.c_str(), pair.second);
 					}
 					totalLength += pair.first.length() + 5;
-                    if (totalLength > 50) {
+                    if (totalLength > 60) {
 						totalLength = 0;
 						ImGui::NewLine();
                     }
