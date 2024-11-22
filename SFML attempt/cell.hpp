@@ -577,7 +577,7 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
 	}
 
     // Variable names for the clusters and biomes
-    std::vector<std::string> names = { "Temperature", "Percepitation", "Humidity", "Height", "Wind Strength", "Ocean", "Dist to Ocean"};
+    std::vector<std::string> names = { "Ocean", "Temperature", "Percepitation", "Humidity", "Height", "Wind Strength", "Dist to Ocean"};
     
     // get vectors of the variables for the biomes
     std::vector<std::vector<float>> temporary;
@@ -585,7 +585,7 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
 
     for (int i = 0; i < map.size(); i++) {
 		temporary[i].resize(globals.biomes.size(), 0);
-        temporary[i] = { map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].oceanBool * 1000.f, map[i].distToOcean}; // HERE MAP
+        temporary[i] = { map[i].oceanBool * 100.f, map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, map[i].distToOcean};
 	}
 
     // initialize a placeholder 
@@ -628,7 +628,7 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
 			values.emplace(names[j], biomeValues[j]);
 		}
 
-        globals.biomes[i].setValues(values); // HERE MAP
+        globals.biomes[i].setValues(values);
 	}
 
     // remove biomes with 0 cluster size
@@ -675,7 +675,7 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
         map[i].biome_prob = elementWiseAdd(map[i].biome_prob, probs);
         
         // make it a probability again
-        map[i].biome_prob = scalarMultiplication(map[i].biome_prob, 1.f / sum_vec_float(map[i].biome_prob));
+        map[i].biome_prob = scalarMultiplication(map[i].biome_prob, 1.f / (sum_vec_float(map[i].biome_prob) + 1e-8));
 
         booleanMapVector_f(map[i].biome_prob, ocean_bool, !map[i].oceanBool);
 	}
@@ -692,7 +692,6 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
 
         globals.biomes[map[i].biome].numCells += 1;
     }
-
 }
 
 void calcLakes(std::vector<Cell>& map)

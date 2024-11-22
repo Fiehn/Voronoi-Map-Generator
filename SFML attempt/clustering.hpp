@@ -256,8 +256,10 @@ private:
 
 	std::vector<float> mean_clusters;
 	std::vector<float> stdDev_clusters;
+
+	bool ocean = true; // If ocean is true , we will not standardize the first dimension
 public:
-	GMM(int k, int dimensions, int iters) : k(k), dimensions(dimensions), iters(iters) {}
+	GMM(int k, int dimensions, int iters, bool ocean = true) : k(k), dimensions(dimensions), iters(iters), ocean(ocean) {}
 
 	void setData(const std::vector<std::vector<float>>& data) override {
 		this->data = data;
@@ -286,6 +288,10 @@ public:
 
 	void Standardize()
 	{	// get mean and standard deviation for each dimension
+		int start_iter = 0;
+		if (ocean) {
+			start_iter = 1;
+		}
 		mean.resize(dimensions, 0);
 		stdDev.resize(dimensions, 0);
 
@@ -294,28 +300,28 @@ public:
 		}
 
 		for (const auto& point : data) {
-			for (int i = 0; i < dimensions; ++i) {
+			for (int i = start_iter; i < dimensions; ++i) {
 				mean[i] += point[i];
 			}
 		}
 
-		for (int i = 0; i < dimensions; ++i) {
+		for (int i = start_iter; i < dimensions; ++i) {
 			mean[i] /= data.size();
 		}
 
 		for (const auto& point : data) {
-			for (int i = 0; i < dimensions; ++i) {
+			for (int i = start_iter; i < dimensions; ++i) {
 				stdDev[i] += (point[i] - mean[i]) * (point[i] - mean[i]);
 			}
 		}
 
-		for (int i = 0; i < dimensions; ++i) {
+		for (int i = start_iter; i < dimensions; ++i) {
 			stdDev[i] = sqrt(stdDev[i] / data.size());
 		}
 
 		// standardize data
 		for (auto& point : data) {
-			for (int i = 0; i < dimensions; ++i) {
+			for (int i = start_iter; i < dimensions; ++i) {
 				point[i] = (point[i] - mean[i]) / (stdDev[i] + 1e-8);
 			}
 		}
@@ -400,7 +406,7 @@ public:
 		std::vector<float> centroid;
 		for (int i = 0; i < dimensions; ++i) {
 			// Unstandardize the data
-			mean_clusters[clusterId * dimensions + i] *= (stdDev[i] + 1e-8);
+			mean_clusters[clusterId * dimensions + i] *= (stdDev[i] + 1e-8) + ocean;
 			mean_clusters[clusterId * dimensions + i] += mean[i];
 
 			centroid.push_back(mean_clusters[clusterId * dimensions + i]);
