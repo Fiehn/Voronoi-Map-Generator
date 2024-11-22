@@ -763,6 +763,12 @@ int main()
                 ImGui::Text("Method of biome generation. 1: GMM with smoothing, 2: K-means, 3: GMM no smoothing");
                 ImGui::EndTooltip();
             }
+            ImGui::InputUInt("Amount of Biomes", &n_biomes);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Amount of biomes to generate, if all land becomes one biome generate more.");
+                ImGui::EndTooltip();
+            }
             ImGui::End();
         }
 

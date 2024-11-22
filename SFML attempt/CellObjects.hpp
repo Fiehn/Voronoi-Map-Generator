@@ -34,7 +34,7 @@ public:
 	}
 
 	// Getters
-	std::map<std::string, float> getValues() { // HERE MAP
+	std::map<std::string, float> getValues() {
 			return values;
 		}
 
@@ -72,7 +72,7 @@ public:
 		this->id = id;
 	}
 	
-	// Values of the biome (average) // HERE MAP
+	// Values of the biome (average)
 	std::map<std::string, float> values = {
 		{"Temperature", 0},
 		{"Rainfall", 0},
