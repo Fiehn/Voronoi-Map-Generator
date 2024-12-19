@@ -3,7 +3,7 @@
 #include <algorithm> 
 #include <exception>
 #include "cell.hpp"
-#include "util.h"
+#include "util.hpp"
 
 namespace vor {
 

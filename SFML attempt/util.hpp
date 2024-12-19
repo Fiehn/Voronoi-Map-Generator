@@ -1,9 +1,22 @@
+
+#ifndef UTIL_HPP
+#define UTIL_HPP
+
 #pragma once
 #include <vector>
+#include <algorithm>
+#include <iostream>
+#include <cmath>
+#include <numeric>
 #include <string>
-#include <SFML/System/Vector2.hpp>
-#include <SFML/Graphics/Color.hpp>
 #include <map>
+#include <random>
+#include <SFML/Graphics.hpp>
+#include <SFML/System/Vector2.hpp>
+
+
+// I need to create a Random engine class that can be used to generate random numbers
+
 
 inline long rand_long() // Should only be used in the case that there is a need for larger variables
 {
@@ -47,17 +60,7 @@ inline float RandomBetween(float smallNumber, float bigNumber)
     return (((float)rand() / RAND_MAX) * diff) + smallNumber;
 }
 
-sf::Vector2f randomGradient() {
-    sf::Vector2f v;
-
-    int randomSignx = rand() % 2;
-    int randomSigny = rand() % 2;
-    float randomx = (float)rand() / (float)RAND_MAX;
-    float randomy = (float)rand() / (float)RAND_MAX;
-    v.x = (randomSignx)*randomx + (randomSignx - 1) * randomx;
-    v.y = (randomSigny)*randomy + (randomSigny - 1) * randomy;
-    return v;
-}
+sf::Vector2f randomGradient();
 
 template <typename T>
 inline T pop_front_i(std::vector<T>& v)
@@ -127,13 +130,10 @@ private:
 
 inline float normalized_value(float value, float max, float min) { return fabs((value - min) / (max - min)); }
 
-// Is this the correct way?
-template <typename T>
-void insert_unique(std::vector<T>& vec, const T& key) {
-    if (std::find(vec.begin(), vec.end(), key) == vec.end()) {
-        vec.push_back(key);
-    }
-}
+void insert_unique(std::vector<int>& vec, const int& key);
+void insert_unique(std::vector<float>& vec, const float& key);
+void insert_unique(std::vector<std::size_t>& vec, const std::size_t& key);
+
 
 // Kahan and Babuska summation, Neumaier variant; accumulates less FP error
 inline double sum_vec_double(const std::vector<double>& x) 
@@ -218,7 +218,7 @@ inline sf::Vector2f circumcenter(sf::Vector2f a, sf::Vector2f b, sf::Vector2f c)
     const double x = a.x + (ey * bl - dy * cl) * 0.5 / d;
     const double y = a.y + (dx * cl - ex * bl) * 0.5 / d;
 
-    return sf::Vector2f(x, y);
+    return sf::Vector2f(static_cast<float>(x), static_cast<float>(y));
 }
 
 inline bool in_circle(sf::Vector2f a, sf::Vector2f b, sf::Vector2f c, sf::Vector2f p) {
@@ -269,7 +269,7 @@ struct compare_dist_to_point {
     }
 };
 
-float normalizeAngle(float angleDegrees) {
+inline float normalizeAngle(float angleDegrees) {
     while (angleDegrees >= 360.0) {
         angleDegrees -= 360.0;
     }
@@ -282,10 +282,10 @@ float normalizeAngle(float angleDegrees) {
 #define PI 3.14159265
 
 inline float radians(float degrees) {
-	return degrees * (PI / 180.0);
+	return degrees * (static_cast<float>(PI) / 180.0);
 }
 
-std::vector<float> scalarMultiplication(const std::vector<float>& vec, float scalar) {
+inline std::vector<float> scalarMultiplication(const std::vector<float>& vec, float scalar) {
     std::vector<float> result;
     result.reserve(vec.size()); // Reserve space for efficiency
 
@@ -298,7 +298,7 @@ std::vector<float> scalarMultiplication(const std::vector<float>& vec, float sca
 }
 
 template <typename T>
-std::vector<T> elementWiseAdd(const std::vector<T>& vec1, const std::vector<T>& vec2) {
+inline std::vector<T> elementWiseAdd(const std::vector<T>& vec1, const std::vector<T>& vec2) {
     // Add two vectors element-wise
     if (vec1.size() != vec2.size()) {
 		throw std::invalid_argument("Vectors must be the same size");
@@ -311,7 +311,7 @@ std::vector<T> elementWiseAdd(const std::vector<T>& vec1, const std::vector<T>& 
 	return result;
 }
 
-void booleanMapVector_f(std::vector<float>& vec, const std::vector<bool>& mask, bool flipped=false) {
+inline void booleanMapVector_f(std::vector<float>& vec, const std::vector<bool>& mask, bool flipped=false) {
 	// Apply a boolean mask to a vector
     if (vec.size() != mask.size()) {
 		throw std::invalid_argument("Vectors must be the same size");
@@ -334,12 +334,12 @@ inline float sumf(const std::vector<float>& vec) {
 	return sum;
 }
 
-int chooseIndexMax(std::vector<float> rates) {
+inline int chooseIndexMax(std::vector<float> rates) {
     // get index of max value of rates
     return std::distance(rates.begin(), std::max_element(rates.begin(), rates.end()));
 }
 
-int chooseIndex(std::vector<float> rates) {
+inline int chooseIndex(std::vector<float> rates) {
     // choose index based on rates (rates are not probabilities but can be any positive number)
     float sum = sumf(rates);
     float random = (float)rand() / RAND_MAX;
@@ -353,7 +353,7 @@ int chooseIndex(std::vector<float> rates) {
     return rates.size() - 1;
 }
 
-float normalDistPDF(float mean, float std)
+inline float normalDistPDF(float mean, float std)
 {
     // Box-Muller transform
 	float u1 = (float)rand() / RAND_MAX;
@@ -361,12 +361,55 @@ float normalDistPDF(float mean, float std)
 	return mean + std * sqrt(-2 * log(u1)) * cos(2 * PI * u2);
 }
 
-float betaDist(float alpha, float beta)
+inline float betaDist(float alpha, float beta)
 {
     // Beta distribution
 	float gamma1 = std::tgammaf(alpha);
 	float gamma2 = std::tgammaf(beta);
 	return gamma1 / (gamma1 + gamma2);
+}
+
+inline bool pointInPolygon(const sf::Vector2f& point, const std::vector<sf::Vector2f>& vertices) {
+	// Check if a point is within a polygon
+	bool inside = false;
+	for (int i = 0, j = vertices.size() - 1; i < vertices.size(); j = i++) {
+		if (((vertices[i].y > point.y) != (vertices[j].y > point.y)) &&
+			(point.x < (vertices[j].x - vertices[i].x) * (point.y - vertices[i].y) / (vertices[j].y - vertices[i].y) + vertices[i].x)) {
+			inside = !inside;
+		}
+	}
+	return inside;
+}
+
+inline sf::Vector2f RandomPointInPolygon(const std::vector<sf::Vector2f>& vertices) {
+	// Get a random point within a polygon
+	float xMin = vertices[0].x;
+	float xMax = vertices[0].x;
+	float yMin = vertices[0].y;
+	float yMax = vertices[0].y;
+
+    for (int i = 1; i < vertices.size(); i++) {
+        if (vertices[i].x < xMin) {
+			xMin = vertices[i].x;
+		}
+        if (vertices[i].x > xMax) {
+			xMax = vertices[i].x;
+		}
+        if (vertices[i].y < yMin) {
+			yMin = vertices[i].y;
+		}
+        if (vertices[i].y > yMax) {
+			yMax = vertices[i].y;
+		}
+	}
+
+	sf::Vector2f point;
+    do {
+		point.x = RandomBetween(xMin, xMax);
+		point.y = RandomBetween(yMin, yMax);
+	} while (!pointInPolygon(point, vertices));
+
+	return point;
 }
 
 
@@ -471,33 +514,18 @@ public:
 	}
 };
 
-sf::Color randomColor() {
-	ColorTable colorTable;
-    return colorTable.getRandomColor();
-}
+sf::Color randomColor();
 
-std::vector<sf::Color> randomColors(int numColors) {
-	ColorTable colorTable;
-	return colorTable.getRandomColors(numColors);
-}
+std::vector<sf::Color> randomColors(int numColors);
 
-std::string colorName(sf::Color color) {
-	ColorTable colorTable;
-	return colorTable.getName(color);
-}
+std::string colorName(sf::Color color);
 
-std::string closestColorName(sf::Color color) {
-	ColorTable colorTable;
-	return colorTable.getClosestName(color);
-}
+std::string closestColorName(sf::Color color);
 
-sf::Color colorByName(std::string name) {
-	ColorTable colorTable;
-	return colorTable.getColor(name);
-}
+sf::Color colorByName(std::string name);
 
 
 
-
+#endif // UTIL_HPP
 
 

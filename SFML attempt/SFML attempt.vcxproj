@@ -140,6 +140,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Cells.cpp" />
+    <ClCompile Include="GlobalWorldObjects.cpp" />
     <ClCompile Include="Include\Dear ImGUI\imgui.cpp" />
     <ClCompile Include="Include\Dear ImGUI\imgui_demo.cpp" />
     <ClCompile Include="Include\Dear ImGUI\imgui_draw.cpp" />
@@ -150,17 +152,23 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cell.hpp" />
     <ClInclude Include="clustering.hpp" />
     <ClInclude Include="GlobalWorldObjects.hpp" />
     <ClInclude Include="Include\Dear ImGUI\imgui.h" />
+    <ClInclude Include="Map.hpp" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="vertex.hpp" />
     <ClInclude Include="Voronoi.hpp" />
     <ClInclude Include="CellObjects.hpp" />
     <ClInclude Include="Deprecated.h" />
-    <ClInclude Include="util.h" />
+    <ClInclude Include="util.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="SFML attempt.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

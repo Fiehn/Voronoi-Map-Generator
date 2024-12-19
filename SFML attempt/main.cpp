@@ -6,14 +6,12 @@
 #include <chrono>
 #include "Voronoi.hpp"
 #include "vertex.hpp"
+#include "GlobalWorldObjects.hpp"
+#include "cell.hpp"
+#include "Map.hpp"
 
 #include "imgui.h"
 #include "imgui-SFML.h"
-
-// FOR UI, Create a Biome generator view for an existing Voronoi map
-
-// There is some inspiration to get from the following (particularly for threading):
-// https://gitlab.gbar.dtu.dk/s164179/Microbots/blob/dc8b5b4b883fa1fe572fd82d44fbf291d7f81153/SFML-2.5.0/examples/island/Island.cpp
 
 static void loadText(sf::RenderWindow& window, sf::Text& text, int fontsize, std::string& displayText, std::string newText)
 {
@@ -135,7 +133,7 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
 
     start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Distance To Oceans");
-    closeOceanCell(map.cells, map.points, globals);
+    closeOceanCell(map.cells, globals);
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Dist to Ocean took: " << duration.count() << "ms" << std::endl;
@@ -303,7 +301,7 @@ int main()
     float dist_from_mainland = 1.0; // The distance from the mainland where the probability of random height increase begins, Represented by the sum of height of all neighbors
     int height_method = 1; // Method 1 is random, method 2 is first in first out, needs more methods (Simplex, diamond, perlin, etc)
     float rise_threshold = 0.09; // The minimum rise value where a cell height is smoothed 
-    unsigned int height_smooth_repeats = 15; // amount of height smoothing iterations
+    unsigned int height_smooth_repeats = 8; // amount of height smoothing iterations
     int smooth_method = 1; // method 1 is random the other is front
     unsigned int height_noise_repeats = 2; // amount of height noise iterations, happens after smoothing
     float delta_coast_line = 0.05; // the range around sealevel that is considered coast (below and above)
@@ -645,7 +643,7 @@ int main()
             ImGui::Text("Precipitation: %.2f", cell.percepitation);
             ImGui::Text("Elevation: %.2f", cell.height); ImGui::SameLine();
             ImGui::Text("Rise: %.2f", cell.rise);
-            ImGui::Text("Distance to Ocean: %.2f", cell.distToOcean);
+            ImGui::Text("Distance to Ocean: %d", cell.distToOcean);
             ImGui::Text("Coast Cell: %.d", cell.coastBool);
             ImGui::Text("Ocean Cell: %.d", cell.oceanBool);
             const Biome& biome = globals.biomes[cell.biome];
