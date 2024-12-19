@@ -3,6 +3,7 @@
 #include <map>
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include "cell.hpp"
 
 class Biome {
 public:
@@ -54,17 +55,8 @@ public:
         animalVariety = variety;
     }
 
-    void setValues(const std::map<std::string, float>& value) {
-        values = value;
+    void setValues(const std::map<std::string, float>& value);
 
-        if (values.at("Ocean") > 0.001f) {
-            isOcean = true;
-            values.at("Ocean") = 1;
-        } else {
-            isOcean = false;
-            values.at("Ocean") = 0;
-        }
-    }
     void setId(int id) {
         this->id = id;
     }
@@ -79,7 +71,27 @@ public:
     };
 };
 
+class River {
+public:
+    // Constructor
+    River(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points, std::vector<std::size_t> cells);
 
+    // Getters
+    float getLength() const { return len; };
+    std::vector<sf::Vector2f> getPath() { return path; };
+
+    // functions
+    void purgeRiver(std::vector<Cell>& map);
+
+    sf::VertexArray drawRiver();
+
+private:
+    float len = 0;
+    std::vector<sf::Vector2f> path;
+    std::vector<std::size_t> cells;
+    void calcLen() { len = static_cast<float>(path.size()); };
+    void calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points);
+};
 
 class Lake {
 public:

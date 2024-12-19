@@ -207,6 +207,13 @@ void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float
 // If you reach the sea, add the river to the sea and stop
 void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::vector<std::size_t>& stack, std::size_t start, std::vector<std::size_t>& river_cells)
 {
+    // TODO:
+	// optimize the river generation (check where its slow)
+	// Add methods for adding cells and merging cells to the river
+    // Add method for ending the river
+    // double the river path and reverse so the stripline works
+    // Make sure the River object is used in river iteration instead of the list of cells, that way I can easily expand the river as obstacles show up
+    
     std::vector<std::pair<std::size_t, float>> HeightDiff;
     HeightDiff.reserve(map[start].neighbors.size());
     float height = map[start].height;
@@ -290,7 +297,7 @@ void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::ve
 
 }
 
-void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals)
+void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals, const std::vector<sf::Vector2f>& voronoi_points)
 {
     std::vector<std::size_t> stack;
 
@@ -349,7 +356,7 @@ void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals)
         }
         if (river.empty() == false)
         {
-            //globals.rivers.emplace_back(river);
+            globals.rivers.emplace_back(River(map, voronoi_points, river));
             river.clear();
         }
     }

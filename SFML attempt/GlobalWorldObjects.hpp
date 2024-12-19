@@ -27,7 +27,7 @@ public:
 	std::vector<float> windDirection; // Wind direction for each convergence line (0 to 360 degrees) (0 being north) (will be the direction of the wind in the zone below the convergence line)
 	std::vector<float> windStrength; // Wind strength for each convergence line (0 to 1) (1 being the strongest) (will be the strength of the wind in the zone below the convergence line)
 
-	//std::vector<River> rivers; // List of rivers in the world
+	std::vector<River> rivers; // List of rivers in the world
 
 	GlobalWorldObjects();
 	void clearGlobals();

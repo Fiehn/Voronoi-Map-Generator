@@ -147,7 +147,7 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
 
     start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating River");
-    calcRiverStart(map.cells, globals);
+    calcRiverStart(map.cells, globals, map.voronoi_points);
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Rivers took: " << duration.count() << "ms" << std::endl;
@@ -278,6 +278,15 @@ static void drawWindMap(vor::Voronoi& map, VertexMap& vertexMap) {
         }
     }
     vertexMap.update(map);
+}
+
+static void drawRivers(GlobalWorldObjects& globals, sf::RenderWindow& window)
+{
+	for (size_t i = 0; i < globals.rivers.size(); i++)
+	{
+		sf::VertexArray river = globals.rivers[i].drawRiver();
+		window.draw(river);
+	}
 }
 
 int main() 
@@ -957,6 +966,8 @@ int main()
         if (highlightedCell != vor::INVALID_INDEX) {
 			window.draw(highlight);
 		}
+
+		drawRivers(globals, window);
 
         ImGui::SFML::Render(window);
 

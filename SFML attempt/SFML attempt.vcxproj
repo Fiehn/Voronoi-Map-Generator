@@ -140,6 +140,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CellObjects.cpp" />
     <ClCompile Include="Cells.cpp" />
     <ClCompile Include="GlobalWorldObjects.cpp" />
     <ClCompile Include="Include\Dear ImGUI\imgui.cpp" />
