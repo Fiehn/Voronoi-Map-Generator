@@ -205,15 +205,8 @@ void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float
 // Then add to the steepest neighbor and so on until you reach the sea or a lake
 // If you reach a lake, add the river to the lake and then continue from the lake
 // If you reach the sea, add the river to the sea and stop
-void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::vector<std::size_t>& stack, std::size_t start, std::vector<std::size_t>& river_cells)
+void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::vector<std::size_t>& stack, std::size_t start, std::size_t river_id)
 {
-    // TODO:
-	// optimize the river generation (check where its slow)
-	// Add methods for adding cells and merging cells to the river
-    // Add method for ending the river
-    // double the river path and reverse so the stripline works
-    // Make sure the River object is used in river iteration instead of the list of cells, that way I can easily expand the river as obstacles show up
-    
     std::vector<std::pair<std::size_t, float>> HeightDiff;
     HeightDiff.reserve(map[start].neighbors.size());
     float height = map[start].height;
@@ -278,8 +271,9 @@ void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::ve
                 map[possibleNeighbors[possibleNeighbors.size() - 1]].riverBool = true;
                 globals.riverCells.push_back(possibleNeighbors[possibleNeighbors.size() - 1]);
                 map[possibleNeighbors[possibleNeighbors.size() - 1]].riverStr = map[start].riverStr; //- RandomBetween(0.001, 0.003);
-                riverIteration(map, globals, stack, possibleNeighbors[possibleNeighbors.size() - 1], river_cells);
-                river_cells.push_back(possibleNeighbors[possibleNeighbors.size() - 1]);
+                globals.rivers[river_id].addCell(possibleNeighbors[possibleNeighbors.size() - 1]);
+				map[possibleNeighbors[possibleNeighbors.size() - 1]].riverId = river_id;
+                riverIteration(map, globals, stack, possibleNeighbors[possibleNeighbors.size() - 1], river_id);
             }
             else {
 
@@ -291,13 +285,15 @@ void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::ve
     map[HeightDiff[HeightDiff.size() - order].first].riverBool = true;
     globals.riverCells.push_back(HeightDiff[HeightDiff.size() - order].first);
     map[HeightDiff[HeightDiff.size() - order].first].riverStr = map[start].riverStr; //- RandomBetween(0.001, 0.003);
-    riverIteration(map, globals, stack, HeightDiff[HeightDiff.size() - order].first, river_cells);
-    river_cells.push_back(HeightDiff[HeightDiff.size() - order].first);
+    globals.rivers[river_id].addCell(HeightDiff[HeightDiff.size() - order].first);
+	map[HeightDiff[HeightDiff.size() - order].first].riverId = river_id;
+    riverIteration(map, globals, stack, HeightDiff[HeightDiff.size() - order].first, river_id);
+
     // FLow strenght calculate here
 
 }
 
-void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals, const std::vector<sf::Vector2f>& voronoi_points)
+void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals, const std::vector<sf::Vector2f>& points)
 {
     std::vector<std::size_t> stack;
 
@@ -321,9 +317,9 @@ void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals, const s
     }
 
     // Start the river from the snow cells
+    std::size_t i = 0;
     while (!stack.empty())
     {
-        std::vector<std::size_t> river;
 
         int count = 0;
         int idx = pop_random_i(stack);
@@ -348,16 +344,19 @@ void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals, const s
         }
         if (RandomBetween(0.0, 1.0) > 0.4)
         {
-            river.push_back(idx);
+            // If this is the place we can start a new river
+
+            globals.rivers.emplace_back(River(i));
+
+            globals.rivers[i].addCell(idx);
+
             globals.riverCells.push_back(idx);
             map[idx].riverBool = true;
             map[idx].riverStr = RandomBetween(0.99, 1.0); // has to be based on temperature and percepitation as well
-            riverIteration(map, globals, stack, idx, river);
-        }
-        if (river.empty() == false)
-        {
-            globals.rivers.emplace_back(River(map, voronoi_points, river));
-            river.clear();
+			map[idx].riverId = i;
+            riverIteration(map, globals, stack, idx, i);
+			globals.rivers[i].finishRiver(map, points);
+			i++;
         }
     }
 }

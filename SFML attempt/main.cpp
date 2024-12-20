@@ -147,7 +147,7 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
 
     start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating River");
-    calcRiverStart(map.cells, globals, map.voronoi_points);
+    calcRiverStart(map.cells, globals, map.points);
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Rivers took: " << duration.count() << "ms" << std::endl;
@@ -642,6 +642,7 @@ int main()
         ImGui::Text("Global Temperature: %.2f", globals.globalTempAvg);
         ImGui::Text("Global Precipitation: %.2f", globals.globalPercepitation);
         ImGui::Text("Global Snow Line: %.2f", globals.globalSnowline);
+		ImGui::Text("Amount of Rivers: %d", globals.rivers.size());
 
 
         // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position
@@ -653,8 +654,16 @@ int main()
             ImGui::Text("Elevation: %.2f", cell.height); ImGui::SameLine();
             ImGui::Text("Rise: %.2f", cell.rise);
             ImGui::Text("Distance to Ocean: %d", cell.distToOcean);
-            ImGui::Text("Coast Cell: %.d", cell.coastBool);
-            ImGui::Text("Ocean Cell: %.d", cell.oceanBool);
+			ImGui::Text("Coast: %.d", cell.coastBool); ImGui::SameLine();
+			ImGui::Text("Ocean: %.d", cell.oceanBool); ImGui::SameLine();
+			ImGui::Text("River: %.d", cell.riverBool); ImGui::SameLine();
+			ImGui::Text("Lake: %.d", cell.lakeBool);
+
+            if (cell.riverBool)
+            {
+				ImGui::Text("River id: %d", cell.riverId);
+			}
+
             const Biome& biome = globals.biomes[cell.biome];
             ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
             ImGui::Text("Biome: %s", biome.name.c_str());

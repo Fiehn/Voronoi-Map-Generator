@@ -39,6 +39,7 @@ void GlobalWorldObjects::clearGlobals()
 	coastCells.clear();
 	oceanCells.clear();
 	biomes.clear();
+	rivers.clear();
 }
 
 void GlobalWorldObjects::setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength)

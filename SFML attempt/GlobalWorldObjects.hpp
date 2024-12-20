@@ -41,6 +41,8 @@ public:
 	void setSeaLevel(float level);
 	void setGlobalSnowline(float snowline);
 	void setGlobalTreeline(float treeline);
+
+	void mergeRivers();
 };
 
 

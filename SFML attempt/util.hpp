@@ -382,6 +382,7 @@ inline bool pointInPolygon(const sf::Vector2f& point, const std::vector<sf::Vect
 }
 
 inline sf::Vector2f RandomPointInPolygon(const std::vector<sf::Vector2f>& vertices) {
+	// DO NOT USE!! This function is slow. It uses rejection sampling to get a random point in a polygon
 	// Get a random point within a polygon
 	float xMin = vertices[0].x;
 	float xMax = vertices[0].x;

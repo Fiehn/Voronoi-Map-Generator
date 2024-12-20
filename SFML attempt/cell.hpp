@@ -32,6 +32,7 @@ public:
 
     bool riverBool = false; // Has a river
     float riverStr = 0.f; // River strength
+	int riverId = -1; // River id
 
     bool lakeBool = false; // Has a lake
     bool snowBool = false; // Has snow

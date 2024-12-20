@@ -73,8 +73,9 @@ public:
 
 class River {
 public:
+	int id = 0;
     // Constructor
-    River(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points, std::vector<std::size_t> cells);
+    River(int id);
 
     // Getters
     float getLength() const { return len; };
@@ -83,7 +84,13 @@ public:
     // functions
     void purgeRiver(std::vector<Cell>& map);
 
+	void addCell(std::size_t cell);
+
     sf::VertexArray drawRiver();
+
+	void finishRiver(std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points) {
+		calcPath(map, voronoi_points);
+	};
 
 private:
     float len = 0;
