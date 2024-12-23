@@ -25,27 +25,87 @@ sf::VertexArray River::drawRiver() {
 };
 
 void River::calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& points) {
-	// For each cell, get a random point within the cell
-	// if the cell is a repeat of an already assigned cell, set the point to the already assigned point
-	// if the cell is a new cell, get a random point within the cell
-	// then copy and reverse the path to make it a loop
-    // then calculate the length of the path
+	// Pretend to be a graph.
+    // Create a path from the starting cell to the end cell by follwoing the neighbors of the current cell
+	// the end cell is the same as the starting cell so the path will loop back to the start
+    // all cells needs at least 1 visit
 
-    path.reserve(cells.size() * 2);
+    path.reserve(cells.size());
 
-	// Create a map to store if a cell has already been assigned a point
-	std::map<std::size_t, std::size_t> assignedPoints;
+	std::size_t q = 0;
 
-    for (size_t i = 0; i < cells.size(); i++) {
-		if (assignedPoints.find(cells[i]) != assignedPoints.end()) {
-			path.push_back(path[assignedPoints[cells[i]]]);
-		}
-		else {
-			sf::Vector2f point = points[cells[i]];
-			path.push_back(point);
-			assignedPoints[cells[i]] = i;
+	// Find the starting cell by looking at any adjacent cell that is ocean or lake:
+    for (std::size_t i = 0; i < cells.size(); i++) {
+        std::size_t startCell = cells[i];
+        for (std::size_t i = 0; i < map[startCell].neighbors.size(); i++) {
+            if (map[map[startCell].neighbors[i]].lakeBool || map[map[startCell].neighbors[i]].oceanBool) {
+                endCell = map[startCell].neighbors[i];
+                break;
+            }
+        }
+		if (endCell != 0) {
+			break;
 		}
     }
+
+	if (endCell == 0) {
+		// find a neighboring cell that is not a part of the river but is a river cell
+        for (std::size_t i = 0; i < cells.size(); i++) {
+			std::size_t startCell = cells[i];
+			for (std::size_t i = 0; i < map[startCell].neighbors.size(); i++) {
+				if (!map[map[startCell].neighbors[i]].riverBool && map[map[startCell].neighbors[i]].riverBool) {
+					endCell = map[startCell].neighbors[i];
+					break;
+				}
+			}
+			if (endCell != 0) {
+				break;
+			}
+        }
+    }
+	// Start the path from the end cell
+	q = endCell;
+	path.push_back(points[q]);
+	cells.push_back(endCell);
+
+    // This is amount of times visited for each cell based on its index in the cells vector
+	std::vector<int> visited(cells.size(), 0);
+    
+	// find index of q in cells
+	std::size_t index = std::find(cells.begin(), cells.end(), q) - cells.begin();
+	visited[index] = 1;
+
+	int count = 0;
+    while (true) {
+        if (count > 1000) {
+			std::cout << "Error: River pathfinding took too long" << std::endl;
+            break;
+        }
+		if (q == endCell && count > 0) {
+			break;
+		}
+
+		std::size_t temp = q;
+		std::size_t temp_idx = index;
+		for (size_t i = 0; i < map[q].neighbors.size(); i++) {
+			std::size_t n = map[q].neighbors[i];
+			std::size_t index = std::find(cells.begin(), cells.end(), n) - cells.begin();
+            if (index < cells.size() && visited[index] <= visited[temp_idx]) {
+				temp = n;
+				temp_idx = index;
+			}
+		}
+		if (temp == q) {
+			//std::cout << "Error: River pathfinding failed for river " << id << std::endl;
+			break;
+		}
+
+        visited[temp_idx] += 1;
+        q = temp;
+        path.push_back(points[temp]);
+		count += 1;
+    }
+    
     calcLen();
 	std::vector<sf::Vector2f> reversedPath = path;
 	std::reverse(reversedPath.begin(), reversedPath.end());

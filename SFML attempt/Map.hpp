@@ -769,14 +769,15 @@ void closeOceanCell(std::vector<Cell>& map, const GlobalWorldObjects& globals)
         visited[idx] = true;
 
         int curr_distance = map[idx].distToOcean;
+        if (curr_distance == 1 && map[idx].coastBool==false && map[idx].oceanBool == false)
+        {
+			map[idx].coastBool = true;
+		}
 
         for (int i = 0; i < map[idx].neighbors.size(); i++)
         {
             int neighbor = map[idx].neighbors[i];
-            if (map[neighbor].oceanBool == false && map[neighbor].coastBool == false)
-            {
-                map[neighbor].coastBool = true;
-            }
+            
             if (map[neighbor].distToOcean > curr_distance + 1)
             {
                 map[neighbor].distToOcean = curr_distance + 1;

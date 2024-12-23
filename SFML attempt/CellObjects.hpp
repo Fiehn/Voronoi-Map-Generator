@@ -96,6 +96,7 @@ private:
     float len = 0;
     std::vector<sf::Vector2f> path;
     std::vector<std::size_t> cells;
+	std::size_t endCell = 0;
     void calcLen() { len = static_cast<float>(path.size()); };
     void calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points);
 };
