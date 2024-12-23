@@ -374,6 +374,11 @@ int main()
     bool newMap = false; // Get window to draw new map
     bool biomeGen = false; // Get window to regenerate biomes
 
+    // Find window
+	bool findSearcher = false;
+	std::vector<std::size_t> findingCells;
+	std::size_t findCell = vor::INVALID_INDEX;
+
     // Retrieve the window's default view
     float zoom = 1;
     sf::View view = window.getDefaultView();
@@ -396,6 +401,8 @@ int main()
         percepitation_repeats, percepitation_smooth_repeats,
         kmeans_max_iter, windstr_alpha, windstr_beta,biome_method, seed);
 
+	std::size_t maxCellInMap = map.cells.size();
+    
     while (window.isOpen())
     {
         sf::Event event;
@@ -742,10 +749,41 @@ int main()
         ImGui::Checkbox("Draw New Map", &newMap);
         ImGui::Checkbox("Generate New Biomes", &biomeGen);
 
+		ImGui::Checkbox("Find Cell", &findSearcher);
+
         if(ImGui::Button("Switch origin of vertexMap")) { vertexMap.switchOrigin(map); };
         if (ImGui::Button("Check vertexMap")) { std::cout << vertexMap.useVertexBuffer << " : Array: " << vertexMap.vertexArray.getVertexCount() << " : Buffer: " << vertexMap.vertexBuffer.getVertexCount() << std::endl; };
 
         ImGui::End();
+
+        if (findSearcher)
+        {
+			ImGui::Begin("Find Cell");
+
+            unsigned int findCellUInt = findCell;
+			ImGui::InputUInt("Cell", &findCellUInt);
+			findCell = findCellUInt;
+			if (ImGui::Button("Find Cell")) {
+				if (findCell < map.cells.size()) {
+                    // if the cell is found and in the list
+                    if (std::find(findingCells.begin(), findingCells.end(), findCell) == findingCells.end() && findCell <= maxCellInMap)
+                    {
+                        findingCells.push_back(findCell);
+                    }
+				}
+			}
+            for (int i = 0; i < findingCells.size(); i++)
+            {
+				ImGui::PushID(i);
+				ImGui::Text("Cell %d", findingCells[i]); ImGui::SameLine();
+                if (ImGui::Button("Remove")) {
+					findingCells.erase(findingCells.begin() + i);
+                }
+				ImGui::PopID();
+            }
+            
+			ImGui::End();
+        }
 
         if (biomeGen)
         {
@@ -957,6 +995,8 @@ int main()
             ImGui::End();
         }
 
+        
+
         if (!highlightBool) {
             highlight.clear();
             highlightedCell = vor::INVALID_INDEX;
@@ -975,6 +1015,18 @@ int main()
         if (highlightedCell != vor::INVALID_INDEX) {
 			window.draw(highlight);
 		}
+        if (findSearcher)
+        {
+            sf::VertexArray new_highlight;
+            for (int i = 0; i < findingCells.size(); i++)
+            {
+                if (findingCells[i] < map.cells.size())
+                {
+                    new_highlight = drawHighlightCell(map, findingCells[i]);
+                    window.draw(new_highlight);
+                }
+            }
+        }
 
 		drawRivers(globals, window);
 

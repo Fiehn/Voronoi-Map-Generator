@@ -96,7 +96,8 @@ void River::calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2
 			}
 		}
 		if (temp == q) {
-			//std::cout << "Error: River pathfinding failed for river " << id << std::endl;
+			std::cout << "Error: River pathfinding failed for river " << id << std::endl;
+			std::cout << "End cell: " << endCell << std::endl;
 			break;
 		}
 
