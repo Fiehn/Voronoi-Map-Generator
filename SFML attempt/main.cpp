@@ -342,7 +342,7 @@ int main()
     ImGui::SFML::Init(window);
 
     // Create the global world objects
-    GlobalWorldObjects globals;
+    GlobalWorldObjects globals; 
     
     // Empty additionals
     sf::VertexArray windArrows;
@@ -367,20 +367,21 @@ int main()
     // Create the view
     sf::Vector2f oldPos;
     bool moving = false;
-    bool drawLines = false; // Set to true to draw the convergence lines of wind direction
-    bool wind = false; // Set to true to draw the wind direction
-    bool highlightBool = false; // Set to true to highlight a cell
+    bool drawConvergenceLinesBool = false; // Set to true to draw the convergence lines of wind direction
+    bool drawWindArrowsBool = false; // Set to true to draw the wind direction
+    bool drawHighlightBool = false; // Set to true to highlight a cell
+    bool drawRiversBool = true; // Draw rivers
     int mapType = 0; int mapTypeOld = 0;
-    bool newMap = false; // Get window to draw new map
-    bool biomeGen = false; // Get window to regenerate biomes
+    bool showNewMapBool = false; // Get window to draw new map
+    bool showBiomeGenBool = false; // Get window to regenerate biomes
 
     // Find window
-	bool findSearcher = false;
+	bool showFindSearcherBool = false;
 	std::vector<std::size_t> findingCells;
 	std::size_t findCell = vor::INVALID_INDEX;
 
     // Retrieve the window's default view
-    float zoom = 1;
+    float globalZoom = 1;
     sf::View view = window.getDefaultView();
 
     sf::Clock deltaClock;
@@ -462,7 +463,7 @@ int main()
                 }
 
                 // Draw Lines
-                else if (event.key.code == sf::Keyboard::L) { drawLines = !drawLines; }
+                else if (event.key.code == sf::Keyboard::L) { drawConvergenceLinesBool = !drawConvergenceLinesBool; }
 
                 // Wind Map
                 else if (event.key.code == sf::Keyboard::W) {
@@ -489,10 +490,10 @@ int main()
                 }
                 
                 // activate arrows for wind direction
-                else if (event.key.code == sf::Keyboard::Comma) { wind = !wind; }
+                else if (event.key.code == sf::Keyboard::Comma) { drawWindArrowsBool = !drawWindArrowsBool; }
 
                 // Activate Cell Highlighting
-                else if (event.key.code == sf::Keyboard::H) { highlightBool = !highlightBool; highlight.clear(); }
+                else if (event.key.code == sf::Keyboard::H) { drawHighlightBool = !drawHighlightBool; highlight.clear(); }
 
 				break;
 
@@ -502,7 +503,7 @@ int main()
                 // If no button is down, we are not moving the view
                 if (!moving) {
                     // Highlight Cells if active 
-                    if (highlightBool)
+                    if (drawHighlightBool)
                     {
                         // Get the position of the mouse in window coordinates
                         const sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
@@ -535,10 +536,10 @@ int main()
                 sf::Vector2f view_center = view.getCenter() + deltaPos;
 
                 // Make sure that the view is contained inside the map
-                if ((view.getCenter().x + deltaPos.x) + zoom * windowWidth / 2 > windowWidth || (view.getCenter().x + deltaPos.x) - zoom * windowWidth / 2 < 0) {
+                if ((view.getCenter().x + deltaPos.x) + globalZoom * windowWidth / 2 > windowWidth || (view.getCenter().x + deltaPos.x) - globalZoom * windowWidth / 2 < 0) {
                     view_center.x = view.getCenter().x;
                 }
-                if ((view.getCenter().y + deltaPos.y) + zoom * windowHeight / 2 > windowHeight || (view.getCenter().y + deltaPos.y) - zoom * windowHeight / 2 < 0) {
+                if ((view.getCenter().y + deltaPos.y) + globalZoom * windowHeight / 2 > windowHeight || (view.getCenter().y + deltaPos.y) - globalZoom * windowHeight / 2 < 0) {
                     view_center.y = view.getCenter().y;
                 }
 
@@ -557,30 +558,30 @@ int main()
 
                 if (event.mouseWheelScroll.delta <= -1)
                 {
-                    zoom = std::min(1.f, zoom + .07f);
+                    globalZoom = std::min(1.f, globalZoom + .07f);
                 }
                 else if (event.mouseWheelScroll.delta >= 1)
                 {
-                    zoom = std::max(.1f, zoom - .07f);
+                    globalZoom = std::max(.1f, globalZoom - .07f);
                 }
 
                 // Update our view
                 view.setSize(window.getDefaultView().getSize());
-                view.zoom(zoom);
+                view.zoom(globalZoom);
 
                 // Make sure that the view is contained inside the map
                 sf::Vector2f view_center = view.getCenter();
-                if ((view.getCenter().x) + zoom * windowWidth / 2 > windowWidth) {
-                    view_center.x = windowWidth - zoom * windowWidth / 2;
+                if ((view.getCenter().x) + globalZoom * windowWidth / 2 > windowWidth) {
+                    view_center.x = windowWidth - globalZoom * windowWidth / 2;
                 }
-                if ((view.getCenter().x) - zoom * windowWidth / 2 < 0) {
-                    view_center.x = zoom * windowWidth / 2;
+                if ((view.getCenter().x) - globalZoom * windowWidth / 2 < 0) {
+                    view_center.x = globalZoom * windowWidth / 2;
                 }
-                if ((view.getCenter().y) + zoom * windowHeight / 2 > windowHeight) {
-                    view_center.y = windowHeight - zoom * windowHeight / 2;
+                if ((view.getCenter().y) + globalZoom * windowHeight / 2 > windowHeight) {
+                    view_center.y = windowHeight - globalZoom * windowHeight / 2;
                 }
-                if (view.getCenter().y - zoom * windowHeight / 2 < 0) {
-                    view_center.y = zoom * windowHeight / 2;
+                if (view.getCenter().y - globalZoom * windowHeight / 2 < 0) {
+                    view_center.y = globalZoom * windowHeight / 2;
                 }
                 view.setCenter(view_center);
 
@@ -617,30 +618,31 @@ int main()
             switch (mapType) {
 			case 0:
 				drawHeightMap(map, vertexMap);
-                wind = false;
+                drawWindArrowsBool = false;
 				break;
 			case 1:
 				drawTempMap(map, vertexMap);
-                wind = false;
+                drawWindArrowsBool = false;
 				break;
 			case 2:
 				drawBiomeMap(map, globals, vertexMap);
-                wind = false;
+                drawWindArrowsBool = false;
 				break;
 			case 3:
 				drawPercepitationMap(map, vertexMap);
-                wind = false;
+                drawWindArrowsBool = false;
 				break;
             case 4:
 				drawWindMap(map, vertexMap);
-                wind = true;
+                drawWindArrowsBool = true;
 				break;
 			}
 		}
 
-        ImGui::Checkbox("Draw Lines", &drawLines);
-        ImGui::Checkbox("Wind Arrows", &wind);
-        ImGui::Checkbox("Highlight Cells", &highlightBool);
+        ImGui::Checkbox("Draw Lines", &drawConvergenceLinesBool);
+        ImGui::Checkbox("Wind Arrows", &drawWindArrowsBool);
+        ImGui::Checkbox("Highlight Cells", &drawHighlightBool);
+		ImGui::Checkbox("Draw Rivers", &drawRiversBool);
 
 
         ImGui::Text("Number of cells: %d", map.cells.size());
@@ -746,17 +748,17 @@ int main()
             ImGui::End();
         }
 
-        ImGui::Checkbox("Draw New Map", &newMap);
-        ImGui::Checkbox("Generate New Biomes", &biomeGen);
+        ImGui::Checkbox("Draw New Map", &showNewMapBool);
+        ImGui::Checkbox("Generate New Biomes", &showBiomeGenBool);
 
-		ImGui::Checkbox("Find Cell", &findSearcher);
+		ImGui::Checkbox("Find Cell", &showFindSearcherBool);
 
         if(ImGui::Button("Switch origin of vertexMap")) { vertexMap.switchOrigin(map); };
         if (ImGui::Button("Check vertexMap")) { std::cout << vertexMap.useVertexBuffer << " : Array: " << vertexMap.vertexArray.getVertexCount() << " : Buffer: " << vertexMap.vertexBuffer.getVertexCount() << std::endl; };
 
         ImGui::End();
 
-        if (findSearcher)
+        if (showFindSearcherBool)
         {
 			ImGui::Begin("Find Cell");
 
@@ -785,7 +787,7 @@ int main()
 			ImGui::End();
         }
 
-        if (biomeGen)
+        if (showBiomeGenBool)
         {
             ImGui::Begin("Biome Generation Controls");
 
@@ -826,7 +828,7 @@ int main()
             ImGui::End();
         }
 
-        if (newMap)
+        if (showNewMapBool)
         {
             ImGui::Begin("New Map Controls");
             // push a color on the generate new map button
@@ -846,7 +848,7 @@ int main()
                     delta_coast_line, temp_smooth_repeats,
                     percepitation_repeats, percepitation_smooth_repeats,
                     kmeans_max_iter, windstr_alpha, windstr_beta, biome_method ,seed);
-                newMap = false;
+                showNewMapBool = false;
             }
 
             ImGui::Text("The map will have around %.d cells", ncellx * ncelly);
@@ -996,8 +998,7 @@ int main()
         }
 
         
-
-        if (!highlightBool) {
+        if (!drawHighlightBool) {
             highlight.clear();
             highlightedCell = vor::INVALID_INDEX;
         }
@@ -1006,16 +1007,16 @@ int main()
         
         vertexMap.draw(window);
         
-        if (drawLines) {
+        if (drawConvergenceLinesBool) {
 			window.draw(lines);
 		}
-        if (wind) {
+        if (drawWindArrowsBool) {
 			window.draw(windArrows);
 		}
         if (highlightedCell != vor::INVALID_INDEX) {
 			window.draw(highlight);
 		}
-        if (findSearcher)
+        if (showFindSearcherBool)
         {
             sf::VertexArray new_highlight;
             for (int i = 0; i < findingCells.size(); i++)
@@ -1027,8 +1028,10 @@ int main()
                 }
             }
         }
-
-		drawRivers(globals, window);
+        if (drawRiversBool)
+		{
+			drawRivers(globals, window);
+		}
 
         ImGui::SFML::Render(window);
 
