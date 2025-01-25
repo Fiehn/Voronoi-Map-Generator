@@ -1,6 +1,8 @@
 #pragma once
 #include "CellObjects.hpp"
 #include "util.hpp"
+#include <algorithm>
+#include <stack>
 
 River::River(int id) {
 	this->id = id;
@@ -24,93 +26,105 @@ sf::VertexArray River::drawRiver() {
     return river;
 };
 
+static float riverCellScore(const Cell& cell) {
+	float score = 1;
+	if (cell.riverBool) score += 1;
+	if (cell.lakeBool) score += 2;
+	if (cell.oceanBool) score += 3;
+	return score;
+};
+
 void River::calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& points) {
-	// Pretend to be a graph.
-    // Create a path from the starting cell to the end cell by follwoing the neighbors of the current cell
-	// the end cell is the same as the starting cell so the path will loop back to the start
-    // all cells needs at least 1 visit
+	// Will create something assembling a Minimum Spanning Tree
+	// Using a Depth First Search algorithm
+	// Prioritizing cells with rivers, then lakes, then oceans
 
-    path.reserve(cells.size());
+    path.clear();
+    path.reserve(cells.size() * 2); // Reserve enough space for the path
 
-	std::size_t q = 0;
-
-	// Find the starting cell by looking at any adjacent cell that is ocean or lake:
+    // Find the starting cell (endCell)
+    endCell = 0;
     for (std::size_t i = 0; i < cells.size(); i++) {
         std::size_t startCell = cells[i];
-        for (std::size_t i = 0; i < map[startCell].neighbors.size(); i++) {
-            if (map[map[startCell].neighbors[i]].lakeBool || map[map[startCell].neighbors[i]].oceanBool) {
-                endCell = map[startCell].neighbors[i];
+        for (std::size_t j = 0; j < map[startCell].neighbors.size(); j++) {
+            std::size_t neighbor = map[startCell].neighbors[j];
+            if (map[neighbor].lakeBool || map[neighbor].oceanBool) {
+                endCell = neighbor;
                 break;
             }
         }
-		if (endCell != 0) {
-			break;
-		}
+        if (endCell != 0) break;
     }
 
-	if (endCell == 0) {
-		// find a neighboring cell that is not a part of the river but is a river cell
+    if (endCell == 0) {
         for (std::size_t i = 0; i < cells.size(); i++) {
-			std::size_t startCell = cells[i];
-			for (std::size_t i = 0; i < map[startCell].neighbors.size(); i++) {
-				if (!map[map[startCell].neighbors[i]].riverBool && map[map[startCell].neighbors[i]].riverBool) {
-					endCell = map[startCell].neighbors[i];
-					break;
-				}
-			}
-			if (endCell != 0) {
-				break;
-			}
+            std::size_t startCell = cells[i];
+            for (std::size_t j = 0; j < map[startCell].neighbors.size(); j++) {
+                std::size_t neighbor = map[startCell].neighbors[j];
+                if (map[neighbor].riverId != id && map[neighbor].riverBool) {
+                    endCell = neighbor;
+                    break;
+                }
+            }
+            if (endCell != 0) break;
         }
     }
-	// Start the path from the end cell
-	q = endCell;
-	path.push_back(points[q]);
-	cells.push_back(endCell);
 
-    // This is amount of times visited for each cell based on its index in the cells vector
-	std::vector<int> visited(cells.size(), 0);
-    
-	// find index of q in cells
-	std::size_t index = std::find(cells.begin(), cells.end(), q) - cells.begin();
-	visited[index] = 1;
-
-	int count = 0;
-    while (true) {
-        if (count > 1000) {
-			std::cout << "Error: River pathfinding took too long" << std::endl;
-            break;
-        }
-		if (q == endCell && count > 0) {
-			break;
-		}
-
-		std::size_t temp = q;
-		std::size_t temp_idx = index;
-		for (size_t i = 0; i < map[q].neighbors.size(); i++) {
-			std::size_t n = map[q].neighbors[i];
-			std::size_t index = std::find(cells.begin(), cells.end(), n) - cells.begin();
-            if (index < cells.size() && visited[index] <= visited[temp_idx]) {
-				temp = n;
-				temp_idx = index;
-			}
-		}
-		if (temp == q) {
-			std::cout << "Error: River pathfinding failed for river " << id << std::endl;
-			std::cout << "End cell: " << endCell << std::endl;
-			break;
-		}
-
-        visited[temp_idx] += 1;
-        q = temp;
-        path.push_back(points[temp]);
-		count += 1;
+    if (endCell == 0) {
+        endCell = cells[0];
     }
-    
+
+    // Start the path from the end cell
+    std::size_t q = endCell;
+    path.push_back(points[q]);
+
+    // Track visited cells to avoid revisiting
+    std::vector<bool> visited(map.size(), false);
+    visited[q] = true;
+
+    // Use a stack to keep track of the current path
+    std::stack<std::size_t> stack;
+    stack.push(q);
+
+    while (!stack.empty()) {
+        std::size_t current = stack.top();
+        bool foundUnvisited = false;
+
+		// Get all unvisited neighbors
+		std::vector<std::size_t> unvisitedNeighbors;
+        for (std::size_t i = 0; i < map[current].neighbors.size(); i++) {
+            std::size_t neighbor = map[current].neighbors[i];
+
+            // Check if this cell has been visited
+            if (!visited[neighbor] && std::find(cells.begin(), cells.end(), neighbor) != cells.end()) {
+				unvisitedNeighbors.push_back(neighbor);
+            }
+        }
+        // Sort unvisited neighbors by priority (riverCellScore)
+        std::sort(unvisitedNeighbors.begin(), unvisitedNeighbors.end(), [&](std::size_t a, std::size_t b) {
+            return riverCellScore(map[a]) > riverCellScore(map[b]); // Higher score = higher priority
+            });
+
+        // Visit the highest-priority neighbor
+        if (!unvisitedNeighbors.empty()) {
+            std::size_t neighbor = unvisitedNeighbors[0]; // Highest-priority neighbor
+            visited[neighbor] = true;
+            path.push_back(points[neighbor]);
+            stack.push(neighbor);
+            foundUnvisited = true;
+        }
+
+        // If no unvisited neighbors, backtrack
+        if (!foundUnvisited) {
+            stack.pop();
+            if (!stack.empty()) {
+                // Add the backtracking point to the path
+                path.push_back(points[stack.top()]);
+            }
+        }
+    }
+
     calcLen();
-	std::vector<sf::Vector2f> reversedPath = path;
-	std::reverse(reversedPath.begin(), reversedPath.end());
-	path.insert(path.end(), reversedPath.begin(), reversedPath.end());
 };
 
 void River::addCell(std::size_t cell) {

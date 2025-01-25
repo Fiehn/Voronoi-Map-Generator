@@ -232,6 +232,8 @@ void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::ve
             for (int i = 0; i < map[start].neighbors.size(); i++)
             {
                 map[map[start].neighbors[i]].lakeBool = true;
+				map[map[start].neighbors[i]].riverId = river_id;
+				globals.rivers.emplace_back(River(map[start].neighbors[i])); // Should be lakes
             }
         }
     }
