@@ -4,6 +4,20 @@
 #include <algorithm>
 #include <stack>
 
+void Biome::setValues(const std::map<std::string, float>& value) {
+    values = value;
+
+    if (values.at("Ocean") > 0.001f) {
+        isOcean = true;
+        values.at("Ocean") = 1;
+    }
+    else {
+        isOcean = false;
+        values.at("Ocean") = 0;
+    }
+}
+
+
 River::River(int id) {
 	this->id = id;
 };
@@ -36,13 +50,15 @@ static float riverCellScore(const Cell& cell) {
 
 void River::calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& points) {
 	// Will create something assembling a Minimum Spanning Tree
-	// Using a Depth First Search algorithm
+	// Using a Depth First Search algorithm to find the path
 	// Prioritizing cells with rivers, then lakes, then oceans
+
 
     path.clear();
     path.reserve(cells.size() * 2); // Reserve enough space for the path
 
     // Find the starting cell (endCell)
+	// Check if any of the neighboring cells are a lake or ocean
     endCell = 0;
     for (std::size_t i = 0; i < cells.size(); i++) {
         std::size_t startCell = cells[i];
@@ -56,6 +72,7 @@ void River::calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2
         if (endCell != 0) break;
     }
 
+	// If no lake or ocean cells are found, check for river cells
     if (endCell == 0) {
         for (std::size_t i = 0; i < cells.size(); i++) {
             std::size_t startCell = cells[i];
@@ -131,15 +148,44 @@ void River::addCell(std::size_t cell) {
 	cells.push_back(cell);
 };
 
-void Biome::setValues(const std::map<std::string, float>& value) {
-    values = value;
+void Lake::calcArea() {
+	area = polygonArea(bounds);
+};
 
-    if (values.at("Ocean") > 0.001f) {
-        isOcean = true;
-        values.at("Ocean") = 1;
-    }
-    else {
-        isOcean = false;
-        values.at("Ocean") = 0;
-    }
-}
+void Lake::calcMaxDepth() {
+
+};
+
+void Lake::calcBounds(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map) {
+	bounds.clear();
+	bounds.reserve(cells.size() * 2);
+	// We need to find the outer bounds of the lake cells
+	// We can do this by finding the convex hull of the lake cells
+	// Using Chan's algorithm
+
+	// First get all the points of the lake
+	std::vector<sf::Vector2f> points;
+	points.reserve(cells.size() * 10);
+	// points are stored in map[cells[i]].vertex
+	for (std::size_t i = 0; i < cells.size(); i++) {
+		for (std::size_t j = 0; j < map[cells[i]].vertex.size(); j++) {
+			points.push_back(voronoi_points[map[cells[i]].vertex[j]]);
+		}
+	}
+
+	// Find the convex hull of the points
+	bounds = convexHull(points);
+};
+
+sf::VertexArray Lake::drawLake() {
+	sf::VertexArray lake(sf::TriangleStrip, bounds.size()+1);
+	// Set the center of the lake
+	//lake[0].position = computeCentroid(bounds);
+	//lake[0].color = sf::Color::Blue;
+	// Set the bounds of the lake
+	for (size_t i = 0; i < bounds.size(); i++) {
+		lake[i].position = bounds[i];
+		lake[i].color = sf::Color::Blue;
+	}
+	return lake;
+};

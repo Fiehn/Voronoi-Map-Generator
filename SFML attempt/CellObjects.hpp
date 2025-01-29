@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include "cell.hpp"
+#include <iostream>
 
 class Biome {
 public:
@@ -88,25 +89,61 @@ public:
 
     sf::VertexArray drawRiver();
 
-	void finishRiver(std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points) {
+	void finishRiver(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points) {
 		calcPath(map, voronoi_points);
 	};
 
+	void addTributary(int tributary) { tributaries.push_back(tributary); };
+	void setParentRiver(int parent) { parentRiver = parent; };
+
 private:
     float len = 0;
-    std::vector<sf::Vector2f> path;
     std::vector<std::size_t> cells;
-	std::size_t endCell = 0;
+    std::vector<sf::Vector2f> path;
+	std::vector<int> tributaries;
+	int parentRiver = -1;
+    std::size_t endCell = 0;
     void calcLen() { len = static_cast<float>(path.size()); };
     void calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points);
 };
 
 class Lake {
 public:
+	int id = 0;
+    
+	// Constructor
+	Lake(int id) {
+		this->id = id;
+	};
+
+	// Getters
+	float getArea() const { return area; };
+	float getMaxDepth() const { return maxDepth; };
+	std::vector<std::size_t> getCells() { return cells; };
+	std::vector<sf::Vector2f> getBounds() { return bounds; };
+
+	// Functions
+	void addCell(std::size_t cell) { cells.push_back(cell); };
+	void addBounds(sf::Vector2f bound) { bounds.push_back(bound); };
+	
+	void finishLake(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points) {
+		calcBounds(voronoi_points, map);
+		calcArea();
+		calcMaxDepth();
+	};
+
+	sf::VertexArray drawLake();
+
+private:
     float area = 0;
     float maxDepth = 0;
-    std::vector<int> cells;
+    std::vector<std::size_t> cells;
     std::vector<sf::Vector2f> bounds;
+
+    void calcArea();
+    void calcMaxDepth();
+    void calcBounds(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map);
+	
 };
 
 

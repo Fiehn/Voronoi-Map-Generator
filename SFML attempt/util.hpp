@@ -413,6 +413,24 @@ inline sf::Vector2f RandomPointInPolygon(const std::vector<sf::Vector2f>& vertic
 	return point;
 }
 
+std::vector<sf::Vector2f> convexHull(const std::vector<sf::Vector2f>& points);
+
+// Function to compute the centroid of a polygon
+sf::Vector2f computeCentroid(const std::vector<sf::Vector2f>& points);
+
+// Function to compute the angle between two points and the centroid
+inline float computeAngle(const sf::Vector2f& centroid, const sf::Vector2f& point) 
+{
+    return std::atan2(point.y - centroid.y, point.x - centroid.x);
+}
+
+// Function to order points sequentially around the centroid
+std::vector<sf::Vector2f> orderPoints(std::vector<sf::Vector2f> points);
+
+
+// Function to compute the area of a polygon (with unordered points)
+float polygonArea(const std::vector<sf::Vector2f>& points);
+
 
 // Color table with names from https://www.rapidtables.com/web/color/RGB_Color.html
 class ColorTable {

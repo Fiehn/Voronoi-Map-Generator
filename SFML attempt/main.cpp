@@ -147,7 +147,7 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
 
     start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating River");
-    calcRiverStart(map.cells, globals, map.points);
+    calcRiverStart(map.cells, globals, map.points, map.voronoi_points);
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Rivers took: " << duration.count() << "ms" << std::endl;
@@ -259,7 +259,7 @@ static void drawPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap)
 static void drawHeightMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
     for (std::size_t i = 0; i < map.cells.size(); i++) {
-        sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+        sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + 1.75), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
             map.vertices[j].color = color;
         }
@@ -286,6 +286,15 @@ static void drawRivers(GlobalWorldObjects& globals, sf::RenderWindow& window)
 	{
 		sf::VertexArray river = globals.rivers[i].drawRiver();
 		window.draw(river);
+	}
+}
+
+static void drawLakes(GlobalWorldObjects& globals, sf::RenderWindow& window)
+{
+    for (std::size_t i = 0; i < globals.lakes.size(); i++)
+    {
+        sf::VertexArray lake = globals.lakes[i].drawLake();
+		window.draw(lake);
 	}
 }
 
@@ -371,6 +380,8 @@ int main()
     bool drawWindArrowsBool = false; // Set to true to draw the wind direction
     bool drawHighlightBool = false; // Set to true to highlight a cell
     bool drawRiversBool = true; // Draw rivers
+	bool drawLakesBool = true; // Draw lakes
+
     int mapType = 0; int mapTypeOld = 0;
     bool showNewMapBool = false; // Get window to draw new map
     bool showBiomeGenBool = false; // Get window to regenerate biomes
@@ -643,6 +654,7 @@ int main()
         ImGui::Checkbox("Wind Arrows", &drawWindArrowsBool);
         ImGui::Checkbox("Highlight Cells", &drawHighlightBool);
 		ImGui::Checkbox("Draw Rivers", &drawRiversBool);
+		ImGui::Checkbox("Draw Lakes", &drawLakesBool);
 
 
         ImGui::Text("Number of cells: %d", map.cells.size());
@@ -672,6 +684,10 @@ int main()
             {
 				ImGui::Text("River id: %d", cell.riverId);
 			}
+			if (cell.lakeBool)
+			{
+				ImGui::Text("Lake id: %d", cell.lakeId);
+            }
 
             const Biome& biome = globals.biomes[cell.biome];
             ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
@@ -1032,6 +1048,10 @@ int main()
 		{
 			drawRivers(globals, window);
 		}
+        if (drawLakesBool)
+        {
+			drawLakes(globals, window);
+        }
 
         ImGui::SFML::Render(window);
 

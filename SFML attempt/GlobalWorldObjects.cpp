@@ -84,7 +84,6 @@ void GlobalWorldObjects::generateBiomes()
 	//std::vector<std::string> names = { "Tundra", "Taiga", "Temperate Forest", "Tropical Rainforest", "Desert", "Savanna", "Grassland", "Shrubland", "Boreal Forest", "Chaparral", "Alpine", "Wetland", "Mangrove", "Coral Reef", "Kelp Forest", "Open Ocean", "Deep Ocean", "Ice Shelf", "Iceberg" };
 }
 
-
 std::vector<float> GlobalWorldObjects::getConvergenceLines() const
 {
 	return convergenceLines;

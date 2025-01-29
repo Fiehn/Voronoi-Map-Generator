@@ -10,7 +10,7 @@ class Cell
 public:
     unsigned int id; // Unique Id coming from the points vector
     Cell(int i) : id(i) { vertex.reserve(10); neighbors.reserve(10); }; // Constructor, am I doing this right?
-    std::vector<int> vertex; // Id's of vertecies that corespond to the cell and are stored in voroi_points this should be pointers?
+    std::vector<int> vertex; // Id's of vertecies that corespond to the cell and are stored in voronoi_points this should be pointers?
     std::vector<int> neighbors; // Id's of the neighbors
     unsigned int vertex_offset = 0U; // Offset for the vertex buffer
 
@@ -35,6 +35,8 @@ public:
 	int riverId = -1; // River id
 
     bool lakeBool = false; // Has a lake
+	int lakeId = -1; // Lake id
+
     bool snowBool = false; // Has snow
     bool treeBool = true; // Has trees
     
