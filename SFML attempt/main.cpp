@@ -293,8 +293,9 @@ static void drawLakes(GlobalWorldObjects& globals, sf::RenderWindow& window)
 {
     for (std::size_t i = 0; i < globals.lakes.size(); i++)
     {
-        sf::VertexArray lake = globals.lakes[i].drawLake();
-		window.draw(lake);
+		/// TODO: Fix the lake drawing
+        //sf::VertexArray lake = globals.lakes[i].drawLake();
+		//window.draw(lake);
 	}
 }
 
@@ -652,9 +653,10 @@ int main()
 
         ImGui::Checkbox("Draw Lines", &drawConvergenceLinesBool);
         ImGui::Checkbox("Wind Arrows", &drawWindArrowsBool);
-        ImGui::Checkbox("Highlight Cells", &drawHighlightBool);
-		ImGui::Checkbox("Draw Rivers", &drawRiversBool);
-		ImGui::Checkbox("Draw Lakes", &drawLakesBool);
+        ImGui::Checkbox("Highlight Cell", &drawHighlightBool); 
+		ImGui::Checkbox("Draw Rivers", &drawRiversBool); 
+		ImGui::Checkbox("Draw Lakes", &drawLakesBool); 
+        if (ImGui::BeginItemTooltip()) { ImGui::Text("Drawing lakes is currently broken."); ImGui::EndTooltip(); }
 
 
         ImGui::Text("Number of cells: %d", map.cells.size());
@@ -767,7 +769,8 @@ int main()
         ImGui::Checkbox("Draw New Map", &showNewMapBool);
         ImGui::Checkbox("Generate New Biomes", &showBiomeGenBool);
 
-		ImGui::Checkbox("Find Cell", &showFindSearcherBool);
+		ImGui::Checkbox("Find Cell", &showFindSearcherBool); 
+        if (ImGui::BeginItemTooltip()) { ImGui::Text("Find a cell by its index"); ImGui::EndTooltip(); }
 
         if(ImGui::Button("Switch origin of vertexMap")) { vertexMap.switchOrigin(map); };
         if (ImGui::Button("Check vertexMap")) { std::cout << vertexMap.useVertexBuffer << " : Array: " << vertexMap.vertexArray.getVertexCount() << " : Buffer: " << vertexMap.vertexBuffer.getVertexCount() << std::endl; };

@@ -174,10 +174,10 @@ void Lake::calcBounds(const std::vector<sf::Vector2f>& voronoi_points, const std
 	}
 
 	// Find the convex hull of the points
-	bounds = convexHull(points);
+	bounds = convexHull(points); /// THIS IS NOT THE WAY YOU dimbo
 };
 
-sf::VertexArray Lake::drawLake() {
+sf::VertexArray Lake::drawLake() { /// THis is not working correctly fix it
 	sf::VertexArray lake(sf::TriangleStrip, bounds.size()+1);
 	// Set the center of the lake
 	//lake[0].position = computeCentroid(bounds);
