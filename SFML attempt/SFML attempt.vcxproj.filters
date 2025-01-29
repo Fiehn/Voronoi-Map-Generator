@@ -34,6 +34,18 @@
     <ClCompile Include="Include\Dear ImGUI\imgui_demo.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="GlobalWorldObjects.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Cells.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="CellObjects.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Voronoi.hpp">
@@ -48,7 +60,7 @@
     <ClInclude Include="Deprecated.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="util.h">
+    <ClInclude Include="util.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GlobalWorldObjects.hpp">
@@ -63,5 +75,16 @@
     <ClInclude Include="Include\Dear ImGUI\imgui.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Map.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="SFML attempt.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

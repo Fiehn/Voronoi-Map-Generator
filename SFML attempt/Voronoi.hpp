@@ -3,7 +3,7 @@
 #include <algorithm> 
 #include <exception>
 #include "cell.hpp"
-#include "util.h"
+#include "util.hpp"
 
 namespace vor {
 
@@ -55,13 +55,13 @@ namespace vor {
 
     class Voronoi {
     public:
-        std::vector<sf::Vector2f> points;
-        std::vector<Cell> cells;
+		std::vector<sf::Vector2f> points; // "Center"/initial points of the cells
+		std::vector<Cell> cells; // Cells of the Voronoi map
         std::vector<sf::Vector2f> voronoi_points; // deprecated ?
-        std::vector<sf::Vertex> vertices;
-        std::size_t vertexCount;
-        vor::Grid grid_cells;
-        int cell_size = 50;
+		std::vector<sf::Vertex> vertices; // Vertices of the Voronoi map, to draw the cells
+		std::size_t vertexCount; // Amount of vertices in the Voronoi map
+		vor::Grid grid_cells; // Grid for spacial partitioning
+		int cell_size = 50; // Size of the cells in the grid
 
         Voronoi() {};
 

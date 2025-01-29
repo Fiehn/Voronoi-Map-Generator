@@ -6,14 +6,12 @@
 #include <chrono>
 #include "Voronoi.hpp"
 #include "vertex.hpp"
+#include "GlobalWorldObjects.hpp"
+#include "cell.hpp"
+#include "Map.hpp"
 
 #include "imgui.h"
 #include "imgui-SFML.h"
-
-// FOR UI, Create a Biome generator view for an existing Voronoi map
-
-// There is some inspiration to get from the following (particularly for threading):
-// https://gitlab.gbar.dtu.dk/s164179/Microbots/blob/dc8b5b4b883fa1fe572fd82d44fbf291d7f81153/SFML-2.5.0/examples/island/Island.cpp
 
 static void loadText(sf::RenderWindow& window, sf::Text& text, int fontsize, std::string& displayText, std::string newText)
 {
@@ -135,7 +133,7 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
 
     start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Distance To Oceans");
-    closeOceanCell(map.cells, map.points, globals);
+    closeOceanCell(map.cells, globals);
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Dist to Ocean took: " << duration.count() << "ms" << std::endl;
@@ -149,7 +147,7 @@ static void genWorld(vor::Voronoi& map, GlobalWorldObjects& globals, sf::RenderW
 
     start = std::chrono::high_resolution_clock::now();
     loadText(window, text, 50, loadingText, "Calculating River");
-    calcRiverStart(map.cells, globals);
+    calcRiverStart(map.cells, globals, map.points, map.voronoi_points);
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Rivers took: " << duration.count() << "ms" << std::endl;
@@ -261,7 +259,7 @@ static void drawPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap)
 static void drawHeightMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
     for (std::size_t i = 0; i < map.cells.size(); i++) {
-        sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + (2 - map.cells[i].riverBool - map.cells[i].lakeBool)), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+        sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + 1.75), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
             map.vertices[j].color = color;
         }
@@ -280,6 +278,25 @@ static void drawWindMap(vor::Voronoi& map, VertexMap& vertexMap) {
         }
     }
     vertexMap.update(map);
+}
+
+static void drawRivers(GlobalWorldObjects& globals, sf::RenderWindow& window)
+{
+	for (size_t i = 0; i < globals.rivers.size(); i++)
+	{
+		sf::VertexArray river = globals.rivers[i].drawRiver();
+		window.draw(river);
+	}
+}
+
+static void drawLakes(GlobalWorldObjects& globals, sf::RenderWindow& window)
+{
+    for (std::size_t i = 0; i < globals.lakes.size(); i++)
+    {
+		/// TODO: Fix the lake drawing
+        //sf::VertexArray lake = globals.lakes[i].drawLake();
+		//window.draw(lake);
+	}
 }
 
 int main() 
@@ -303,7 +320,7 @@ int main()
     float dist_from_mainland = 1.0; // The distance from the mainland where the probability of random height increase begins, Represented by the sum of height of all neighbors
     int height_method = 1; // Method 1 is random, method 2 is first in first out, needs more methods (Simplex, diamond, perlin, etc)
     float rise_threshold = 0.09; // The minimum rise value where a cell height is smoothed 
-    unsigned int height_smooth_repeats = 15; // amount of height smoothing iterations
+    unsigned int height_smooth_repeats = 8; // amount of height smoothing iterations
     int smooth_method = 1; // method 1 is random the other is front
     unsigned int height_noise_repeats = 2; // amount of height noise iterations, happens after smoothing
     float delta_coast_line = 0.05; // the range around sealevel that is considered coast (below and above)
@@ -335,7 +352,7 @@ int main()
     ImGui::SFML::Init(window);
 
     // Create the global world objects
-    GlobalWorldObjects globals;
+    GlobalWorldObjects globals; 
     
     // Empty additionals
     sf::VertexArray windArrows;
@@ -360,15 +377,23 @@ int main()
     // Create the view
     sf::Vector2f oldPos;
     bool moving = false;
-    bool drawLines = false; // Set to true to draw the convergence lines of wind direction
-    bool wind = false; // Set to true to draw the wind direction
-    bool highlightBool = false; // Set to true to highlight a cell
+    bool drawConvergenceLinesBool = false; // Set to true to draw the convergence lines of wind direction
+    bool drawWindArrowsBool = false; // Set to true to draw the wind direction
+    bool drawHighlightBool = false; // Set to true to highlight a cell
+    bool drawRiversBool = true; // Draw rivers
+	bool drawLakesBool = true; // Draw lakes
+
     int mapType = 0; int mapTypeOld = 0;
-    bool newMap = false; // Get window to draw new map
-    bool biomeGen = false; // Get window to regenerate biomes
+    bool showNewMapBool = false; // Get window to draw new map
+    bool showBiomeGenBool = false; // Get window to regenerate biomes
+
+    // Find window
+	bool showFindSearcherBool = false;
+	std::vector<std::size_t> findingCells;
+	std::size_t findCell = vor::INVALID_INDEX;
 
     // Retrieve the window's default view
-    float zoom = 1;
+    float globalZoom = 1;
     sf::View view = window.getDefaultView();
 
     sf::Clock deltaClock;
@@ -389,6 +414,8 @@ int main()
         percepitation_repeats, percepitation_smooth_repeats,
         kmeans_max_iter, windstr_alpha, windstr_beta,biome_method, seed);
 
+	std::size_t maxCellInMap = map.cells.size();
+    
     while (window.isOpen())
     {
         sf::Event event;
@@ -448,7 +475,7 @@ int main()
                 }
 
                 // Draw Lines
-                else if (event.key.code == sf::Keyboard::L) { drawLines = !drawLines; }
+                else if (event.key.code == sf::Keyboard::L) { drawConvergenceLinesBool = !drawConvergenceLinesBool; }
 
                 // Wind Map
                 else if (event.key.code == sf::Keyboard::W) {
@@ -475,10 +502,10 @@ int main()
                 }
                 
                 // activate arrows for wind direction
-                else if (event.key.code == sf::Keyboard::Comma) { wind = !wind; }
+                else if (event.key.code == sf::Keyboard::Comma) { drawWindArrowsBool = !drawWindArrowsBool; }
 
                 // Activate Cell Highlighting
-                else if (event.key.code == sf::Keyboard::H) { highlightBool = !highlightBool; highlight.clear(); }
+                else if (event.key.code == sf::Keyboard::H) { drawHighlightBool = !drawHighlightBool; highlight.clear(); }
 
 				break;
 
@@ -488,7 +515,7 @@ int main()
                 // If no button is down, we are not moving the view
                 if (!moving) {
                     // Highlight Cells if active 
-                    if (highlightBool)
+                    if (drawHighlightBool)
                     {
                         // Get the position of the mouse in window coordinates
                         const sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
@@ -521,10 +548,10 @@ int main()
                 sf::Vector2f view_center = view.getCenter() + deltaPos;
 
                 // Make sure that the view is contained inside the map
-                if ((view.getCenter().x + deltaPos.x) + zoom * windowWidth / 2 > windowWidth || (view.getCenter().x + deltaPos.x) - zoom * windowWidth / 2 < 0) {
+                if ((view.getCenter().x + deltaPos.x) + globalZoom * windowWidth / 2 > windowWidth || (view.getCenter().x + deltaPos.x) - globalZoom * windowWidth / 2 < 0) {
                     view_center.x = view.getCenter().x;
                 }
-                if ((view.getCenter().y + deltaPos.y) + zoom * windowHeight / 2 > windowHeight || (view.getCenter().y + deltaPos.y) - zoom * windowHeight / 2 < 0) {
+                if ((view.getCenter().y + deltaPos.y) + globalZoom * windowHeight / 2 > windowHeight || (view.getCenter().y + deltaPos.y) - globalZoom * windowHeight / 2 < 0) {
                     view_center.y = view.getCenter().y;
                 }
 
@@ -543,30 +570,30 @@ int main()
 
                 if (event.mouseWheelScroll.delta <= -1)
                 {
-                    zoom = std::min(1.f, zoom + .07f);
+                    globalZoom = std::min(1.f, globalZoom + .07f);
                 }
                 else if (event.mouseWheelScroll.delta >= 1)
                 {
-                    zoom = std::max(.1f, zoom - .07f);
+                    globalZoom = std::max(.1f, globalZoom - .07f);
                 }
 
                 // Update our view
                 view.setSize(window.getDefaultView().getSize());
-                view.zoom(zoom);
+                view.zoom(globalZoom);
 
                 // Make sure that the view is contained inside the map
                 sf::Vector2f view_center = view.getCenter();
-                if ((view.getCenter().x) + zoom * windowWidth / 2 > windowWidth) {
-                    view_center.x = windowWidth - zoom * windowWidth / 2;
+                if ((view.getCenter().x) + globalZoom * windowWidth / 2 > windowWidth) {
+                    view_center.x = windowWidth - globalZoom * windowWidth / 2;
                 }
-                if ((view.getCenter().x) - zoom * windowWidth / 2 < 0) {
-                    view_center.x = zoom * windowWidth / 2;
+                if ((view.getCenter().x) - globalZoom * windowWidth / 2 < 0) {
+                    view_center.x = globalZoom * windowWidth / 2;
                 }
-                if ((view.getCenter().y) + zoom * windowHeight / 2 > windowHeight) {
-                    view_center.y = windowHeight - zoom * windowHeight / 2;
+                if ((view.getCenter().y) + globalZoom * windowHeight / 2 > windowHeight) {
+                    view_center.y = windowHeight - globalZoom * windowHeight / 2;
                 }
-                if (view.getCenter().y - zoom * windowHeight / 2 < 0) {
-                    view_center.y = zoom * windowHeight / 2;
+                if (view.getCenter().y - globalZoom * windowHeight / 2 < 0) {
+                    view_center.y = globalZoom * windowHeight / 2;
                 }
                 view.setCenter(view_center);
 
@@ -603,30 +630,33 @@ int main()
             switch (mapType) {
 			case 0:
 				drawHeightMap(map, vertexMap);
-                wind = false;
+                drawWindArrowsBool = false;
 				break;
 			case 1:
 				drawTempMap(map, vertexMap);
-                wind = false;
+                drawWindArrowsBool = false;
 				break;
 			case 2:
 				drawBiomeMap(map, globals, vertexMap);
-                wind = false;
+                drawWindArrowsBool = false;
 				break;
 			case 3:
 				drawPercepitationMap(map, vertexMap);
-                wind = false;
+                drawWindArrowsBool = false;
 				break;
             case 4:
 				drawWindMap(map, vertexMap);
-                wind = true;
+                drawWindArrowsBool = true;
 				break;
 			}
 		}
 
-        ImGui::Checkbox("Draw Lines", &drawLines);
-        ImGui::Checkbox("Wind Arrows", &wind);
-        ImGui::Checkbox("Highlight Cells", &highlightBool);
+        ImGui::Checkbox("Draw Lines", &drawConvergenceLinesBool);
+        ImGui::Checkbox("Wind Arrows", &drawWindArrowsBool);
+        ImGui::Checkbox("Highlight Cell", &drawHighlightBool); 
+		ImGui::Checkbox("Draw Rivers", &drawRiversBool); 
+		ImGui::Checkbox("Draw Lakes", &drawLakesBool); 
+        if (ImGui::BeginItemTooltip()) { ImGui::Text("Drawing lakes is currently broken."); ImGui::EndTooltip(); }
 
 
         ImGui::Text("Number of cells: %d", map.cells.size());
@@ -635,6 +665,7 @@ int main()
         ImGui::Text("Global Temperature: %.2f", globals.globalTempAvg);
         ImGui::Text("Global Precipitation: %.2f", globals.globalPercepitation);
         ImGui::Text("Global Snow Line: %.2f", globals.globalSnowline);
+		ImGui::Text("Amount of Rivers: %d", globals.rivers.size());
 
 
         // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position
@@ -645,9 +676,21 @@ int main()
             ImGui::Text("Precipitation: %.2f", cell.percepitation);
             ImGui::Text("Elevation: %.2f", cell.height); ImGui::SameLine();
             ImGui::Text("Rise: %.2f", cell.rise);
-            ImGui::Text("Distance to Ocean: %.2f", cell.distToOcean);
-            ImGui::Text("Coast Cell: %.d", cell.coastBool);
-            ImGui::Text("Ocean Cell: %.d", cell.oceanBool);
+            ImGui::Text("Distance to Ocean: %d", cell.distToOcean);
+			ImGui::Text("Coast: %.d", cell.coastBool); ImGui::SameLine();
+			ImGui::Text("Ocean: %.d", cell.oceanBool); ImGui::SameLine();
+			ImGui::Text("River: %.d", cell.riverBool); ImGui::SameLine();
+			ImGui::Text("Lake: %.d", cell.lakeBool);
+
+            if (cell.riverBool)
+            {
+				ImGui::Text("River id: %d", cell.riverId);
+			}
+			if (cell.lakeBool)
+			{
+				ImGui::Text("Lake id: %d", cell.lakeId);
+            }
+
             const Biome& biome = globals.biomes[cell.biome];
             ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
             ImGui::Text("Biome: %s", biome.name.c_str());
@@ -723,15 +766,47 @@ int main()
             ImGui::End();
         }
 
-        ImGui::Checkbox("Draw New Map", &newMap);
-        ImGui::Checkbox("Generate New Biomes", &biomeGen);
+        ImGui::Checkbox("Draw New Map", &showNewMapBool);
+        ImGui::Checkbox("Generate New Biomes", &showBiomeGenBool);
+
+		ImGui::Checkbox("Find Cell", &showFindSearcherBool); 
+        if (ImGui::BeginItemTooltip()) { ImGui::Text("Find a cell by its index"); ImGui::EndTooltip(); }
 
         if(ImGui::Button("Switch origin of vertexMap")) { vertexMap.switchOrigin(map); };
         if (ImGui::Button("Check vertexMap")) { std::cout << vertexMap.useVertexBuffer << " : Array: " << vertexMap.vertexArray.getVertexCount() << " : Buffer: " << vertexMap.vertexBuffer.getVertexCount() << std::endl; };
 
         ImGui::End();
 
-        if (biomeGen)
+        if (showFindSearcherBool)
+        {
+			ImGui::Begin("Find Cell");
+
+            unsigned int findCellUInt = findCell;
+			ImGui::InputUInt("Cell", &findCellUInt);
+			findCell = findCellUInt;
+			if (ImGui::Button("Find Cell")) {
+				if (findCell < map.cells.size()) {
+                    // if the cell is found and in the list
+                    if (std::find(findingCells.begin(), findingCells.end(), findCell) == findingCells.end() && findCell <= maxCellInMap)
+                    {
+                        findingCells.push_back(findCell);
+                    }
+				}
+			}
+            for (int i = 0; i < findingCells.size(); i++)
+            {
+				ImGui::PushID(i);
+				ImGui::Text("Cell %d", findingCells[i]); ImGui::SameLine();
+                if (ImGui::Button("Remove")) {
+					findingCells.erase(findingCells.begin() + i);
+                }
+				ImGui::PopID();
+            }
+            
+			ImGui::End();
+        }
+
+        if (showBiomeGenBool)
         {
             ImGui::Begin("Biome Generation Controls");
 
@@ -772,7 +847,7 @@ int main()
             ImGui::End();
         }
 
-        if (newMap)
+        if (showNewMapBool)
         {
             ImGui::Begin("New Map Controls");
             // push a color on the generate new map button
@@ -792,7 +867,7 @@ int main()
                     delta_coast_line, temp_smooth_repeats,
                     percepitation_repeats, percepitation_smooth_repeats,
                     kmeans_max_iter, windstr_alpha, windstr_beta, biome_method ,seed);
-                newMap = false;
+                showNewMapBool = false;
             }
 
             ImGui::Text("The map will have around %.d cells", ncellx * ncelly);
@@ -941,7 +1016,8 @@ int main()
             ImGui::End();
         }
 
-        if (!highlightBool) {
+        
+        if (!drawHighlightBool) {
             highlight.clear();
             highlightedCell = vor::INVALID_INDEX;
         }
@@ -950,15 +1026,35 @@ int main()
         
         vertexMap.draw(window);
         
-        if (drawLines) {
+        if (drawConvergenceLinesBool) {
 			window.draw(lines);
 		}
-        if (wind) {
+        if (drawWindArrowsBool) {
 			window.draw(windArrows);
 		}
         if (highlightedCell != vor::INVALID_INDEX) {
 			window.draw(highlight);
 		}
+        if (showFindSearcherBool)
+        {
+            sf::VertexArray new_highlight;
+            for (int i = 0; i < findingCells.size(); i++)
+            {
+                if (findingCells[i] < map.cells.size())
+                {
+                    new_highlight = drawHighlightCell(map, findingCells[i]);
+                    window.draw(new_highlight);
+                }
+            }
+        }
+        if (drawRiversBool)
+		{
+			drawRivers(globals, window);
+		}
+        if (drawLakesBool)
+        {
+			drawLakes(globals, window);
+        }
 
         ImGui::SFML::Render(window);
 
