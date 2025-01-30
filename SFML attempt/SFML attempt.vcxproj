@@ -160,6 +160,7 @@
   <ItemGroup>
     <ClInclude Include="cell.hpp" />
     <ClInclude Include="clustering.hpp" />
+    <ClInclude Include="EventMachine.hpp" />
     <ClInclude Include="GlobalWorldObjects.hpp" />
     <ClInclude Include="Include\Dear ImGUI\imgui.h" />
     <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h" />

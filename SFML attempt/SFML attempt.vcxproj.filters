@@ -46,6 +46,12 @@
     <ClCompile Include="CellObjects.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="Include\ImGuiFD-main\ImGuiFD.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\ImGuiFD-main\ImGuiFDNative.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Voronoi.hpp">
@@ -79,6 +85,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Map.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\nlohmann\json.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mapconfig.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EventMachine.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
