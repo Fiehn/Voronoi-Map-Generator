@@ -478,7 +478,12 @@ struct BiomeUI {
             });
     }
 
-    void biomePopUp(vor::Voronoi& map, GlobalWorldObjects& globals, MapConfig& config, bool& showBiomeGenBool, int& mapType)
+    void biomePopUp(vor::Voronoi& map, 
+        GlobalWorldObjects& globals, 
+        MapConfig& config, 
+        bool& showBiomeGenBool, 
+        int& mapType,
+        bool& changeBiomeColorBool)
     {
 		if (!showBiomeGenBool) {
 			return;
@@ -500,6 +505,8 @@ struct BiomeUI {
             // Ensure at least 1 biome exists before generation
             config.n_biomes = (config.n_biomes < 1) ? 1 : config.n_biomes;
             generateBiomesAsync(map, globals, config);
+            // Update the biome colors
+			changeBiomeColorBool = true;
         }
         // Show loading indicator
         if (biomeGenFuture.valid() &&
@@ -558,9 +565,15 @@ struct BiomeUI {
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(1, 0, 0, 1), "Min 1");
         }
+        else if (config.n_biomes > 99)
+        {
+			config.n_biomes = 99;
+			ImGui::SameLine();
+			ImGui::TextColored(ImVec4(1, 0, 0, 1), "Max 99");
+        }
         if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
-            ImGui::Text("Increase if generated biomes lack diversity");
+            ImGui::Text("Increase if generated biomes lack diversity.\n Colors will repeat at 41 biomes.");
             ImGui::EndTooltip();
         }
 
@@ -836,4 +849,103 @@ void searchFinder(const vor::Voronoi& map, std::vector<std::size_t>& findingCell
 
     ImGui::End();
 }
+
+
+void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
+{
+    ImGui::Begin("Biome Showing");
+
+    for (int i = 0; i < globals.biomes.size(); i++)
+    {
+        Biome& biome = globals.biomes[i];
+        float color[4];
+        color[0] = biome.color.r / 255.0f;
+        color[1] = biome.color.g / 255.0f;
+        color[2] = biome.color.b / 255.0f;
+        color[3] = 1.0f;
+        ImGui::PushID(i);
+        ImGui::Text("%s", biome.name.c_str());
+        ImGui::SameLine();
+        ImGui::ColorEdit4("", color, ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs);
+        ImGui::NewLine();
+
+        int totalLength = 0;
+        for (const auto& pair : biome.values) {
+            float intPart;
+            float fractPart = std::modf(pair.second, &intPart);
+
+            ImGui::SameLine();
+            if (fractPart == 0.0)
+            {
+                ImGui::Text("%s: %.0f", pair.first.c_str(), pair.second);
+            }
+            else
+            {
+                ImGui::Text("%s: %.2f", pair.first.c_str(), pair.second);
+            }
+            totalLength += pair.first.length() + 5;
+            if (totalLength > 60) {
+                totalLength = 0;
+                ImGui::NewLine();
+            }
+        }
+        ImGui::Text("Size: %d", biome.numCells);
+
+        ImGui::PopID(); // HERE MAP
+
+        if (color[0] != biome.color.r / 255.0f || color[1] != biome.color.g / 255.0f || color[2] != biome.color.b / 255.0f) {
+            doChange = true;
+            biome.color.r = color[0] * 255;
+            biome.color.g = color[1] * 255;
+            biome.color.b = color[2] * 255;
+        }
+    }
+
+    std::vector<const char*> labels;
+    std::vector<float> data;
+	ImU32 colors[100]; /// At the moment over 100 biomes will crash the program
+
+    for (int i = 0; i < globals.biomes.size(); i++) {
+        Biome& biome = globals.biomes[i];
+
+        labels.push_back(biome.name.c_str());
+        data.push_back(static_cast<float>(biome.numCells));
+
+        float color[4];
+        color[0] = biome.color.r / 255.0f;
+        color[1] = biome.color.g / 255.0f;
+        color[2] = biome.color.b / 255.0f;
+        color[3] = 1.0f;
+        // Convert color to ImU32
+        colors[i] = ImColor(color[0], color[1], color[2], color[3]);
+    }
+
+    if (doChange)
+    {
+        ImPlot::RemoveColormap("Biome Colors");
+    }
+    if (ImPlot::GetColormapIndex("Biome Colors") == -1)
+    {
+        ImPlotColormap colormap = ImPlot::AddColormap("Biome Colors", colors, static_cast<int>(globals.biomes.size()), true);
+    }
+    
+    ImPlot::PushColormap("Biome Colors");
+    if (doChange)
+	{
+		ImPlot::BustColorCache("Biome Distribution");
+	}
+
+    if (ImPlot::BeginPlot("Biome Distribution", ImVec2(-1, 0), ImPlotFlags_Equal)) {
+        if (labels.size() == data.size()) {
+            ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoDecorations);
+            ImPlot::SetupAxis(ImAxis_Y1, nullptr, ImPlotAxisFlags_NoDecorations);
+            ImPlot::PlotPieChart(labels.data(), data.data(), static_cast<int>(labels.size()), 0.5, 0.5, 0.4, "%.0f", 90, ImPlotFlags_NoInputs);
+        }
+        ImPlot::EndPlot();
+    }
+    ImPlot::PopColormap();
+
+    ImGui::End();
+}
+
 

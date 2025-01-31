@@ -4489,6 +4489,13 @@ ImPlotColormap AddColormap(const char* name, const ImVec4* colormap, int size, b
     return gp.ColormapData.Append(name, buffer.Data, size, qual);
 }
 
+void RemoveColormap(const char* name) {
+	ImPlotContext& gp = *GImPlot;
+	ImPlotColormap idx = gp.ColormapData.GetIndex(name);
+	IM_ASSERT_USER_ERROR(idx != -1, "The colormap name is invalid!");
+	gp.ColormapData.Remove(idx);
+}
+
 ImPlotColormap AddColormap(const char* name, const ImU32*  colormap, int size, bool qual) {
     ImPlotContext& gp = *GImPlot;
     IM_ASSERT_USER_ERROR(size > 1, "The colormap size must be greater than 1!");

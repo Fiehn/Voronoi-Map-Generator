@@ -1155,6 +1155,8 @@ IMPLOT_API const char* GetMarkerName(ImPlotMarker idx);
 IMPLOT_API ImPlotColormap AddColormap(const char* name, const ImVec4* cols, int size, bool qual=true);
 IMPLOT_API ImPlotColormap AddColormap(const char* name, const ImU32*  cols, int size, bool qual=true);
 
+IMPLOT_API void RemoveColormap(const char* name);
+
 // Returns the number of available colormaps (i.e. the built-in + user-added count).
 IMPLOT_API int GetColormapCount();
 // Returns a null terminated string name for a colormap given an index. Returns nullptr if index is invalid.

@@ -331,6 +331,53 @@ struct ImPlotColormapData {
 
     ImPlotColormapData() { Count = 0; }
 
+    bool Remove(int idx) {
+        if (idx < 0 || idx >= Count)
+            return false;
+
+        // 1. Remove the colormap's name from the text buffer and adjust offsets
+        const int text_start = TextOffsets[idx];
+        int text_length = (idx < Count - 1) ? (TextOffsets[idx + 1] - text_start) : (Text.size() - text_start);
+        Text.Buf.erase(Text.Buf.Data + text_start, Text.Buf.Data + text_start + text_length);
+        TextOffsets.erase(TextOffsets.Data + idx);
+        for (int i = idx; i < TextOffsets.Size; ++i)
+            TextOffsets[i] -= text_length;
+
+        // 2. Remove qual flag
+        Quals.erase(Quals.begin() + idx);
+
+        // 3. Remove keys and adjust offsets
+        const int key_start = KeyOffsets[idx];
+        const int key_count = KeyCounts[idx];
+        Keys.erase(Keys.begin() + key_start, Keys.begin() + key_start + key_count);
+        KeyCounts.erase(KeyCounts.begin() + idx);
+        KeyOffsets.erase(KeyOffsets.begin() + idx);
+        for (int i = idx; i < KeyOffsets.size(); ++i)
+            KeyOffsets[i] -= key_count;
+
+        // 4. Remove tables and adjust offsets
+        const int table_start = TableOffsets[idx];
+        const int table_size = TableSizes[idx];
+        Tables.erase(Tables.begin() + table_start, Tables.begin() + table_start + table_size);
+        TableSizes.erase(TableSizes.begin() + idx);
+        TableOffsets.erase(TableOffsets.begin() + idx);
+        for (int i = idx; i < TableOffsets.size(); ++i)
+            TableOffsets[i] -= table_size;
+
+        // 5. Update count and rebuild structures
+        --Count;
+        Map.Clear();
+        for (int i = 0; i < Count; ++i) {
+            const char* name = GetName(i);
+            ImGuiID id = ImHashStr(name);
+            Map.SetInt(id, i);
+        }
+        RebuildTables();
+
+        return true;
+
+    }
+
     int Append(const char* name, const ImU32* keys, int count, bool qual) {
         if (GetIndex(name) != -1)
             return -1;
