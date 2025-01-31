@@ -656,7 +656,7 @@ void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_m
     // set the biomes values to the averages 
     for (int i = 0; i < globals.biomes.size(); i++) {
         std::map<std::string, float> values;
-        std::vector<float> biomeValues = clusteringMethod->getCentroid(i);
+        std::vector<float> biomeValues = clusteringMethod->getCentroidUnstandard(i);
         for (int j = 0; j < names.size(); j++) {
             values.emplace(names[j], biomeValues[j]);
         }

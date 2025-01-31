@@ -13,6 +13,7 @@ public:
 	virtual std::vector<int> getClusterSizes() = 0;
 	virtual std::vector<float> getBiomeProb(int i) = 0;
 	virtual std::vector<float> getCentroid(int i) = 0;
+	virtual std::vector<float> getCentroidUnstandard(int i) = 0;
 	virtual ~ClusteringMethod() = default;
 };
 
@@ -286,46 +287,44 @@ public:
 		}
 	}
 
-	void Standardize()
-	{	// get mean and standard deviation for each dimension
-		int start_iter = 0;
-		if (ocean) {
-			start_iter = 1;
-		}
-		mean.resize(dimensions, 0);
-		stdDev.resize(dimensions, 0);
+	void Standardize() {
+        int start_iter = ocean ? 1 : 0; // Corrected initialization
+        mean.resize(dimensions, 0);
+        stdDev.resize(dimensions, 0);
 
-		if (data.empty()) {
-			return;
-		}
+        if (data.empty()) {
+            return;
+        }
 
-		for (const auto& point : data) {
-			for (int i = start_iter; i < dimensions; ++i) {
-				mean[i] += point[i];
-			}
-		}
+        // Calculate mean for dimensions >= start_iter
+        for (const auto& point : data) {
+            for (int i = start_iter; i < dimensions; ++i) {
+                mean[i] += point[i];
+            }
+        }
 
-		for (int i = start_iter; i < dimensions; ++i) {
-			mean[i] /= data.size();
-		}
+        for (int i = start_iter; i < dimensions; ++i) {
+            mean[i] /= data.size();
+        }
 
-		for (const auto& point : data) {
-			for (int i = start_iter; i < dimensions; ++i) {
-				stdDev[i] += (point[i] - mean[i]) * (point[i] - mean[i]);
-			}
-		}
+        // Calculate standard deviation for dimensions >= start_iter
+        for (const auto& point : data) {
+            for (int i = start_iter; i < dimensions; ++i) {
+                stdDev[i] += (point[i] - mean[i]) * (point[i] - mean[i]);
+            }
+        }
 
-		for (int i = start_iter; i < dimensions; ++i) {
-			stdDev[i] = sqrt(stdDev[i] / data.size());
-		}
+        for (int i = start_iter; i < dimensions; ++i) {
+            stdDev[i] = sqrt(stdDev[i] / data.size());
+        }
 
-		// standardize data
-		for (auto& point : data) {
-			for (int i = start_iter; i < dimensions; ++i) {
-				point[i] = (point[i] - mean[i]) / (stdDev[i] + 1e-8);
-			}
-		}
-	}
+        // Standardize only dimensions >= start_iter
+        for (auto& point : data) {
+            for (int i = start_iter; i < dimensions; ++i) {
+                point[i] = (point[i] - mean[i]) / (stdDev[i] + 1e-8f);
+            }
+        }
+    }
 
 	void run() override {
 		float tolerance = 1e-4;
@@ -334,61 +333,91 @@ public:
 		std::vector<float> sumProb(k, 0.f);
 		std::vector<float> sumMean(k * dimensions, 0.f);
 		std::vector<float> sumStdDev(k * dimensions, 0.f);
-		for (int iter = 0; iter < iters; iter++)
-		{
-			if (changeInMeans < tolerance) break;
-			// E-step
-			for (int i = 0; i < data.size(); ++i) {
-				float sum = 0;
+		std::vector<float> old_mean_clusters(mean_clusters.size());
+
+		for (int iter = 0; iter < iters && changeInMeans >= tolerance; iter++) {
+			// Store current means to track changes
+			old_mean_clusters = mean_clusters;
+
+			// E-step: Calculate probabilities
+			for (size_t i = 0; i < data.size(); ++i) {
+				float sum = 0.0f;
 				for (int j = 0; j < k; ++j) {
-					float dist = 0;
+					float likelihood = 1.0f;
 					for (int l = 0; l < dimensions; ++l) {
 						float diff = data[i][l] - mean_clusters[j * dimensions + l];
-						dist += diff * diff / ((2 * stdDev_clusters[j * dimensions + l] * stdDev_clusters[j * dimensions + l]) + 1e-8);
+						float var = stdDev_clusters[j * dimensions + l] * stdDev_clusters[j * dimensions + l] + 1e-8f;
+						likelihood *= exp(-(diff * diff) / (2.0f * var)) / sqrt(2.0f * PI * var);
 					}
-					probabilities[i][j] = exp(-dist);
-					sum += probabilities[i][j];
+					probabilities[i][j] = likelihood;
+					sum += likelihood;
 				}
-				for (int j = 0; j < k; ++j) {
-					sum += 1e-8; // Small regularization term
-					probabilities[i][j] /= sum;
+				// Normalize probabilities
+				if (sum < 1e-8) { // Avoid division by zero
+					sum = 1e-8;
+					for (int j = 0; j < k; ++j) probabilities[i][j] = 1.0f / k;
+				}
+				else {
+					for (int j = 0; j < k; ++j) probabilities[i][j] /= sum;
 				}
 			}
-			// M-step
-			std::fill(sumProb.begin(), sumProb.end(), 0.f);
-			std::fill(sumMean.begin(), sumMean.end(), 0.f);
-			std::fill(sumStdDev.begin(), sumStdDev.end(), 0.f);
-			for (int i = 0; i < data.size(); ++i) {
+
+			// M-step: Update parameters
+			std::fill(sumProb.begin(), sumProb.end(), 0.0f);
+			std::fill(sumMean.begin(), sumMean.end(), 0.0f);
+			std::fill(sumStdDev.begin(), sumStdDev.end(), 0.0f);
+
+			// Accumulate sums for new parameters
+			for (size_t i = 0; i < data.size(); ++i) {
 				for (int j = 0; j < k; ++j) {
-					sumProb[j] += probabilities[i][j];
+					float prob = probabilities[i][j];
+					sumProb[j] += prob;
 					for (int l = 0; l < dimensions; ++l) {
-						sumMean[j * dimensions + l] += data[i][l] * probabilities[i][j];
+						sumMean[j * dimensions + l] += data[i][l] * prob;
 					}
 				}
 			}
+
+			// Update means
 			for (int j = 0; j < k; ++j) {
 				for (int l = 0; l < dimensions; ++l) {
-					mean_clusters[j * dimensions + l] = sumMean[j * dimensions + l] / (sumProb[j] + 1e-8);
-					changeInMeans += abs(mean_clusters[j * dimensions + l] - mean_clusters[j * dimensions + l]);
+					int idx = j * dimensions + l;
+					if (sumProb[j] > 1e-8) {
+						mean_clusters[idx] = sumMean[idx] / sumProb[j];
+					}
 				}
 			}
-			for (int i = 0; i < data.size(); ++i) {
+
+			// Accumulate variance sums
+			for (size_t i = 0; i < data.size(); ++i) {
 				for (int j = 0; j < k; ++j) {
+					float prob = probabilities[i][j];
 					for (int l = 0; l < dimensions; ++l) {
 						float diff = data[i][l] - mean_clusters[j * dimensions + l];
-						sumStdDev[j * dimensions + l] += diff * diff * probabilities[i][j];
+						sumStdDev[j * dimensions + l] += diff * diff * prob;
 					}
 				}
 			}
+
+			// Update variances
 			for (int j = 0; j < k; ++j) {
 				for (int l = 0; l < dimensions; ++l) {
-					stdDev_clusters[j * dimensions + l] = sqrt(sumStdDev[j * dimensions + l] / (sumProb[j] + 1e-8));
+					int idx = j * dimensions + l;
+					if (sumProb[j] > 1e-8) {
+						stdDev_clusters[idx] = sqrt(sumStdDev[idx] / sumProb[j] + 1e-8f);
+					}
 				}
+			}
+
+			// Calculate change in means
+			changeInMeans = 0.0f;
+			for (size_t idx = 0; idx < mean_clusters.size(); ++idx) {
+				changeInMeans += std::abs(old_mean_clusters[idx] - mean_clusters[idx]);
 			}
 		}
 
 		// Assign clusters
-		for (int i = 0; i < data.size(); ++i) {
+		for (size_t i = 0; i < data.size(); ++i) {
 			clusters[i] = chooseIndexMax(probabilities[i]);
 		}
 	}
@@ -401,7 +430,7 @@ public:
 		return probabilities[index];
 	}
 
-	std::vector<float> getCentroid(int clusterId)
+	std::vector<float> getCentroid(int clusterId) override
 	{
 		std::vector<float> centroid;
 		for (int i = 0; i < dimensions; ++i) {
@@ -410,6 +439,22 @@ public:
 			mean_clusters[clusterId * dimensions + i] += mean[i];
 
 			centroid.push_back(mean_clusters[clusterId * dimensions + i]);
+		}
+		return centroid;
+	}
+
+	std::vector<float> getCentroidUnstandard(int clusterId) override {
+		std::vector<float> centroid;
+		for (int i = 0; i < dimensions; ++i) {
+			if (ocean && i == 0) {
+				// First dimension was not standardized; return as-is
+				centroid.push_back(mean_clusters[clusterId * dimensions + i]);
+			}
+			else {
+				// Apply unstandardization for other dimensions
+				float unstandard_val = mean_clusters[clusterId * dimensions + i] * (stdDev[i] + 1e-8f) + mean[i];
+				centroid.push_back(unstandard_val);
+			}
 		}
 		return centroid;
 	}
