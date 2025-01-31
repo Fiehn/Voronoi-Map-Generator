@@ -150,6 +150,8 @@
     <ClCompile Include="Include\Dear ImGUI\imgui_widgets.cpp" />
     <ClCompile Include="Include\ImGuiFD-main\ImGuiFD.cpp" />
     <ClCompile Include="Include\ImGuiFD-main\ImGuiFDNative.cpp" />
+    <ClCompile Include="Include\ImPlot\implot.cpp" />
+    <ClCompile Include="Include\ImPlot\implot_items.cpp" />
     <ClCompile Include="Include\SFML ImGUI\imgui-SFML.cpp" />
     <ClCompile Include="main.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
@@ -164,6 +166,8 @@
     <ClInclude Include="GlobalWorldObjects.hpp" />
     <ClInclude Include="Include\Dear ImGUI\imgui.h" />
     <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h" />
+    <ClInclude Include="Include\ImPlot\implot.h" />
+    <ClInclude Include="Include\ImPlot\implot_internal.h" />
     <ClInclude Include="Include\nlohmann\json.hpp" />
     <ClInclude Include="Map.hpp" />
     <ClInclude Include="mapconfig.hpp" />

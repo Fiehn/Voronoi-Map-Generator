@@ -14,6 +14,7 @@
 #include "imgui.h"
 #include "imgui-SFML.h"
 #include "Include/ImGuiFD-main/ImGuiFD.h"
+#include "Include/ImPlot/implot.h"
 
 #include "EventMachine.hpp"
 
@@ -29,6 +30,8 @@ int main()
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML");
     window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
     ImGui::SFML::Init(window);
+	ImPlot::CreateContext();
+
 
     // Create the global world objects
     GlobalWorldObjects globals; 
@@ -94,7 +97,7 @@ int main()
 		font, config, seed);
 
 	std::size_t maxCellInMap = map.cells.size();
-    
+
     while (window.isOpen())
     {
         sf::Event event;
@@ -224,7 +227,7 @@ int main()
         {
             bool change = true; // If the user changes the color of a biome, we need to update the map
 
-            ImGui::Begin("Biome Generation Controls");
+            ImGui::Begin("Biome Showing");
             for (int i = 0; i < globals.biomes.size(); i++)
             {
                 Biome& biome = globals.biomes[i];
@@ -270,12 +273,12 @@ int main()
                     biome.color.b = color[2] * 255;
 				}
             }
+            ImGui::End();
 
             if (!change) {
-				drawBiomeMap(map, globals, vertexMap);
+                drawBiomeMap(map, globals, vertexMap);
                 change = true;
-			}
-            ImGui::End();
+            }
         }
 
         ImGui::Checkbox("Draw New Map", &showNewMapBool);
@@ -345,6 +348,7 @@ int main()
         window.display();
         
     }
+	ImPlot::DestroyContext();
     ImGui::SFML::Shutdown(window);
 
     return 0;

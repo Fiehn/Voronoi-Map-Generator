@@ -55,7 +55,7 @@ public:
 	}
 };
 
-class KMeans : public ClusteringMethod{
+class KMeans : public ClusteringMethod {
 private:
 	int k;
 	int dimensions;
@@ -92,7 +92,7 @@ public:
 			clusters.emplace_back(Cluster(i, data[index], dataSize / (k / 2)));
 		}
 	}
-	
+
 	void standardize() {
 		// get mean and standard deviation for each dimension
 		mean.resize(dimensions, 0);
@@ -128,7 +128,7 @@ public:
 
 	float distance(const std::vector<float>& a, const std::vector<float>& b) {
 		float distance = 0;
-		
+
 		for (int i = 0; i < dimensions; ++i) {
 			float diff = a[i] - b[i];
 			distance += diff * diff;
@@ -138,8 +138,8 @@ public:
 
 	bool assignPoints() {
 		bool done = true;
-		
-		#pragma omp parallel for reduction(&&: done) num_threads(16) schedule(static)
+
+#pragma omp parallel for reduction(&&: done) num_threads(16) schedule(static)
 		for (int i = 0; i < data.size(); ++i) {
 			const std::vector<float>& point = data[i];
 			int bestCluster = 0; // NEEDS to be -1 
@@ -154,13 +154,13 @@ public:
 				}
 			}
 			// How does bestCluster end up being -1? Percepitation is nan so dist does not work..
-			
+
 			if (clusterIds[i] != bestCluster) {
 				done = false;
 			}
 			clusterIds[i] = bestCluster;
 
-			#pragma omp critical
+#pragma omp critical
 			{
 				clusters[bestCluster].addPoint(point);
 			}
@@ -169,7 +169,7 @@ public:
 	}
 
 	void updateCentroids() {
-		#pragma omp parallel for num_threads(16) schedule(static)
+#pragma omp parallel for num_threads(16) schedule(static)
 		for (int i = 0; i < clusters.size(); ++i) {
 			std::vector<float> newCentroid(dimensions, 0);
 			const std::vector<std::vector<float>>& points = clusters[i].getPoints();
