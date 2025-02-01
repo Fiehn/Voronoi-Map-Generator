@@ -52,6 +52,12 @@
     <ClCompile Include="Include\ImGuiFD-main\ImGuiFDNative.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="Include\ImPlot\implot.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\ImPlot\implot_items.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Voronoi.hpp">
@@ -97,6 +103,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EventMachine.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ImPlot\implot.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ImPlot\implot_internal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

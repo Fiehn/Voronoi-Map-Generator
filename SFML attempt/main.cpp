@@ -14,6 +14,7 @@
 #include "imgui.h"
 #include "imgui-SFML.h"
 #include "Include/ImGuiFD-main/ImGuiFD.h"
+#include "Include/ImPlot/implot.h"
 
 #include "EventMachine.hpp"
 
@@ -29,6 +30,8 @@ int main()
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML");
     window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
     ImGui::SFML::Init(window);
+	ImPlot::CreateContext();
+
 
     // Create the global world objects
     GlobalWorldObjects globals; 
@@ -69,6 +72,8 @@ int main()
     bool showNewMapBool = false; // Get window to draw new map
     bool showBiomeGenBool = false; // Get window to regenerate biomes
 
+	bool changeBiomeColorBool = false; // Change the color of the biomes
+
     // Save Load Configs
     bool showLoadConfig = false;
     bool showSaveConfig = false;
@@ -94,7 +99,7 @@ int main()
 		font, config, seed);
 
 	std::size_t maxCellInMap = map.cells.size();
-    
+
     while (window.isOpen())
     {
         sf::Event event;
@@ -181,101 +186,16 @@ int main()
 
 
         // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position
-        if (highlightedCell != vor::INVALID_INDEX) {
-			const Cell& cell = map.cells[highlightedCell];
-			ImGui::Text("Cell %d", highlightedCell);
-			ImGui::Text("Temp: %.2f", cell.temp);
-            ImGui::Text("Precipitation: %.2f", cell.percepitation);
-            ImGui::Text("Elevation: %.2f", cell.height); ImGui::SameLine();
-            ImGui::Text("Rise: %.2f", cell.rise);
-            ImGui::Text("Distance to Ocean: %d", cell.distToOcean);
-			ImGui::Text("Coast: %.d", cell.coastBool); ImGui::SameLine();
-			ImGui::Text("Ocean: %.d", cell.oceanBool); ImGui::SameLine();
-			ImGui::Text("River: %.d", cell.riverBool); ImGui::SameLine();
-			ImGui::Text("Lake: %.d", cell.lakeBool);
-
-            if (cell.riverBool)
-            {
-				ImGui::Text("River id: %d", cell.riverId);
-			}
-			if (cell.lakeBool)
-			{
-				ImGui::Text("Lake id: %d", cell.lakeId);
-            }
-
-            const Biome& biome = globals.biomes[cell.biome];
-            ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
-            ImGui::Text("Biome: %s", biome.name.c_str());
-            ImGui::SameLine();
-            ImGui::ColorEdit4("", (float*)&color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip);
-            if (mapType == 2)
-            {
-                ImGui::Text("Biome Probabilities: ");
-                for (int i = 0; i < cell.biome_prob.size(); i++)
-                {
-					const Biome& biome = globals.biomes[i];
-					ImGui::Text("%s: %.2f", biome.name.c_str(), cell.biome_prob[i]);
-				}
-            }
-            ImGui::Text("Wind: %.2f, %.2f", cell.windDir, cell.windStr);
-		}
+        highligtedCellObservation(map, globals, highlightedCell);
         
         if (mapType==2)
         {
-            bool change = true; // If the user changes the color of a biome, we need to update the map
+            biomeObservation(globals,changeBiomeColorBool);
 
-            ImGui::Begin("Biome Generation Controls");
-            for (int i = 0; i < globals.biomes.size(); i++)
-            {
-                Biome& biome = globals.biomes[i];
-                float color[4];
-                color[0] = biome.color.r / 255.0f;
-                color[1] = biome.color.g / 255.0f;
-                color[2] = biome.color.b / 255.0f;
-                color[3] = 1.0f;
-                ImGui::PushID(i);
-                ImGui::Text("%s", biome.name.c_str());
-                ImGui::SameLine();
-                ImGui::ColorEdit4("", color, ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs);
-                ImGui::NewLine();
-
-                int totalLength = 0;
-                for (const auto& pair : biome.values) {
-                    float intPart;
-                    float fractPart = std::modf(pair.second, &intPart);
-
-                    ImGui::SameLine();
-                    if (fractPart == 0.0)
-                    {
-                        ImGui::Text("%s: %.0f", pair.first.c_str(), pair.second);
-                    }
-                    else
-                    {
-						ImGui::Text("%s: %.2f", pair.first.c_str(), pair.second);
-					}
-					totalLength += pair.first.length() + 5;
-                    if (totalLength > 60) {
-						totalLength = 0;
-						ImGui::NewLine();
-                    }
-                }
-                ImGui::Text("Size: %d", biome.numCells);
-                
-                ImGui::PopID(); // HERE MAP
-
-                if (color[0] != biome.color.r / 255.0f || color[1] != biome.color.g / 255.0f || color[2] != biome.color.b / 255.0f) {
-					change = false;
-                    biome.color.r = color[0] * 255;
-                    biome.color.g = color[1] * 255;
-                    biome.color.b = color[2] * 255;
-				}
+            if (changeBiomeColorBool) {
+                drawBiomeMap(map, globals, vertexMap);
+                changeBiomeColorBool = false;
             }
-
-            if (!change) {
-				drawBiomeMap(map, globals, vertexMap);
-                change = true;
-			}
-            ImGui::End();
         }
 
         ImGui::Checkbox("Draw New Map", &showNewMapBool);
@@ -293,7 +213,7 @@ int main()
         ImGui::End();
 
 		searchFinder(map, findingCells, findCell, showFindSearcherBool, maxCellInMap);
-        biomeUI.biomePopUp(map, globals, config, showBiomeGenBool, mapType);
+        biomeUI.biomePopUp(map, globals, config, showBiomeGenBool, mapType, changeBiomeColorBool);
         showNewMap(map, globals, window, vertexMap,
                 windArrows, lines,
                 windowWidth, windowHeight,
@@ -345,6 +265,7 @@ int main()
         window.display();
         
     }
+	ImPlot::DestroyContext();
     ImGui::SFML::Shutdown(window);
 
     return 0;
