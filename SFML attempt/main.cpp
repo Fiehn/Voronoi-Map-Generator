@@ -16,6 +16,7 @@
 #include "Include/ImGuiFD-main/ImGuiFD.h"
 #include "Include/ImPlot/implot.h"
 
+#include "NewMap.hpp"
 #include "EventMachine.hpp"
 
 
@@ -47,7 +48,7 @@ int main()
     
     // Load font!
     sf::Font font;
-    if (!font.loadFromFile("Roboto-Medium.ttf")) { std::cout << "Could not load font" << std::endl; }
+    if (!font.loadFromFile("Fonts/Roboto-Medium.ttf")) { std::cout << "Could not load font" << std::endl; }
 
     // Init the map
     vor::Voronoi map;

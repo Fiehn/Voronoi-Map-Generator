@@ -111,7 +111,9 @@
       </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\SFML ImGUI;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\Dear ImGUI</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <EnableModules>true</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,6 +131,9 @@
       <PreprocessorDefinitions>SFML_STATIC;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <EnableModules>true</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -171,6 +176,7 @@
     <ClInclude Include="Include\nlohmann\json.hpp" />
     <ClInclude Include="Map.hpp" />
     <ClInclude Include="mapconfig.hpp" />
+    <ClInclude Include="NewMap.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="vertex.hpp" />
     <ClInclude Include="Voronoi.hpp" />

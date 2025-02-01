@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Assets that are currently local
+/SFML attempt/Assets/LoadingScreens/*
