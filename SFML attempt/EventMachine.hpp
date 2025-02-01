@@ -507,6 +507,7 @@ struct BiomeUI {
             generateBiomesAsync(map, globals, config);
             // Update the biome colors
 			changeBiomeColorBool = true;
+            windowState.lastUpdateTime = ImGui::GetTime();
         }
         // Show loading indicator
         if (biomeGenFuture.valid() &&
@@ -814,8 +815,6 @@ void configLoadSave(MapConfig& config, bool& showLoadConfig, bool& showSaveConfi
     }
 }
 
-
-
 void searchFinder(const vor::Voronoi& map, std::vector<std::size_t>& findingCells, std::size_t& findCell, bool& showFindSearcherBool, const std::size_t maxCellInMap)
 {
     if (!showFindSearcherBool)
@@ -850,60 +849,53 @@ void searchFinder(const vor::Voronoi& map, std::vector<std::size_t>& findingCell
     ImGui::End();
 }
 
-
-void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
+// Remember to add PopColormap() after the plot
+void pushTempColormap(const char* plot_id, const char* colormap_name, ImU32* colors, int size, bool colorsHaveChanged)
 {
-    ImGui::Begin("Biome Showing");
-
-    for (int i = 0; i < globals.biomes.size(); i++)
+	if (colorsHaveChanged)
+	{
+		ImPlot::RemoveColormap(colormap_name);
+	}
+	if (ImPlot::GetColormapIndex(colormap_name) == -1)
+	{
+		ImPlotColormap colormap = ImPlot::AddColormap(colormap_name, colors, size, true);
+	}
+	ImPlot::PushColormap(colormap_name);
+	if (colorsHaveChanged)
     {
-        Biome& biome = globals.biomes[i];
-        float color[4];
-        color[0] = biome.color.r / 255.0f;
-        color[1] = biome.color.g / 255.0f;
-        color[2] = biome.color.b / 255.0f;
-        color[3] = 1.0f;
-        ImGui::PushID(i);
-        ImGui::Text("%s", biome.name.c_str());
-        ImGui::SameLine();
-        ImGui::ColorEdit4("", color, ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs);
-        ImGui::NewLine();
-
-        int totalLength = 0;
-        for (const auto& pair : biome.values) {
-            float intPart;
-            float fractPart = std::modf(pair.second, &intPart);
-
-            ImGui::SameLine();
-            if (fractPart == 0.0)
-            {
-                ImGui::Text("%s: %.0f", pair.first.c_str(), pair.second);
-            }
-            else
-            {
-                ImGui::Text("%s: %.2f", pair.first.c_str(), pair.second);
-            }
-            totalLength += pair.first.length() + 5;
-            if (totalLength > 60) {
-                totalLength = 0;
-                ImGui::NewLine();
-            }
-        }
-        ImGui::Text("Size: %d", biome.numCells);
-
-        ImGui::PopID(); // HERE MAP
-
-        if (color[0] != biome.color.r / 255.0f || color[1] != biome.color.g / 255.0f || color[2] != biome.color.b / 255.0f) {
-            doChange = true;
-            biome.color.r = color[0] * 255;
-            biome.color.g = color[1] * 255;
-            biome.color.b = color[2] * 255;
-        }
+		ImPlot::BustColorCache(plot_id);
+	}
+}
+// Remember to add PopColormap() after the plot
+void pushTempColormap(const char* plot_id, const char* colormap_name, ImVec4* colors, int size, bool colorsHaveChanged)
+{
+	ImU32* colorsU32 = new ImU32[size];
+    for (int i = 0; i < size; i++)
+    {
+		colorsU32[i] = ImColor(colors[i]);
     }
+    if (colorsHaveChanged)
+    {
+        ImPlot::RemoveColormap(colormap_name);
+    }
+    if (ImPlot::GetColormapIndex(colormap_name) == -1)
+    {
+        ImPlotColormap colormap = ImPlot::AddColormap(colormap_name, colors, size, true);
+    }
+    ImPlot::PushColormap(colormap_name);
+    if (colorsHaveChanged)
+    {
+        ImPlot::BustColorCache(plot_id);
+    }
+}
 
+
+void biomeCountPieChart(GlobalWorldObjects& globals, bool& colorChange)
+{
+    // Biome distribution pie chart
     std::vector<const char*> labels;
     std::vector<float> data;
-	ImU32 colors[100]; /// At the moment over 100 biomes will crash the program
+    ImU32 colors[100];
 
     for (int i = 0; i < globals.biomes.size(); i++) {
         Biome& biome = globals.biomes[i];
@@ -920,21 +912,7 @@ void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
         colors[i] = ImColor(color[0], color[1], color[2], color[3]);
     }
 
-    if (doChange)
-    {
-        ImPlot::RemoveColormap("Biome Colors");
-    }
-    if (ImPlot::GetColormapIndex("Biome Colors") == -1)
-    {
-        ImPlotColormap colormap = ImPlot::AddColormap("Biome Colors", colors, static_cast<int>(globals.biomes.size()), true);
-    }
-    
-    ImPlot::PushColormap("Biome Colors");
-    if (doChange)
-	{
-		ImPlot::BustColorCache("Biome Distribution");
-	}
-
+	pushTempColormap("Biome Distribution", "BiomeColormap", colors, globals.biomes.size(), colorChange);
     if (ImPlot::BeginPlot("Biome Distribution", ImVec2(-1, 0), ImPlotFlags_Equal)) {
         if (labels.size() == data.size()) {
             ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoDecorations);
@@ -944,6 +922,100 @@ void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
         ImPlot::EndPlot();
     }
     ImPlot::PopColormap();
+}
+
+
+void RenderBiomeTable(GlobalWorldObjects& globals, bool& doChange) {
+    auto& biomes = globals.biomes;
+
+    static bool showValues = false; // Track the state of the "Read More" button
+
+    // "Read More" button
+    if (ImGui::Button(showValues ? "Show Less" : "Show More")) {
+        showValues = !showValues; // Toggle the state
+    }
+
+    int countColumns = 6 + biomes[0].values.size() * showValues;
+
+    if (ImGui::BeginTable("Biomes", countColumns, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+        // Set up columns
+        ImGui::TableSetupColumn("Name");
+        ImGui::TableSetupColumn("ID");
+        ImGui::TableSetupColumn("Cells");
+        ImGui::TableSetupColumn("Color");
+        ImGui::TableSetupColumn("Vegetation Density");
+        ImGui::TableSetupColumn("Animal Density");
+
+        // Add additional columns if showValues is true
+        if (showValues) {
+            for (const auto& pair : biomes[0].values) {
+                ImGui::TableSetupColumn(pair.first.c_str());
+            }
+        }
+
+        ImGui::TableHeadersRow();
+
+        // Populate table with biome data
+        for (auto& biome : biomes) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("%s", biome.name.c_str());
+
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%d", biome.id);
+
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%u", biome.numCells);
+
+            ImGui::TableSetColumnIndex(3);
+            float color[4];
+            color[0] = biome.color.r / 255.0f;
+            color[1] = biome.color.g / 255.0f;
+            color[2] = biome.color.b / 255.0f;
+            color[3] = 1.0f;
+            ImGui::PushID(biome.id);
+            ImGui::ColorEdit4("", color, ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs);
+            ImGui::PopID();
+
+            if (color[0] != biome.color.r / 255.0f || color[1] != biome.color.g / 255.0f || color[2] != biome.color.b / 255.0f) {
+                doChange = true;
+                biome.color.r = color[0] * 255;
+                biome.color.g = color[1] * 255;
+                biome.color.b = color[2] * 255;
+            }
+
+            ImGui::TableSetColumnIndex(4);
+            ImGui::Text("%d", biome.vegetationDensity);
+
+            ImGui::TableSetColumnIndex(5);
+            ImGui::Text("%d", biome.animalDensity);
+
+            // Add biome values if showValues is true
+            if (showValues) {
+                int count = 5;
+                for (const auto& pair : biome.values) {
+                    count++;
+                    float intPart;
+                    float fractPart = std::modf(pair.second, &intPart);
+                    ImGui::TableSetColumnIndex(count);
+                    if (fractPart == 0.0) ImGui::Text("%.0f", pair.second);
+                    else ImGui::Text("%.2f", pair.second);
+                }
+            }
+        }
+
+        ImGui::EndTable();
+    }
+}
+
+
+void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
+{
+    ImGui::Begin("Biome Showing");
+
+    RenderBiomeTable(globals, doChange);
+
+	biomeCountPieChart(globals, doChange);
 
     ImGui::End();
 }
