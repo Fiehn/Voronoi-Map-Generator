@@ -186,44 +186,7 @@ int main()
 
 
         // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position
-        if (highlightedCell != vor::INVALID_INDEX) {
-			const Cell& cell = map.cells[highlightedCell];
-			ImGui::Text("Cell %d", highlightedCell);
-			ImGui::Text("Temp: %.2f", cell.temp);
-            ImGui::Text("Precipitation: %.2f", cell.percepitation);
-            ImGui::Text("Elevation: %.2f", cell.height); ImGui::SameLine();
-            ImGui::Text("Rise: %.2f", cell.rise);
-            ImGui::Text("Distance to Ocean: %d", cell.distToOcean);
-			ImGui::Text("Coast: %.d", cell.coastBool); ImGui::SameLine();
-			ImGui::Text("Ocean: %.d", cell.oceanBool); ImGui::SameLine();
-			ImGui::Text("River: %.d", cell.riverBool); ImGui::SameLine();
-			ImGui::Text("Lake: %.d", cell.lakeBool);
-
-            if (cell.riverBool)
-            {
-				ImGui::Text("River id: %d", cell.riverId);
-			}
-			if (cell.lakeBool)
-			{
-				ImGui::Text("Lake id: %d", cell.lakeId);
-            }
-
-            const Biome& biome = globals.biomes[cell.biome];
-            ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
-            ImGui::Text("Biome: %s", biome.name.c_str());
-            ImGui::SameLine();
-            ImGui::ColorEdit4("", (float*)&color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip);
-            if (mapType == 2)
-            {
-                ImGui::Text("Biome Probabilities: ");
-                for (int i = 0; i < cell.biome_prob.size(); i++)
-                {
-					const Biome& biome = globals.biomes[i];
-					ImGui::Text("%s: %.2f", biome.name.c_str(), cell.biome_prob[i]);
-				}
-            }
-            ImGui::Text("Wind: %.2f, %.2f", cell.windDir, cell.windStr);
-		}
+        highligtedCellObservation(map, globals, highlightedCell);
         
         if (mapType==2)
         {

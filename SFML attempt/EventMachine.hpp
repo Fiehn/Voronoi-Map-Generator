@@ -937,12 +937,12 @@ void RenderBiomeTable(GlobalWorldObjects& globals, bool& doChange) {
 
     int countColumns = 6 + biomes[0].values.size() * showValues;
 
-    if (ImGui::BeginTable("Biomes", countColumns, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+    if (ImGui::BeginTable("Biomes", countColumns, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Sortable)) {
         // Set up columns
+        ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 15.f);
+        ImGui::TableSetupColumn("Color", ImGuiTableColumnFlags_WidthFixed, 45.f);
         ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("ID");
         ImGui::TableSetupColumn("Cells");
-        ImGui::TableSetupColumn("Color");
         ImGui::TableSetupColumn("Vegetation Density");
         ImGui::TableSetupColumn("Animal Density");
 
@@ -958,16 +958,11 @@ void RenderBiomeTable(GlobalWorldObjects& globals, bool& doChange) {
         // Populate table with biome data
         for (auto& biome : biomes) {
             ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::Text("%s", biome.name.c_str());
 
-            ImGui::TableSetColumnIndex(1);
+            ImGui::TableSetColumnIndex(0);
             ImGui::Text("%d", biome.id);
 
-            ImGui::TableSetColumnIndex(2);
-            ImGui::Text("%u", biome.numCells);
-
-            ImGui::TableSetColumnIndex(3);
+            ImGui::TableSetColumnIndex(1);
             float color[4];
             color[0] = biome.color.r / 255.0f;
             color[1] = biome.color.g / 255.0f;
@@ -983,6 +978,12 @@ void RenderBiomeTable(GlobalWorldObjects& globals, bool& doChange) {
                 biome.color.g = color[1] * 255;
                 biome.color.b = color[2] * 255;
             }
+
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%s", biome.name.c_str());
+
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text("%u", biome.numCells);
 
             ImGui::TableSetColumnIndex(4);
             ImGui::Text("%d", biome.vegetationDensity);
@@ -1020,4 +1021,123 @@ void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
     ImGui::End();
 }
 
+void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects& globals, std::size_t highlightedCell)
+{
+    if (highlightedCell == vor::INVALID_INDEX) {
+		return;
+	}
+    ImGui::Begin("Highlighted Cell");
+	
+    const Cell& cell = map.cells[highlightedCell];
 
+    const Biome& biome = globals.biomes[cell.biome];
+    ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
+
+	ImGui::BeginTable("Highlighted Cell", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+	ImGui::TableSetupColumn("Property");
+	ImGui::TableSetupColumn("Value");
+	ImGui::TableHeadersRow();
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Cell Id");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%d", highlightedCell);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Temperature");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%.2f", cell.temp);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Precipitation");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%.2f", cell.percepitation);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Elevation");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%.2f", cell.height);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Rise");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%.2f", cell.rise);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Distance to Ocean");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%d", cell.distToOcean);
+
+    ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Biome");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%s", biome.name.c_str());
+    ImGui::SameLine();
+    ImGui::ColorButton("colorHighlightedCell", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Coast");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%d", cell.coastBool);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Ocean");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%d", cell.oceanBool);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("River");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%d", cell.riverBool);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Lake");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%d", cell.lakeBool);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("River Id");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%d", cell.riverId);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Lake Id");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%d", cell.lakeId);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Wind Direction");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%.2f", cell.windDir);
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Wind Strength");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%.2f", cell.windStr);
+
+    ImGui::EndTable();
+        
+    ImGui::Text("Biome Probabilities: ");
+    for (int i = 0; i < cell.biome_prob.size(); i++)
+    {
+        const Biome& biome = globals.biomes[i];
+        ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
+        ImGui::TextColored(color, "%s: %.2f", biome.name.c_str(), cell.biome_prob[i]);
+    }
+    ImGui::End();
+}
