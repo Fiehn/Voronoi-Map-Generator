@@ -18,7 +18,7 @@
 
 #include "NewMap.hpp"
 #include "EventMachine.hpp"
-
+#include "MainMenu.hpp"
 
 int main() 
 {
@@ -33,6 +33,12 @@ int main()
     ImGui::SFML::Init(window);
 	ImPlot::CreateContext();
 
+    // Create the config
+    MapConfig config;
+
+    bool showMainMenu = true;
+
+    mainMenu(window, config, windowWidth, windowHeight, showMainMenu);
 
     // Create the global world objects
     GlobalWorldObjects globals; 
@@ -56,9 +62,6 @@ int main()
     // Create the vertex map
     VertexMap vertexMap;
     std::cout << "Vertex Buffer Available? " << vertexMap.useVertexBuffer << std::endl;
-
-	// Create the config
-    MapConfig config;
 
     // Create the view
     sf::Vector2f oldPos;
@@ -103,6 +106,11 @@ int main()
 
     while (window.isOpen())
     {
+        if (showMainMenu)
+        {
+            mainMenu(window, config, windowWidth, windowHeight, showMainMenu);
+        }
+
         sf::Event event;
 
         while (window.pollEvent(event))

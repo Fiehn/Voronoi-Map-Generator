@@ -13,7 +13,8 @@ struct GenStepWrapper {
         const sf::Sprite& loadingSprite,
         sf::RectangleShape& loadingBar,
         sf::Text& progressText,
-        float maxWidth
+        float maxWidth,
+        float maxHeight
     ) {// Execute the function and time it
         auto start = std::chrono::high_resolution_clock::now();
         func();
@@ -23,20 +24,26 @@ struct GenStepWrapper {
         currentStep++;
         float progress = static_cast<float>(currentStep) / totalSteps;
 
+        // Create background loading box
+        sf::RectangleShape loadingBox(sf::Vector2f(maxWidth - 200, 50));
+        loadingBox.setFillColor(sf::Color::White);
+        loadingBox.setPosition(100, maxHeight - 100);
+
         // Update UI
-        loadingBar.setSize(sf::Vector2f(maxWidth * progress, 100));
-        progressText.setString(description + "\n(" + std::to_string(currentStep) + "/" +
+        loadingBar.setSize(sf::Vector2f(100 + (maxWidth-200) * progress, 50));
+        progressText.setString(description + "(" + std::to_string(currentStep) + "/" +
             std::to_string(totalSteps) + ")");
 
         // Center text
         sf::FloatRect textBounds = progressText.getLocalBounds();
         progressText.setOrigin(textBounds.left + textBounds.width / 2.0f,
             textBounds.top + textBounds.height / 2.0f);
-        progressText.setPosition(maxWidth / 2, loadingBar.getPosition().y - 150);
+        progressText.setPosition(maxWidth / 2, loadingBar.getPosition().y + 30);
 
         // Draw
         window.clear();
         window.draw(loadingSprite);
+        window.draw(loadingBox);
         window.draw(loadingBar);
         window.draw(progressText);
         window.display();
@@ -69,15 +76,12 @@ static void genWorld(vor::Voronoi& map,
     // Loading screen elements
     sf::Texture loadingTexture;
     sf::Sprite loadingSprite;
-    sf::RectangleShape loadingBox(sf::Vector2f(MAXWIDTH, 100));
-    sf::RectangleShape loadingBar(sf::Vector2f(0, 100));
+    sf::RectangleShape loadingBar(sf::Vector2f(0, 50));
     sf::Text progressText;
 
     // Initialize loading elements
-    loadingBox.setFillColor(sf::Color::Black);
-    loadingBox.setPosition(0, MAXHEIGHT - 100);
     loadingBar.setFillColor(sf::Color::Green);
-    loadingBar.setPosition(0, MAXHEIGHT - 100);
+    loadingBar.setPosition(100, MAXHEIGHT - 100);
     progressText.setFont(font);
     progressText.setFillColor(sf::Color::Black);
     progressText.setCharacterSize(40);
@@ -106,13 +110,13 @@ static void genWorld(vor::Voronoi& map,
 	}
 
     // Total processing steps 
-    const int totalSteps = 16;
+    const int totalSteps = 17;
     int currentStep = 0;
 
     // Initial draw
     GenStepWrapper::RunStep([]() {}, "Starting generation", currentStep,
         totalSteps, window, loadingSprite, loadingBar,
-        progressText, MAXWIDTH);
+        progressText, MAXWIDTH, MAXHEIGHT);
 
     // Globals Clear and Set (Step 1)
     
@@ -142,14 +146,14 @@ static void genWorld(vor::Voronoi& map,
         map.clearMap();
         }, "Initializing Global Variables", currentStep,
         totalSteps, window, loadingSprite, loadingBar,
-        progressText, MAXWIDTH);
+        progressText, MAXWIDTH, MAXHEIGHT);
 
 
     GenStepWrapper::RunStep([&]() {
         map.fillMap(config.ncellx, config.ncelly, MAXWIDTH, MAXHEIGHT,
         config.point_jitter);
         }, "Generating Voronoi diagram", currentStep, totalSteps, window,
-        loadingSprite, loadingBar, progressText, MAXWIDTH);
+        loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
     // Create the map (Step 2-15)
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -157,70 +161,70 @@ static void genWorld(vor::Voronoi& map,
         random_height_gen(map.cells, config.npeaks, config.delta_max_neg, 
         config.delta_max_pos, config.prob_of_island, config.dist_from_mainland, 
 		config.height_method); }, "Generating Heightmap", currentStep,
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
  
 	GenStepWrapper::RunStep([&]() {
 		smooth_height(map.cells, config.rise_threshold, config.height_smooth_repeats,
 		config.smooth_method); }, "Smoothing Heightmap", currentStep,
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		noise_height(map.cells, config.height_noise_repeats); }, "Adding Noise to Heightmap", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		calcHeightValues(map.cells, globals, config.delta_coast_line); }, "Finishing Height Map", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		closeOceanCell(map.cells, globals); }, "Distance To Oceans", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		calcWind(map.cells, map.points, MAXHEIGHT, globals); }, "Calculating Wind", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		calcRiverStart(map.cells, globals, map.points, map.voronoi_points); }, "Calculating River", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		calcTemp(map.cells, globals, map.points, MAXHEIGHT); }, "Calculating Temperatures", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		smoothTemps(map.cells, config.temp_smooth_repeats); }, "Smoothing Temperatures", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		calcPercepitation(map.cells, map.points, globals, config.percepitation_repeats); }, "Calculating Percepetation", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		smoothPercepitation(map.cells, config.percepitation_smooth_repeats); }, "Smoothing Percepetation", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		calcHumid(map.cells); }, "Calculating Humidity", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		calcBiome(map.cells, globals, config.kmeans_max_iter, config.biome_method); }, "Calculating Biomes", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		windArrows.clear();
 		windArrows = vor::windArrows(map); }, "Drawing Wind Arrows", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		vertexMap.clear();
 		vertexMap.create(map);
 		vertexMap.genVertexMap(map); }, "Generating Vertex Buffer", currentStep,
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH);
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([]() {}, "Finishing up the map!", currentStep, totalSteps, window,
-        loadingSprite, loadingBar, progressText, MAXWIDTH);
+        loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

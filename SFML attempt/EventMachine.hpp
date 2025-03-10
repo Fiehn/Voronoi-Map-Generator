@@ -610,10 +610,12 @@ void configLoadSave(MapConfig& config, bool& showLoadConfig, bool& showSaveConfi
     if (showLoadConfig)
     {
         ImGuiFD::OpenDialog("Choose Dir", ImGuiFDMode_LoadFile, ".");
+        showLoadConfig = false; 
     }
     else if (showSaveConfig)
     {
         ImGuiFD::OpenDialog("Choose Dir", ImGuiFDMode_SaveFile, ".");
+		showSaveConfig = false;
     }
 
     std::string path; // Path to save and load filess

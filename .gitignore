@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 # Assets that are currently local
 /SFML attempt/Assets/LoadingScreens/*
+/SFML attempt/Assets/MenuScreens/*
