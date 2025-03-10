@@ -422,7 +422,7 @@ void showNewMap(vor::Voronoi& map,
     const unsigned int windowHeight,
     const sf::Font& font,
     MapConfig& config,
-    unsigned int seed,
+    unsigned int& seed,
     bool& showNewMapBool)
 {
 	if (!showNewMapBool) {

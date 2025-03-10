@@ -38,8 +38,13 @@ int main()
 
     bool showMainMenu = true;
 
-    mainMenu(window, config, windowWidth, windowHeight, showMainMenu);
-
+    if (!mainMenu(window, config, windowWidth, windowHeight, showMainMenu)) 
+    {
+		window.close();
+		ImGui::SFML::Shutdown(window);
+		return 0;
+    }
+    
     // Create the global world objects
     GlobalWorldObjects globals; 
 

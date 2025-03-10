@@ -66,7 +66,7 @@ private:
     sf::Vector2f bposition;
 };
 
-void mainMenu(sf::RenderWindow& window, MapConfig& config, unsigned int MAXWIDTH, unsigned int MAXHEIGHT, bool& showMainMenu)
+bool mainMenu(sf::RenderWindow& window, MapConfig& config, unsigned int MAXWIDTH, unsigned int MAXHEIGHT, bool& showMainMenu)
 {
     sf::Font font;
     if (!font.loadFromFile("Fonts/Roboto-Medium.ttf")) { std::cout << "Could not load font" << std::endl; }
@@ -84,6 +84,10 @@ void mainMenu(sf::RenderWindow& window, MapConfig& config, unsigned int MAXWIDTH
     progressText.setFillColor(sf::Color::Black);
     progressText.setCharacterSize(40);
     progressText.setPosition(MAXWIDTH / 2 - progressText.getGlobalBounds().width / 2, MAXHEIGHT / 2 - progressText.getGlobalBounds().height / 2);
+
+    // Create credit text
+	sf::Text creditText("Created by: Fiehn", font, 20);
+	creditText.setPosition(MAXWIDTH - creditText.getGlobalBounds().width - 10, MAXHEIGHT - creditText.getGlobalBounds().height - 10);
 
     // Load a random image from assets/MenuScreens
     std::vector<std::string> menuImages;
@@ -105,16 +109,17 @@ void mainMenu(sf::RenderWindow& window, MapConfig& config, unsigned int MAXWIDTH
         progressText.setFillColor(sf::Color::Black);
     }
 
-    MenuButton randomButton(&window, font, "Generate Random World", sf::Vector2f(200, 50), sf::Vector2f(MAXWIDTH/2, 250));
+    MenuButton randomButton(&window, font, "Generate Random World", sf::Vector2f(300, 80), sf::Vector2f(MAXWIDTH/2 - 150, 250));
     randomButton.on_click = [&]() { std::cout << "Random world starting.." << std::endl; showMainMenu = false; };
 
 	bool showLoadConfig = false;
 	bool showSaveConfig = false;
-	MenuButton loadConfigFile(&window, font, "Load Config File", sf::Vector2f(200, 50), sf::Vector2f(MAXWIDTH / 2, 350));
+	MenuButton loadConfigFile(&window, font, "Load Config File", sf::Vector2f(300, 80), sf::Vector2f(MAXWIDTH / 2 - 150, 400));
     loadConfigFile.on_click = [&]() { showLoadConfig = true; std::cout << "Load config" << std::endl; };
     
-	MenuButton exitButton(&window, font, "Exit", sf::Vector2f(200, 50), sf::Vector2f(MAXWIDTH / 2, 450));
-    exitButton.on_click = [&]() { std::cout << "Exiting" << std::endl; window.close(); };
+	bool exit = false;
+	MenuButton exitButton(&window, font, "Exit", sf::Vector2f(300, 80), sf::Vector2f(MAXWIDTH / 2 - 150, 550));
+    exitButton.on_click = [&]() { std::cout << "Exiting" << std::endl; exit = true; };
 
     sf::Clock deltaClock;
 
@@ -125,29 +130,37 @@ void mainMenu(sf::RenderWindow& window, MapConfig& config, unsigned int MAXWIDTH
             ImGui::SFML::ProcessEvent(event);
 
             if (event.type == sf::Event::Closed)
-                window.close();
-			if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)
-				window.close();
+            {
+                return false;
+            }
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)
+            {
+                return false;
+            }
             randomButton.handle_event(event);
 			loadConfigFile.handle_event(event);
             exitButton.handle_event(event);
         }
         ImGui::SFML::Update(window, deltaClock.restart());
 
-        // Handle config dialogs HERE, within ImGui frame context
         configLoadSave(config, showLoadConfig, showSaveConfig);
 
         window.clear();
 
         window.draw(menuSprite);
+        window.draw(creditText);
 
         randomButton.draw_button();
 		loadConfigFile.draw_button();
 		exitButton.draw_button();
+
+		if (exit == true) {
+            return false;
+		}
         
         ImGui::SFML::Render(window);
 
         window.display();
     }
-
+	return true;
 }
