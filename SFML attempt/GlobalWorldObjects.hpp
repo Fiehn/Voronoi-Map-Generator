@@ -30,6 +30,8 @@ public:
 	std::vector<River> rivers; // List of rivers in the world
 	std::vector<Lake> lakes; // List of lakes in the world
 
+	std::vector<Continent> continents; // List of continents
+
 	GlobalWorldObjects();
 	void clearGlobals();
 

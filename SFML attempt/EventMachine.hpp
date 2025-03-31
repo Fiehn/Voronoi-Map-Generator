@@ -598,6 +598,12 @@ void showNewMap(vor::Voronoi& map,
             ImGui::Text("Methods of biome generation. 1: GMM and probability smoothing, 2: KMeans (should be faster, is not)");
             ImGui::EndTooltip();
         }
+        ImGui::InputInt("Method of Height", &config.height_method); //TODO, fix this input
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Methods of height generation. 1: Random k-peaks, 2: Linear k-peaks, 3: K-Continents");
+            ImGui::EndTooltip();
+        }
     }
 
     ImGui::PopItemWidth();

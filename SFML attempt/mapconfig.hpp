@@ -16,16 +16,16 @@ public:
 	unsigned int ncelly = 150; // Number of cells in y direction
 
     // Height generation
-    unsigned int npeaks = 10; // Number of peaks to generate in the heightmap
+    unsigned int npeaks = 10; // Number of peaks to generate in the heightmap / continents
     float delta_max_neg = 0.04f; // The maximum amount of random height added in the negative direction
     float delta_max_pos = 0.02f; // The maximum amount of random height added in the positive direction
     float prob_of_island = 0.01f; // small probability of random height increase when away from mainland 
     float dist_from_mainland = 1.0f; // The distance from the mainland where the probability of random height increase begins, Represented by the sum of height of all neighbors
-    int height_method = 1; // Method 1 is random, method 2 is first in first out, needs more methods (Simplex, diamond, perlin, etc)
+    int height_method = 3; // Method 1 is random, method 2 is first in first out, needs more methods (Simplex, diamond, perlin, etc)
     float rise_threshold = 0.09f; // The minimum rise value where a cell height is smoothed 
-    unsigned int height_smooth_repeats = 8; // amount of height smoothing iterations
+    unsigned int height_smooth_repeats = 0; // amount of height smoothing iterations
     int smooth_method = 1; // method 1 is random the other is front
-    unsigned int height_noise_repeats = 2; // amount of height noise iterations, happens after smoothing
+    unsigned int height_noise_repeats = 0; // amount of height noise iterations, happens after smoothing
     float delta_coast_line = 0.05f; // the range around sealevel that is considered coast (below and above)
 
     // Temperature

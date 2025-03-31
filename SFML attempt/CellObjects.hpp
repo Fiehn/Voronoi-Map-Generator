@@ -146,6 +146,39 @@ private:
 	
 };
 
+class Continent {
+public:
+    int id;
+    Continent(int id);
 
+	
+	void setHeight(double height) { this->height = height; };
+    void setDirection(sf::Vector2f direction) { this->direction = direction; };
+    void setAge(float age) { this->age = age; }
+
+	void addCell(std::size_t cell) { cells.push_back(cell); };
+	std::vector<std::size_t> getCells() { return cells; };
+
+    sf::Vector2f getDirection() { return direction; };
+	sf::Vector2f getCenter() { return center; };
+    double getHeight() { return height; }
+    float getAge() { return age; }
+
+    void addBoundryCell(std::size_t cellId);
+
+    void finishContinent(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map);
+
+private:
+    std::vector<std::size_t> cells;
+	std::vector<sf::Vector2f> bounds;
+    std::vector<std::size_t> boundCells;
+	sf::Vector2f center;
+    sf::Vector2f direction;
+    double height = 0.5;
+	float age = 0.0f; // Epochs since the continent was created (will be between 0.5 and 1) 
+
+	void calcCenter(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map);
+
+};
 
 

@@ -13,6 +13,7 @@
 #include <random>
 #include <SFML/Graphics.hpp>
 #include <SFML/System/Vector2.hpp>
+#include <stdexcept>
 
 
 // I need to create a Random engine class that can be used to generate random numbers
@@ -84,48 +85,50 @@ inline T pop_random_i(std::vector<T>& v)
     return value;
 }
 
+
 template <typename T>
 class Queue {
-public: 
-    void push(const T& value) { m_queue.push_back(value); }
+public:
+    void push(const T& value) {
+        m_queue.push_back(value);
+    }
+
     T pop_front() {
-        if (m_queue.empty()) 
-        { 
-            return 0; // This is not type safe
+        if (empty()) {
+            throw std::out_of_range("Queue is empty");
         }
         T value = m_queue[front_index];
         ++front_index;
 
         if (front_index > m_queue.size() / 2) {
-			m_queue.erase(m_queue.begin(), m_queue.begin() + front_index);
-			front_index = 0;
-		}
+            m_queue.erase(m_queue.begin(), m_queue.begin() + front_index);
+            front_index = 0;
+        }
         return value;
     }
-    bool empty() const { return (front_index == m_queue.size() or m_queue.size() == 0); }
-    size_t size() const { return m_queue.size() - front_index; }
+
+    bool empty() const {
+        return front_index >= m_queue.size();
+    }
+
+    size_t size() const {
+        return m_queue.size() - front_index;
+    }
 
     T pop_random() {
-		if (m_queue.empty()) { return 0; }
-		size_t rand_index = front_index + (rand_long() % (m_queue.size() - front_index));
-		std::swap(m_queue[rand_index], m_queue.back());
-		T value = m_queue.back();
-		m_queue.pop_back();
-		return value;
-	}
+        if (empty()) {
+            throw std::out_of_range("Queue is empty");
+        }
+        size_t rand_index = front_index + (rand_long() % (m_queue.size() - front_index));
+        std::swap(m_queue[rand_index], m_queue.back());
+        T value = m_queue.back();
+        m_queue.pop_back();
+        return value;
+    }
 
-    //void clear() { m_queue.clear(); front_index = 0; }
-    //T& operator[](size_t index) { return m_queue[index + front_index]; }
-    //const T& operator[](size_t index) const { return m_queue[index + front_index]; }
-    //T& front() { return m_queue[front_index]; }
-    //const T& front() const { return m_queue[front_index]; }
-    //T& back() { return m_queue[m_queue.size() - 1]; }
-    //const T& back() const { return m_queue[m_queue.size() - 1]; }
-    //void erase(size_t index) { m_queue.erase(m_queue.begin() + index + front_index); }
-    //void erase(size_t index, size_t count) { m_queue.erase(m_queue.begin() + index + front_index, m_queue.begin() + index + front_index + count); }
 private:
     std::vector<T> m_queue;
-    std::size_t front_index = 0;
+    size_t front_index = 0;
 };
 
 inline float normalized_value(float value, float max, float min) { return fabs((value - min) / (max - min)); }
@@ -542,6 +545,139 @@ std::string colorName(sf::Color color);
 std::string closestColorName(sf::Color color);
 
 sf::Color colorByName(std::string name);
+
+
+// Based on Stefan Gustavson's implementation
+class SimplexNoise {
+private:
+    int perm[512];
+    int grad3[12][3] = {
+        {1,1,0}, {-1,1,0}, {1,-1,0}, {-1,-1,0},
+        {1,0,1}, {-1,0,1}, {1,0,-1}, {-1,0,-1},
+        {0,1,1}, {0,-1,1}, {0,1,-1}, {0,-1,-1}
+    };
+
+    float dot(const int g[3], float x, float y, float z) {
+        return g[0] * x + g[1] * y + g[2] * z;
+    }
+
+    int fastfloor(float x) {
+        return x > 0 ? (int)x : (int)x - 1;
+    }
+
+public:
+    SimplexNoise(int seed) {
+        // Initialize permutation table with values based on seed
+        std::mt19937 gen(seed);
+        std::uniform_int_distribution<int> distrib(0, 255);
+
+        for (int i = 0; i < 256; i++) {
+            perm[i] = distrib(gen);
+            perm[i + 256] = perm[i];
+        }
+    }
+
+    float noise(float x, float y) {
+        // 2D simplex noise
+        const float F2 = 0.5f * (std::sqrt(3.0f) - 1.0f);
+        const float G2 = (3.0f - std::sqrt(3.0f)) / 6.0f;
+
+        // Skew input space to determine which simplex cell we're in
+        float s = (x + y) * F2;
+        int i = fastfloor(x + s);
+        int j = fastfloor(y + s);
+
+        float t = (i + j) * G2;
+        float X0 = i - t; // Unskew the cell origin back to (x,y) space
+        float Y0 = j - t;
+        float x0 = x - X0; // The x,y distances from the cell origin
+        float y0 = y - Y0;
+
+        // Determine which simplex we are in
+        int i1, j1; // Offsets for second corner of simplex
+        if (x0 > y0) { // lower triangle, XY order: (0,0)->(1,0)->(1,1)
+            i1 = 1;
+            j1 = 0;
+        }
+        else { // upper triangle, YX order: (0,0)->(0,1)->(1,1)
+            i1 = 0;
+            j1 = 1;
+        }
+
+        // A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
+        // a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
+        // c = (3-sqrt(3))/6
+
+        float x1 = x0 - i1 + G2; // Offsets for middle corner in (x,y) unskewed coords
+        float y1 = y0 - j1 + G2;
+        float x2 = x0 - 1.0f + 2.0f * G2; // Offsets for last corner in (x,y) unskewed coords
+        float y2 = y0 - 1.0f + 2.0f * G2;
+
+        // Work out the hashed gradient indices of the three simplex corners
+        int ii = i & 255;
+        int jj = j & 255;
+        int gi0 = perm[ii + perm[jj]] % 12;
+        int gi1 = perm[ii + i1 + perm[jj + j1]] % 12;
+        int gi2 = perm[ii + 1 + perm[jj + 1]] % 12;
+
+        // Calculate the contribution from the three corners
+        float n0, n1, n2;
+
+        // Calculate noise contributions from each corner
+        float t0 = 0.5f - x0 * x0 - y0 * y0;
+        if (t0 < 0) {
+            n0 = 0.0f;
+        }
+        else {
+            t0 *= t0;
+            n0 = t0 * t0 * dot(grad3[gi0], x0, y0, 0);
+        }
+
+        float t1 = 0.5f - x1 * x1 - y1 * y1;
+        if (t1 < 0) {
+            n1 = 0.0f;
+        }
+        else {
+            t1 *= t1;
+            n1 = t1 * t1 * dot(grad3[gi1], x1, y1, 0);
+        }
+
+        float t2 = 0.5f - x2 * x2 - y2 * y2;
+        if (t2 < 0) {
+            n2 = 0.0f;
+        }
+        else {
+            t2 *= t2;
+            n2 = t2 * t2 * dot(grad3[gi2], x2, y2, 0);
+        }
+
+        // Add contributions from each corner to get the final noise value.
+        // The result is scaled to return values in the range [-1,1]
+        return 70.0f * (n0 + n1 + n2);
+    }
+
+    // Generate octave noise (multiple frequencies of noise added together)
+    float octaveNoise(float x, float y, int octaves, float persistence) {
+        float total = 0.0f;
+        float frequency = 1.0f;
+        float amplitude = 1.0f;
+        float maxValue = 0.0f;  // Used for normalizing result
+
+        for (int i = 0; i < octaves; i++) {
+            total += noise(x * frequency, y * frequency) * amplitude;
+            maxValue += amplitude;
+            amplitude *= persistence;
+            frequency *= 2.0f;
+        }
+
+        return total / maxValue;
+    }
+};
+
+
+
+
+
 
 
 

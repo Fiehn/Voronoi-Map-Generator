@@ -4,12 +4,13 @@
 #include <time.h>
 #include <cstdlib>
 #include <chrono>
+
+#include "mapconfig.hpp"
 #include "Voronoi.hpp"
 #include "vertex.hpp"
 #include "GlobalWorldObjects.hpp"
 #include "cell.hpp"
 #include "Map.hpp"
-#include "mapconfig.hpp"
 
 #include "imgui.h"
 #include "imgui-SFML.h"

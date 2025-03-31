@@ -189,3 +189,26 @@ sf::VertexArray Lake::drawLake() { /// THis is not working correctly fix it
 	}
 	return lake;
 };
+
+Continent::Continent(int id) {
+	this->id = id;
+};
+
+void Continent::calcCenter(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map) {
+	// Find the center of the continent
+	sf::Vector2f sum = sf::Vector2f(0, 0);
+	for (std::size_t i = 0; i < cells.size(); i++) {
+		sum += voronoi_points[map[cells[i]].vertex[0]];
+	}
+	center = sum / static_cast<float>(cells.size());
+};
+
+void Continent::finishContinent(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map)
+{
+	calcCenter(voronoi_points, map);
+};
+
+void Continent::addBoundryCell(std::size_t cellId)
+{
+    boundCells.push_back(cellId);
+}
