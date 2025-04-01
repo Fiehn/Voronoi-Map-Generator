@@ -211,4 +211,85 @@ void Continent::finishContinent(const std::vector<sf::Vector2f>& voronoi_points,
 void Continent::addBoundryCell(std::size_t cellId)
 {
     boundCells.push_back(cellId);
+};
+
+void Continent::generateBoundryLine(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points)
+{
+	/// DOES NOT WORK! FIX IT
+    /*
+	// Find the vertices of the boundry cells that are not within the bounds of the continent
+    std::vector<sf::Vector2f> points; 
+    points.reserve(boundCells.size() * 2);
+
+    for (std::size_t i = 0; i < boundCells.size(); i++)
+    {
+        int mainContinent = map[boundCells[i]].continent;
+        // Check points and see if that point is also contained in a neighbor from a different continent
+        for (std::size_t j = 0; j < map[boundCells[i]].vertex.size(); j++)
+        {
+			sf::Vector2f point = voronoi_points[map[boundCells[i]].vertex[j]];
+            for (std::size_t k = 0; k < map[boundCells[i]].neighbors.size(); k++)
+            {
+                if (mainContinent != map[map[boundCells[i]].neighbors[k]].continent)
+                {
+                    continue;
+                }
+                else
+                {
+                    for (std::size_t l = 0; l < map[map[boundCells[i]].neighbors[k]].vertex.size(); l++)
+                    {
+                        sf::Vector2f neighborPoint = voronoi_points[map[map[boundCells[i]].neighbors[k]].vertex[l]];
+
+                        if (point == neighborPoint)
+                        {
+                            points.push_back(point);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+	// Use a NN to get the order of the points
+    std::size_t startpoint = 0;
+    std::vector<bool> used(points.size());
+
+	boundLines.clear();
+    boundLines.reserve(points.size());
+	boundLines.push_back(points[startpoint]);
+
+    while (boundLines.size() < points.size())
+    {
+		float minDist = std::numeric_limits<float>::max();
+		std::size_t minIndex = 0;
+		for (std::size_t i = 0; i < points.size(); i++)
+		{
+			if (used[i])
+			{
+				continue;
+			}
+			float dist = distance(points[startpoint], points[i]); 
+			if (dist < minDist)
+			{
+				minDist = dist;
+				minIndex = i;
+			}
+		}
+		startpoint = minIndex; 
+		used[startpoint] = true; 
+		boundLines.push_back(points[startpoint]); 
+    }
+    */
+
+};
+
+sf::VertexArray Continent::drawBoundryLine() 
+{
+	sf::VertexArray continentLine(sf::LinesStrip, boundLines.size());
+	for (size_t i = 0; i < boundLines.size(); i++)
+	{
+		continentLine[i].position = boundLines[i]; 
+		continentLine[i].color = sf::Color::Red; 
+	}
+    return continentLine;
 }

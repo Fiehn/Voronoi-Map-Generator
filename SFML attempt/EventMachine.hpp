@@ -97,6 +97,14 @@ static void drawLakes(GlobalWorldObjects& globals, sf::RenderWindow& window)
     }
 }
 
+static void drawContinents(GlobalWorldObjects& globals, sf::RenderWindow& window)
+{
+    for (std::size_t i = 0; i < globals.continents.size(); i++)
+    {
+        sf::VertexArray continent = globals.continents[i].drawBoundryLine();
+        window.draw(continent);
+    }
+}
 
 
 void eventloop(sf::RenderWindow& window,

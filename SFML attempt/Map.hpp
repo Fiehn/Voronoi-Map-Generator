@@ -124,7 +124,7 @@ void continent_generation(std::vector<Cell>& map, GlobalWorldObjects& globals, M
     {
         for (int i = 0; i < static_cast<int>(config.npeaks / 4); i++)
         {
-            if (globals.continents[i].getHeight() < 0.5) { globals.continents[i].setHeight(RandomBetween(0.5, 0.85)); }
+            if (globals.continents[i].getHeight() < 0.5) { globals.continents[i].setHeight(normalDistPDF(0.5f,0.2f)); }
         }
     }
 
@@ -151,12 +151,6 @@ void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals)
     {
         Cell& cell = map[cellIndex];
 
-        // should never happen (part of a amortization of the code)
-        if (cell.neighbors.empty())
-        {
-            continue;
-        }
-
         bool isBoundry = false;
         std::vector<int> neighboringContinents;
 
@@ -173,6 +167,12 @@ void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals)
                 }
             }
         }
+        if (!isBoundry)
+        {
+            cell.height = globals.continents[cell.continent].getHeight(); 
+            continue; // If not a boundry
+        }
+
         float heightIncrease = 0.0f;
         bool volcanicActivity = false;
         bool isRift = false;
@@ -277,7 +277,7 @@ void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals)
 		}
 
         // Propagation!
-        const int propagationDepth = 2 + 10 * globals.continents[cell.continent].getAge(); // How far to spread the mountain effect
+        const int propagationDepth = std::floorf(2 + 5 * globals.continents[cell.continent].getAge()); // How far to spread the mountain effect
         std::vector<bool> visited(map.size(), false);
         visited[cellIndex] = true;
 
@@ -335,18 +335,11 @@ void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals)
 void simplex_noise_continent(std::vector<Cell>& map, 
     GlobalWorldObjects& globals, 
     const MapConfig& config,
-    const std::vector<sf::Vector2f>& points)
+    const std::vector<sf::Vector2f>& positons)
 {
     // Generate a layer of simplex noise and add it to the height
     int seed = rand();
     SimplexNoise simplex(seed);
-
-    std::vector<sf::Vector2f> positons;
-	positons.reserve(map.size());
-	for (const Cell& cell : map)
-	{
-		positons.push_back(points[cell.id]);
-	}
 
 	// Find Bounds
     float minX = std::numeric_limits<float>::max(); 
@@ -362,9 +355,9 @@ void simplex_noise_continent(std::vector<Cell>& map,
     }
 
     // Configure noise parameters (SHOULD BE IN CONFIG)
-    const int octaves = 2;         // Number of frequency layers (more = more detail)
+    const int octaves = 3;         // Number of frequency layers (more = more detail)
     const float persistence = 0.5f; // How much each octave contributes (0-1)
-    const float noiseScale = 0.0003f; // Scale of the noise (smaller = larger features)
+    const float noiseScale = 0.003f; // Scale of the noise (smaller = larger features)
     const float noiseStrength = 0.15f; // How much the noise affects the height (0-1)
 	
     // Apply noise to all cells
@@ -409,11 +402,10 @@ void simplex_noise_continent(std::vector<Cell>& map,
 // k-point smooth height generator
 // there is a max of RAND_MAX_LONG (about a million cells)
 void random_height_gen(std::vector<Cell>& map,
-    GlobalWorldObjects globals, MapConfig config, const std::vector<sf::Vector2f>& points, 
-    int k = 5, float delta_max_neg = 0.04, float delta_max_pos = 0.03, 
-    float prob_of_island = 0.008, float dist_from_mainland = 1.0, int method = 1)
+    GlobalWorldObjects& globals, MapConfig config, 
+    const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voronoi_points)
 {   
-    if (method < 3)
+    if (config.height_method < 3)
     {
         // Method 1 is random, method 2 is first in first out
         /*
@@ -430,7 +422,7 @@ void random_height_gen(std::vector<Cell>& map,
         std::vector<int> active;
         active.reserve(map.size() - 1);
 
-        for (int i = 0; i < k; i++)
+        for (int i = 0; i < config.npeaks; i++)
         {
             int index = rand_long() % map.size();
             map[index].height = RandomBetween(0.8, 1.0);
@@ -440,8 +432,8 @@ void random_height_gen(std::vector<Cell>& map,
         while (active.empty() == false)
         {
             int index = 0;
-            if (method == 1) { index = pop_random_i(active); }
-            else if (method == 2) { index = pop_front_i(active); }
+            if (config.height_method == 1) { index = pop_random_i(active); }
+            else if (config.height_method == 2) { index = pop_front_i(active); }
 
             float height_sum = 0.0;
             int count_values = 0;
@@ -449,7 +441,7 @@ void random_height_gen(std::vector<Cell>& map,
             {
                 // small probability of random height increase, THIS is heavily up to tuning for interesting maps
                 // Also should be reconsidered
-                if (RandomBetween(0.0, 1.0) < prob_of_island && height_sum < dist_from_mainland && count_values > 1)
+                if (RandomBetween(0.0, 1.0) < config.prob_of_island && height_sum < config.dist_from_mainland && count_values > 1)
                 {
                     map[map[index].neighbors[j]].height = RandomBetween(0.6, 0.9);
                     active.insert(std::begin(active), std::begin(map[map[index].neighbors[j]].neighbors), std::end(map[map[index].neighbors[j]].neighbors));
@@ -471,7 +463,7 @@ void random_height_gen(std::vector<Cell>& map,
             }
             if (count_values == 0) { active.push_back(map[index].id); }
             else {
-                map[index].height = clamp((height_sum / count_values) + RandomBetween(-delta_max_neg, delta_max_pos), 1.0, 0.0);
+                map[index].height = clamp((height_sum / count_values) + RandomBetween(-config.delta_max_neg, config.delta_max_pos), 1.0, 0.0);
             }
         }
         rise(map); // calculate the rise of the map with the new height values
@@ -498,6 +490,11 @@ void random_height_gen(std::vector<Cell>& map,
 
         // Overlay a noise filter (simplex noise)
         simplex_noise_continent(map, globals, config, points);
+
+        for (int i = 0; i < globals.continents.size(); i++)
+        {
+            globals.continents[i].generateBoundryLine(map, voronoi_points);
+        }
 		
 		rise(map); // calculate the rise of the map with the new height values
     }

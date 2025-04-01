@@ -150,7 +150,6 @@ class Continent {
 public:
     int id;
     Continent(int id);
-
 	
 	void setHeight(double height) { this->height = height; };
     void setDirection(sf::Vector2f direction) { this->direction = direction; };
@@ -166,11 +165,15 @@ public:
 
     void addBoundryCell(std::size_t cellId);
 
+    void generateBoundryLine(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points);
+
+	sf::VertexArray drawBoundryLine();
+
     void finishContinent(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map);
 
 private:
     std::vector<std::size_t> cells;
-	std::vector<sf::Vector2f> bounds;
+    std::vector<sf::Vector2f> boundLines; 
     std::vector<std::size_t> boundCells;
 	sf::Vector2f center;
     sf::Vector2f direction;

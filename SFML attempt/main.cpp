@@ -77,6 +77,7 @@ int main()
     bool drawHighlightBool = false; // Set to true to highlight a cell
     bool drawRiversBool = true; // Draw rivers
 	bool drawLakesBool = true; // Draw lakes
+	bool drawContinentBool = false; // Draw continent borders
 
     int mapType = 0; int mapTypeOld = 0;
     bool showNewMapBool = false; // Get window to draw new map
@@ -273,6 +274,10 @@ int main()
         if (drawLakesBool)
         {
 			drawLakes(globals, window);
+        }
+        if (drawContinentBool)
+        {
+            drawContinents(globals, window);
         }
 
         ImGui::SFML::Render(window);

@@ -675,6 +675,12 @@ public:
 };
 
 
+inline float distance(sf::Vector2f a, sf::Vector2f b)
+{
+    // Euclidian distance
+	return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
+}
+
 
 
 

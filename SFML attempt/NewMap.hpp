@@ -158,9 +158,7 @@ static void genWorld(vor::Voronoi& map,
     auto start = std::chrono::high_resolution_clock::now();
 
     GenStepWrapper::RunStep([&]() {
-        random_height_gen(map.cells, globals, config, map.points, config.npeaks, config.delta_max_neg, 
-        config.delta_max_pos, config.prob_of_island, config.dist_from_mainland, 
-		config.height_method); }, "Generating Heightmap", currentStep,
+        random_height_gen(map.cells, globals, config, map.points, map.voronoi_points); }, "Generating Heightmap", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
  
 	GenStepWrapper::RunStep([&]() {
