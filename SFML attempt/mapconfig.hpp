@@ -25,7 +25,7 @@ public:
     float rise_threshold = 0.09f; // The minimum rise value where a cell height is smoothed 
     unsigned int height_smooth_repeats = 0; // amount of height smoothing iterations
     int smooth_method = 1; // method 1 is random the other is front
-    unsigned int height_noise_repeats = 0; // amount of height noise iterations, happens after smoothing
+    unsigned int height_noise_repeats = 1; // amount of height noise iterations, happens after smoothing
     float delta_coast_line = 0.05f; // the range around sealevel that is considered coast (below and above)
 
     // Temperature

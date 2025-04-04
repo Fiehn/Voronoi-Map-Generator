@@ -154,8 +154,11 @@ int main()
         ImGui::RadioButton("Temperature", &mapType, 1); ImGui::SameLine();
         ImGui::RadioButton("Biome", &mapType, 2); ImGui::SameLine();
         ImGui::RadioButton("Percepitation", &mapType, 3);
+        if (config.height_method > 2)
+        {
+            ImGui::RadioButton("Continents", &mapType, 5); ImGui::SameLine();
+        }
         ImGui::RadioButton("Wind", &mapType, 4);
-
             
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
@@ -181,6 +184,10 @@ int main()
 				drawWindMap(map, vertexMap);
                 drawWindArrowsBool = true;
 				break;
+            case 5:
+                drawContinentMap(map, globals, vertexMap);
+                drawWindArrowsBool = false;
+                break;
 			}
 		}
 
@@ -278,6 +285,15 @@ int main()
         if (drawContinentBool)
         {
             drawContinents(globals, window);
+        }
+
+        /// CHANGE THIS TO A BOOL!
+        if (mapType == 5)
+        {
+			for (int i = 0; i < globals.continents.size(); i++)
+            {
+				window.draw(globals.continents[i].drawDirectionArrows()); 
+			}
         }
 
         ImGui::SFML::Render(window);

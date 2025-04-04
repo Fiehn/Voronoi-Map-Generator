@@ -213,6 +213,49 @@ void Continent::addBoundryCell(std::size_t cellId)
     boundCells.push_back(cellId);
 };
 
+sf::VertexArray Continent::drawDirectionArrows()
+{
+    // Create an arrow as a triangle pointing in the direction vector
+    sf::VertexArray arrow(sf::Triangles, 3);
+
+    float arrowLength = 70.f; // Reduced from 100.f to make it shorter
+    float baseAngleOffset = PI / 12; // Reduced from PI/8 to make it less fat
+
+    // Normalize the direction vector if it's not already normalized
+    sf::Vector2f normalizedDirection = direction;
+    float magnitude = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+    if (magnitude > 0) {
+        normalizedDirection.x /= magnitude;
+        normalizedDirection.y /= magnitude;
+    }
+
+    // Calculate the angle of the direction vector
+    float angleRadians = std::atan2(normalizedDirection.y, normalizedDirection.x);
+
+    // Calculate the tip of the arrow
+    sf::Vector2f tip = center + normalizedDirection * arrowLength;
+
+    // Calculate the base points of the arrow (using 0.6f instead of 0.7f for a slimmer look)
+    sf::Vector2f base1 = center + (arrowLength * 0.6f) *
+        sf::Vector2f(std::cos(angleRadians + PI - baseAngleOffset),
+            std::sin(angleRadians + PI - baseAngleOffset));
+
+    sf::Vector2f base2 = center + (arrowLength * 0.6f) *
+        sf::Vector2f(std::cos(angleRadians + PI + baseAngleOffset),
+            std::sin(angleRadians + PI + baseAngleOffset));
+
+    // Set the vertices positions and color
+    arrow[0].position = tip;
+    arrow[0].color = sf::Color::Black;
+    arrow[1].position = base1;
+    arrow[1].color = sf::Color::Black;
+    arrow[2].position = base2;
+    arrow[2].color = sf::Color::Black;
+
+    return arrow;
+}
+
+
 void Continent::generateBoundryLine(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points)
 {
 	/// DOES NOT WORK! FIX IT

@@ -167,7 +167,9 @@ public:
 
     void generateBoundryLine(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points);
 
-	sf::VertexArray drawBoundryLine();
+    sf::VertexArray drawDirectionArrows();
+
+	sf::VertexArray drawBoundryLine(); 
 
     void finishContinent(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map);
 

@@ -46,7 +46,53 @@ void rise(std::vector<Cell>& map)
     }
 }
 
-void continent_generation(std::vector<Cell>& map, GlobalWorldObjects& globals, MapConfig& config)
+
+void smooth_height(std::vector<Cell>& map, float rise_threshold = 0.1, int repeats = 1, int method = 1)
+{ // method 1 = Random, method 2 = Front
+    {
+        std::vector<unsigned int> active;
+        active.reserve(map.size() * 5);
+
+        for (int _ = 0; _ < repeats; _++)
+        {
+            for (size_t i = 0; i < map.size(); i++)
+            {
+                if (map[i].rise > rise_threshold)
+                {
+                    active.push_back(i);
+                    active.insert(std::end(active), std::begin(map[i].neighbors), std::end(map[i].neighbors));
+                }
+            }
+            while (true)
+            {
+                if (active.empty()) { break; }
+
+                size_t index = 0;
+                if (method == 1) { index = pop_random_i(active); }
+                else if (method == 2) { index = pop_front_i(active); }
+
+                float height_sum = 0.f;
+                int count_values = 0;
+                for (int j = 0; j < map[index].neighbors.size(); j++)
+                {
+                    height_sum = height_sum + map[map[index].neighbors[j]].height;
+                    count_values++;
+                }
+
+                if (height_sum > 0.005) {
+                    map[index].height = height_sum / static_cast<float>(count_values);
+                }
+                else if (map[index].height > 0.5) {
+                    map[index].height = 0.1;
+                }
+            }
+            // calculate the new rise for next smoothing
+            rise(map);
+        }
+    }
+}
+
+void continent_generation(std::vector<Cell>& map, GlobalWorldObjects& globals, MapConfig& config, const std::vector<sf::Vector2f>& voronoi_points)
 {
     // Generate continents
 	globals.continents.reserve(config.npeaks);
@@ -133,7 +179,7 @@ void continent_generation(std::vector<Cell>& map, GlobalWorldObjects& globals, M
     {
 		globals.continents[i].setDirection(sf::Vector2f(RandomBetween(-1.0, 1.0), RandomBetween(-1.0, 1.0)));
         globals.continents[i].setAge(RandomBetween(0.5f, 1.0f));
-		//globals.continents[i].finishContinent(voronoi_points, map);
+		globals.continents[i].finishContinent(voronoi_points, map);
     }
 
 }
@@ -357,8 +403,8 @@ void simplex_noise_continent(std::vector<Cell>& map,
     // Configure noise parameters (SHOULD BE IN CONFIG)
     const int octaves = 3;         // Number of frequency layers (more = more detail)
     const float persistence = 0.5f; // How much each octave contributes (0-1)
-    const float noiseScale = 0.003f; // Scale of the noise (smaller = larger features)
-    const float noiseStrength = 0.15f; // How much the noise affects the height (0-1)
+    const float noiseScale = 0.09f; // Scale of the noise (smaller = larger features)
+    const float noiseStrength = 0.3f; // How much the noise affects the height (0-1)
 	
     // Apply noise to all cells
     for (std::size_t i = 0; i < map.size(); i++)
@@ -483,10 +529,14 @@ void random_height_gen(std::vector<Cell>& map,
 		9. Calculate the rise of the map with the new height values
         */
 
-        continent_generation(map, globals, config);
+        continent_generation(map, globals, config, voronoi_points);
 
         // Calculate the interactions between the continents
         continent_interaction(map, globals);
+
+        rise(map); // calculate the rise of the map with the new height values 
+
+		smooth_height(map, config.rise_threshold, 1, config.smooth_method); // smooth the height values
 
         // Overlay a noise filter (simplex noise)
         simplex_noise_continent(map, globals, config, points);
@@ -501,50 +551,6 @@ void random_height_gen(std::vector<Cell>& map,
     
 }
 
-void smooth_height(std::vector<Cell>& map, float rise_threshold = 0.1, int repeats = 1, int method = 1)
-{ // method 1 = Random, method 2 = Front
-    {
-        std::vector<unsigned int> active;
-        active.reserve(map.size() * 5);
-
-        for (int _ = 0; _ < repeats; _++)
-        {
-            for (size_t i = 0; i < map.size(); i++)
-            {
-                if (map[i].rise > rise_threshold)
-                {
-                    active.push_back(i);
-                    active.insert(std::end(active), std::begin(map[i].neighbors), std::end(map[i].neighbors));
-                }
-            }
-            while (true)
-            {
-                if (active.empty()) { break; }
-
-                size_t index = 0;
-                if (method == 1) { index = pop_random_i(active); }
-                else if (method == 2) { index = pop_front_i(active); }
-
-                float height_sum = 0.f;
-                int count_values = 0;
-                for (int j = 0; j < map[index].neighbors.size(); j++)
-                {
-                    height_sum = height_sum + map[map[index].neighbors[j]].height;
-                    count_values++;
-                }
-
-                if (height_sum > 0.005) {
-                    map[index].height = height_sum / static_cast<float>(count_values);
-                }
-                else if (map[index].height > 0.5) {
-                    map[index].height = 0.1;
-                }
-            }
-            // calculate the new rise for next smoothing
-            rise(map);
-        }
-    }
-}
 
 void noise_height(std::vector<Cell>& map, int n)
 {

@@ -27,7 +27,7 @@ static void drawTempMap(vor::Voronoi& map, VertexMap& vertexMap) {
     vertexMap.update(map);
 }
 
-static void drawBiomeMap(vor::Voronoi& map, GlobalWorldObjects globals, VertexMap& vertexMap)
+static void drawBiomeMap(vor::Voronoi& map, const GlobalWorldObjects& globals, VertexMap& vertexMap)
 {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
@@ -77,6 +77,31 @@ static void drawWindMap(vor::Voronoi& map, VertexMap& vertexMap) {
     }
     vertexMap.update(map);
 }
+
+static void drawContinentMap(vor::Voronoi& map, const GlobalWorldObjects& globals, VertexMap& vertexMap)
+{
+    // Get random color per continent
+    ColorTable colorTable;
+
+    std::vector<sf::Color> continentColors = colorTable.getRandomColors(globals.continents.size());
+
+    for (size_t i = 0; i < map.cells.size(); i++)
+    {
+		// Get the continent id of the cell
+		int continentId = map.cells[i].continent;
+
+		// Get the color for the continent
+		sf::Color color = continentColors[continentId];
+
+		// Set the color for the vertices of the cell
+		for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+		{
+			map.vertices[j].color = color;
+		}
+    }
+	vertexMap.update(map);
+}
+
 
 static void drawRivers(GlobalWorldObjects& globals, sf::RenderWindow& window)
 {
@@ -974,6 +999,21 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
 	ImGui::Text("Wind Strength");
 	ImGui::TableSetColumnIndex(1);
 	ImGui::Text("%.2f", cell.windStr);
+
+    if (!globals.continents.empty())
+    {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Continent Id");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%d", cell.continent);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Volcano");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%d", cell.volcanicActivity);
+    }
 
     ImGui::EndTable();
         
