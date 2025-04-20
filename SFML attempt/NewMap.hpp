@@ -167,7 +167,8 @@ static void genWorld(vor::Voronoi& map,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		noise_height(map.cells, config.height_noise_repeats); }, "Adding Noise to Heightmap", currentStep, 
+		noise_height(map.cells, globals, config, map.points,
+        config.height_noise_repeats); }, "Adding Noise to Heightmap", currentStep, 
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {

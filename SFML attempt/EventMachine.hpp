@@ -634,7 +634,13 @@ void showNewMap(vor::Voronoi& map,
         ImGui::InputInt("Method of Height", &config.height_method); //TODO, fix this input
         if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
-            ImGui::Text("Methods of height generation. 1: Random k-peaks, 2: Linear k-peaks, 3: K-Continents");
+            ImGui::Text("Methods of height generation. 1: k-peaks, 2: k-peaks with continents, 3: K-Continents");
+            ImGui::EndTooltip();
+        }
+        ImGui::InputInt("Method of Height noise", &config.heigth_noise_method); //TODO, fix this input
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Methods of height noising. 1: Uniform random, 2: Simplex noise");
             ImGui::EndTooltip();
         }
     }

@@ -22,7 +22,7 @@ public:
     float humidity = 1.f; // Humidity of the cell (0 to 1)
     float percepitation = 0.f; // Percepitation of the cell ( > 0 )
 
-	int continent = 0; // Continent of the cell
+	int continent = -1; // Continent of the cell
 	bool volcanicActivity = false; // Has volcanic activity
 	
     int biome = 0; // Biome of the cell

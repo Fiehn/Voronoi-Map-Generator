@@ -154,6 +154,7 @@ public:
 	void setHeight(double height) { this->height = height; };
     void setDirection(sf::Vector2f direction) { this->direction = direction; };
     void setAge(float age) { this->age = age; }
+	void setCenter(sf::Vector2f center) { this->center = center; };
 
 	void addCell(std::size_t cell) { cells.push_back(cell); };
 	std::vector<std::size_t> getCells() { return cells; };

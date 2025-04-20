@@ -154,10 +154,7 @@ int main()
         ImGui::RadioButton("Temperature", &mapType, 1); ImGui::SameLine();
         ImGui::RadioButton("Biome", &mapType, 2); ImGui::SameLine();
         ImGui::RadioButton("Percepitation", &mapType, 3);
-        if (config.height_method > 2)
-        {
-            ImGui::RadioButton("Continents", &mapType, 5); ImGui::SameLine();
-        }
+        ImGui::RadioButton("Continents", &mapType, 5); ImGui::SameLine();
         ImGui::RadioButton("Wind", &mapType, 4);
             
         if (mapType != mapTypeOld) {
