@@ -1006,6 +1006,12 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
 	ImGui::TableSetColumnIndex(1);
 	ImGui::Text("%.2f", cell.windStr);
 
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Culture");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%d", cell.culture);
+
     if (!globals.continents.empty())
     {
         ImGui::TableNextRow();

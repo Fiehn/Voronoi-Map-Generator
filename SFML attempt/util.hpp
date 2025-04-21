@@ -546,6 +546,7 @@ std::string closestColorName(sf::Color color);
 
 sf::Color colorByName(std::string name);
 
+sf::Color closeRandomColorChange(sf::Color color);
 
 // Based on Stefan Gustavson's implementation
 class SimplexNoise {

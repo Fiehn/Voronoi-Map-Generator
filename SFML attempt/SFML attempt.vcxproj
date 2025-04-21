@@ -167,6 +167,7 @@
   <ItemGroup>
     <ClInclude Include="cell.hpp" />
     <ClInclude Include="clustering.hpp" />
+    <ClInclude Include="Culture.hpp" />
     <ClInclude Include="EventMachine.hpp" />
     <ClInclude Include="GlobalWorldObjects.hpp" />
     <ClInclude Include="Include\Dear ImGUI\imgui.h" />
@@ -179,6 +180,7 @@
     <ClInclude Include="mapconfig.hpp" />
     <ClInclude Include="NewMap.hpp" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="tickerSimulation.hpp" />
     <ClInclude Include="vertex.hpp" />
     <ClInclude Include="Voronoi.hpp" />
     <ClInclude Include="CellObjects.hpp" />

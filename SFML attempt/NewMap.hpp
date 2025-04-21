@@ -110,7 +110,7 @@ static void genWorld(vor::Voronoi& map,
 	}
 
     // Total processing steps 
-    const int totalSteps = 17;
+    const int totalSteps = 18;
     int currentStep = 0;
 
     // Initial draw
@@ -215,6 +215,10 @@ static void genWorld(vor::Voronoi& map,
 		windArrows.clear();
 		windArrows = vor::windArrows(map); }, "Drawing Wind Arrows", currentStep, 
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+
+    GenStepWrapper::RunStep([&]() {
+        globals.initializeCultures(map.cells); }, "Initializing Cultures", currentStep,
+        totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		vertexMap.clear();

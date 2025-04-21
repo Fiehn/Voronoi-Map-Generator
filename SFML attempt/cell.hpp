@@ -45,6 +45,8 @@ public:
     
     bool iceBool = false; // Is Ice cap
 
+    int culture = -1; // Will be tied to POP calculations later
+
     void sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points);
     
     bool contains(sf::Vector2f point, const std::vector<sf::Vector2f>& voroi_points);

@@ -42,6 +42,7 @@ void GlobalWorldObjects::clearGlobals()
 	rivers.clear();
 	continents.clear();
 	lakes.clear();
+	cultures.clear(); 
 }
 
 void GlobalWorldObjects::setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength)
@@ -89,4 +90,19 @@ void GlobalWorldObjects::generateBiomes()
 std::vector<float> GlobalWorldObjects::getConvergenceLines() const
 {
 	return convergenceLines;
+}
+
+void GlobalWorldObjects::initializeCultures(std::vector<Cell>& map)
+{
+	for (int i = 0; i < 5; i++)
+	{
+		// Random cell to start
+		std::size_t cellId = rand() % map.size(); // Random cell id
+
+		cultures.emplace_back(Culture(i, "Culture" + std::to_string(i), randomColor()));
+		cultures[i].cells.push_back(cellId); // Add the cell to the culture
+		cultures[i].overExtension.push_back(0.f); // Add the overExtension cost to the culture
+		cultures[i].populatedCells = 1; // Set the number of populated cells
+		map[cellId].culture = i; // Set the culture of the cell
+	}
 }

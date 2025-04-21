@@ -4,7 +4,7 @@ class GlobalWorldObjects; // Forward declaration
 #include <vector>
 #include <SFML/Graphics.hpp>
 #include "CellObjects.hpp"
-
+#include "Culture.hpp"
 
 class GlobalWorldObjects
 {
@@ -32,6 +32,9 @@ public:
 
 	std::vector<Continent> continents; // List of continents
 
+	std::vector<Culture> cultures; // List of cultures
+
+
 	GlobalWorldObjects();
 	void clearGlobals();
 
@@ -44,6 +47,7 @@ public:
 	void setSeaLevel(float level);
 	void setGlobalSnowline(float snowline);
 	void setGlobalTreeline(float treeline);
+	void initializeCultures(std::vector<Cell>& map);
 
 };
 

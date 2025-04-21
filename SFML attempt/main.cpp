@@ -8,8 +8,8 @@
 #include "mapconfig.hpp"
 #include "Voronoi.hpp"
 #include "vertex.hpp"
-#include "GlobalWorldObjects.hpp"
 #include "cell.hpp"
+#include "GlobalWorldObjects.hpp"
 #include "Map.hpp"
 
 #include "imgui.h"
@@ -20,6 +20,8 @@
 #include "NewMap.hpp"
 #include "EventMachine.hpp"
 #include "MainMenu.hpp"
+
+#include "tickerSimulation.hpp"
 
 int main() 
 {
@@ -101,6 +103,10 @@ int main()
     float globalZoom = 1;
     sf::View view = window.getDefaultView();
 
+	// Ticker simulation
+    TickerSimulation ticker;
+    float simulationSpeed = 1.0f;
+
     sf::Clock deltaClock;
 
     // Generate the actual map:
@@ -110,6 +116,8 @@ int main()
 		font, config, seed);
 
 	std::size_t maxCellInMap = map.cells.size();
+
+	ticker.start(map, globals, config, vertexMap); // Start the ticker simulation
 
     while (window.isOpen())
     {
@@ -232,6 +240,23 @@ int main()
 
         ImGui::End();
 
+        //// TICKER CONTRLS
+        ImGui::Begin("Simulation Controls");
+        ImGui::SliderFloat("Simulation Speed", &simulationSpeed, 0.1f, 10.0f);
+        if (ImGui::Button)
+        if (ImGui::Button("Pause")) {
+            ticker.pause();
+        }
+        if (ImGui::Button("Resume")) {
+            ticker.resume();
+        }
+        if (ImGui::Button("Stop")) {
+            ticker.stop();
+        }
+        ticker.setSpeed(simulationSpeed);
+
+        ImGui::End();
+
 		searchFinder(map, findingCells, findCell, showFindSearcherBool, maxCellInMap);
         biomeUI.biomePopUp(map, globals, config, showBiomeGenBool, mapType, changeBiomeColorBool);
         showNewMap(map, globals, window, vertexMap,
@@ -246,6 +271,7 @@ int main()
             highlight.clear();
             highlightedCell = vor::INVALID_INDEX;
         }
+
         window.clear();
         
         vertexMap.draw(window);
@@ -300,6 +326,9 @@ int main()
     }
 	ImPlot::DestroyContext();
     ImGui::SFML::Shutdown(window);
+
+    // Stop the ticker simulation before exiting
+    ticker.stop();
 
     return 0;
 }
