@@ -15,23 +15,20 @@ float deltaOverExtension(Cell cell)
 	return overExtension;
 }
 
-std::size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& globals, int cultureIndex, std::vector<Culture>& newCultures)
+size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& globals, int cultureIndex, std::vector<Culture>& newCultures)
 {
 	// Add a new cell from any of the neighbors in cells
 	// 1. Find a valid random cell with neighbors not in cells
 	// 2. calculate the overExtension cost of the cell
 	// 3. If the cost is too high, break off a child culture
 	// 4. If the cost is low, add the cell to the culture
+	if (globals.cultures[cultureIndex].cells.size() == 0) return vor::INVALID_INDEX; // If the culture has no cells, return empty vector
 
 	bool found = false;
-	std::size_t foundCell = vor::INVALID_INDEX; // Cell that was found
+	size_t foundCells = vor::INVALID_INDEX; // Vector of found cells
 
-	int maxAttempts = 100; // Prevent infinite loops
-	int attempts = 0;
-
-	while (!found)
+	for (std::size_t j = 0; j < globals.cultures[cultureIndex].cells.size(); j++) // Iterate over the cells of the culture
 	{
-		attempts++;
 
 		std::size_t cellId = rand() % globals.cultures[cultureIndex].cells.size(); // Random cell id
 
@@ -51,7 +48,7 @@ std::size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& global
 				// calculate the overExtension cost of the cell
 				float overExtensionCost = deltaOverExtension(neighbor) + globals.cultures[cultureIndex].overExtension[cellId]; // Calculate the overExtension cost of the cell
 
-				if (overExtensionCost > 10.f)
+				if (overExtensionCost > 10.f && !found)
 				{
 					sf::Color newColor = closeRandomColorChange(globals.cultures[cultureIndex].color);
 					Culture childCulture = Culture(globals.cultures.size(), globals.cultures[cultureIndex].name + " Child", newColor); // Create a child culture
@@ -62,28 +59,27 @@ std::size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& global
 					
 					neighbor.culture = childCulture.id; // Set the culture of the neighbor cell
 					globals.cultures[cultureIndex].children.push_back(childCulture.id); // Add the child culture to the children
-					foundCell = neighbor.id; // Set the found cell
+					foundCells = neighbor.id; // Set the found cell
 				}
-				else
+				else if (!found)
 				{
 					globals.cultures[cultureIndex].cells.push_back(neighbor.id); // Add the cell to the culture
 					globals.cultures[cultureIndex].overExtension.push_back(overExtensionCost); // Add the overExtension cost to the culture
 					globals.cultures[cultureIndex].populatedCells++; // Increment the number of populated cells
-					foundCell = neighbor.id; // Set the found cell
+					foundCells = neighbor.id; // Set the found cell
 					neighbor.culture = globals.cultures[cultureIndex].id; // Set the culture of the neighbor cell
 				}
 				found = true;
-				break;
 			}
 		}
 		// At the end, for safety
-		if (attempts >= maxAttempts) {
-			std::cout << "Max attempts reached for culture " << cultureIndex << std::endl;
-			return vor::INVALID_INDEX; // Return invalid index to indicate failure
+		if (!found) {
+			// delete the cell from cells in culture
+			globals.cultures[cultureIndex].cells.erase(globals.cultures[cultureIndex].cells.begin() + cellId); // Remove the cell from the culture
 		}
 
 	}
-	return foundCell; // Return the found cell
+	return foundCells; // Return the found cell
 }
 
 
@@ -97,10 +93,10 @@ std::vector<std::size_t> cultureTicker(std::vector<Cell>& cells, GlobalWorldObje
 	for (int i = 0; i < globals.cultures.size(); i++)
 	{
 		std::size_t changed = cultureChangeTick(cells, globals, i, newCultures);
-		if (changed != vor::INVALID_INDEX)
-		{
-			changed_cells.push_back(changed);
-		}
+		
+		if (changed == vor::INVALID_INDEX) continue; // If no cell was changed, continue
+
+		changed_cells.push_back(changed); // Add the changed cell to the vector
 	}
 
 	// After iterating, add all new cultures to globals.cultures
@@ -127,12 +123,6 @@ void tick(vor::Voronoi& map, GlobalWorldObjects& globals, MapConfig& config, Ver
 	// Culture Ticker
 	std::vector<std::size_t> change = cultureTicker(map.cells, globals);
 
-	std::cout << "Changed cells: ";
-	for (std::size_t cellId : change) {
-		std::cout << cellId << " ";
-	}
-	std::cout << std::endl;
-
 	// Update color of map given changed cells
 	for (std::size_t i = 0; i < change.size(); i++)
 	{
@@ -140,12 +130,6 @@ void tick(vor::Voronoi& map, GlobalWorldObjects& globals, MapConfig& config, Ver
 		Cell& cell = map.cells[cellId];
 		if (cell.culture == -1) throw std::runtime_error("Cell has no culture");
 		Culture& culture = globals.cultures[cell.culture];
-
-		// Debug: Log the culture color being applied
-		std::cout << "Updating cell " << cellId << " with culture color: "
-			<< static_cast<int>(culture.color.r) << ", "
-			<< static_cast<int>(culture.color.g) << ", "
-			<< static_cast<int>(culture.color.b) << std::endl;
 
 		for (size_t j = map.cells[cellId].vertex_offset; j < map.cells[cellId].vertex_offset + map.cells[cellId].vertex.size() * 3; j++)
 		{
@@ -214,25 +198,18 @@ private:
 		while (!stopFlag) {
 			{
 				std::unique_lock<std::mutex> lock(mutex);
-				std::cout << "Waiting for running signal..." << std::endl;
 				cv.wait(lock, [this]() { return running || stopFlag; });
 				if (stopFlag) {
-					std::cout << "Stop flag detected, exiting thread..." << std::endl;
 					break;
 				}
-				std::cout << "Running signal received, continuing..." << std::endl;
 			}
 
-			// Debug: Log each tick
-			std::cout << "About to acquire globalsMutex for tick..." << std::endl;
 
 			// Perform the tick
 			tick(map, globals, config, vertexMap, speed, globalsMutex);
 
-			std::cout << "Tick completed, sleeping..." << std::endl;
 			// Wait based on the simulation speed
-			std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(1000 / speed)));
-			std::cout << "Sleep completed, starting next iteration..." << std::endl;
+			std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(500 / speed)));
 		}
 	}
 };
