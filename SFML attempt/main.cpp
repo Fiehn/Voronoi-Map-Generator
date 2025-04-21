@@ -23,6 +23,7 @@
 
 #include "tickerSimulation.hpp"
 
+
 int main() 
 {
     // Initate seed and window size
@@ -106,6 +107,7 @@ int main()
 	// Ticker simulation
     TickerSimulation ticker;
     float simulationSpeed = 1.0f;
+	bool showSimulationBool = false; // Show simulation window
 
     sf::Clock deltaClock;
 
@@ -116,8 +118,6 @@ int main()
 		font, config, seed);
 
 	std::size_t maxCellInMap = map.cells.size();
-
-	ticker.start(map, globals, config, vertexMap); // Start the ticker simulation
 
     while (window.isOpen())
     {
@@ -228,6 +228,7 @@ int main()
 
         ImGui::Checkbox("Draw New Map", &showNewMapBool);
         ImGui::Checkbox("Generate New Biomes", &showBiomeGenBool);
+        ImGui::Checkbox("Simulation", &showSimulationBool);
 
 		ImGui::Checkbox("Find Cell", &showFindSearcherBool); 
         if (ImGui::BeginItemTooltip()) { ImGui::Text("Find a cell by its index"); ImGui::EndTooltip(); }
@@ -240,22 +241,7 @@ int main()
 
         ImGui::End();
 
-        //// TICKER CONTRLS
-        ImGui::Begin("Simulation Controls");
-        ImGui::SliderFloat("Simulation Speed", &simulationSpeed, 0.1f, 10.0f);
-        if (ImGui::Button)
-        if (ImGui::Button("Pause")) {
-            ticker.pause();
-        }
-        if (ImGui::Button("Resume")) {
-            ticker.resume();
-        }
-        if (ImGui::Button("Stop")) {
-            ticker.stop();
-        }
-        ticker.setSpeed(simulationSpeed);
-
-        ImGui::End();
+        if (showSimulationBool) { tickerControls(ticker, simulationSpeed, map, globals, config, vertexMap); }
 
 		searchFinder(map, findingCells, findCell, showFindSearcherBool, maxCellInMap);
         biomeUI.biomePopUp(map, globals, config, showBiomeGenBool, mapType, changeBiomeColorBool);

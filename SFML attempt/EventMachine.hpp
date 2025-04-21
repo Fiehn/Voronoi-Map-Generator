@@ -800,7 +800,6 @@ void biomeCountPieChart(GlobalWorldObjects& globals, bool& colorChange)
     ImPlot::PopColormap();
 }
 
-
 void RenderBiomeTable(GlobalWorldObjects& globals, bool& doChange) {
     auto& biomes = globals.biomes;
 
@@ -884,7 +883,6 @@ void RenderBiomeTable(GlobalWorldObjects& globals, bool& doChange) {
         ImGui::EndTable();
     }
 }
-
 
 void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
 {

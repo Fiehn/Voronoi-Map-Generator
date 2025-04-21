@@ -48,10 +48,10 @@ size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& globals, in
 				// calculate the overExtension cost of the cell
 				float overExtensionCost = deltaOverExtension(neighbor) + globals.cultures[cultureIndex].overExtension[cellId]; // Calculate the overExtension cost of the cell
 
-				if (overExtensionCost > 10.f && !found)
+				if (overExtensionCost > 20.f && !found)
 				{
 					sf::Color newColor = closeRandomColorChange(globals.cultures[cultureIndex].color);
-					Culture childCulture = Culture(globals.cultures.size(), globals.cultures[cultureIndex].name + " Child", newColor); // Create a child culture
+					Culture childCulture = Culture(globals.cultures.size(), globals.cultures[cultureIndex].name + " Child " + std::to_string(globals.cultures[cultureIndex].children.size()), newColor); // Create a child culture
 					childCulture.cells.push_back(neighbor.id); // Add the cell to the child culture
 					childCulture.overExtension.push_back(0.f); // Add the overExtension cost to the child culture
 					
@@ -76,6 +76,7 @@ size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& globals, in
 		if (!found) {
 			// delete the cell from cells in culture
 			globals.cultures[cultureIndex].cells.erase(globals.cultures[cultureIndex].cells.begin() + cellId); // Remove the cell from the culture
+			globals.cultures[cultureIndex].overExtension.erase(globals.cultures[cultureIndex].overExtension.begin() + cellId); // Remove the overExtension cost from the culture 
 		}
 
 	}
@@ -214,3 +215,158 @@ private:
 	}
 };
 
+
+void cultureCountPieChart(GlobalWorldObjects& globals, bool colorChange = false)
+{
+	// Biome distribution pie chart
+	std::vector<const char*> labels;
+	std::vector<float> data;
+	ImU32 colors[1000];
+
+	for (int i = 0; i < globals.cultures.size(); i++) {
+		Culture& culture = globals.cultures[i];
+
+		labels.push_back(culture.name.c_str());
+		data.push_back(static_cast<float>(culture.populatedCells));
+
+		float color[4];
+		color[0] = culture.color.r / 255.0f;
+		color[1] = culture.color.g / 255.0f;
+		color[2] = culture.color.b / 255.0f;
+		color[3] = 1.0f;
+		// Convert color to ImU32
+		colors[i] = ImColor(color[0], color[1], color[2], color[3]);
+	}
+
+	pushTempColormap("Culture Distribution", "CultureColormap", colors, globals.cultures.size(), colorChange);
+	if (ImPlot::BeginPlot("Culture Distribution", ImVec2(-1, 0), ImPlotFlags_Equal)) {
+		if (labels.size() == data.size()) {
+			ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoDecorations);
+			ImPlot::SetupAxis(ImAxis_Y1, nullptr, ImPlotAxisFlags_NoDecorations);
+			ImPlot::PlotPieChart(labels.data(), data.data(), static_cast<int>(labels.size()), 0.5, 0.5, 0.4, "%.0f", 90, ImPlotFlags_NoInputs);
+		}
+		ImPlot::EndPlot();
+	}
+	ImPlot::PopColormap();
+}
+
+/// There is a problem with indexes being 16 bit and it running out..
+void cultureLineChart(GlobalWorldObjects& globals, bool colorChange = false)
+{
+	// Store historical data for each culture across ticks
+	static std::map<int, std::vector<float>> cultureHistory; // culture_id -> historical data
+	static int tickCount = 0;
+	static std::vector<float> tickLabels;
+
+	// Update history with current data
+	tickCount++;
+
+	// Line chart counting ticks ahead
+	std::vector<const char*> labels;
+	std::vector<ImU32> colors;
+	labels.reserve(globals.cultures.size());
+	colors.reserve(globals.cultures.size());
+
+	// Update history for each culture
+	for (int i = 0; i < globals.cultures.size(); i++) {
+		Culture& culture = globals.cultures[i];
+		labels.push_back(culture.name.c_str());
+
+		// Create or update history for this culture
+		if (cultureHistory.find(culture.id) == cultureHistory.end()) {
+			// Culture encountered for the first time, backfill with zeros
+			cultureHistory[culture.id] = std::vector<float>(tickCount - 1, 0.0f);
+		}
+
+		// Add current data point
+		cultureHistory[culture.id].push_back(static_cast<float>(culture.populatedCells));
+
+		// Create color
+		ImU32 color = ImColor(
+			culture.color.r / 255.0f,
+			culture.color.g / 255.0f,
+			culture.color.b / 255.0f,
+			1.0f
+		);
+		colors.push_back(color);
+	}
+
+	// Create x-axis values (as float)
+	tickLabels.push_back(static_cast<float>(tickCount));
+
+	// Set up and draw the plot
+	if (ImPlot::BeginPlot("Culture Growth Over Time", ImVec2(-1, 400))) {
+		// Configure axes
+		ImPlot::SetupAxes("Ticks", "Population", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+
+		// Plot each culture's data
+		for (int i = 0; i < globals.cultures.size(); i++) {
+			Culture& culture = globals.cultures[i];
+			const std::vector<float>& history = cultureHistory[culture.id];
+
+			// Convert color to ImVec4
+			ImVec4 lineColor = ImVec4(
+				culture.color.r / 255.0f,
+				culture.color.g / 255.0f,
+				culture.color.b / 255.0f,
+				1.0f
+			);
+
+			// Set line style and color
+			ImPlot::SetNextLineStyle(lineColor);
+
+			// Create x-axis data as float matching the history size
+			std::vector<float> xData;
+			xData.reserve(history.size());
+			for (int j = 0; j < history.size(); j++) {
+				xData.push_back(static_cast<float>(tickCount - history.size() + 1 + j));
+			}
+
+			// Try the most common ImPlot::PlotLine signature
+			ImPlot::PlotLine(culture.name.c_str(), xData.data(), history.data(), history.size());
+		}
+
+		ImPlot::EndPlot();
+	}
+
+	// If color change is requested, update the colormap
+	if (colorChange) {
+		ImU32* colorArray = new ImU32[globals.cultures.size()];
+		for (int i = 0; i < globals.cultures.size(); i++) {
+			colorArray[i] = colors[i];
+		}
+		pushTempColormap("Culture Distribution", "CultureColormap", colorArray, globals.cultures.size(), true);
+		delete[] colorArray;
+	}
+}
+
+void tickerControls(TickerSimulation& ticker, 
+	float& simulationSpeed, vor::Voronoi& map, 
+	GlobalWorldObjects& globals, MapConfig& config, 
+	VertexMap& vertexMap)
+{
+	//// TICKER CONTRLS
+	ImGui::Begin("Simulation Controls");
+	ImGui::SliderFloat("Simulation Speed", &simulationSpeed, 0.1f, 10.0f);
+	if (ImGui::Button("Start")) {
+		ticker.start(map, globals, config, vertexMap);
+	}
+	if (ImGui::Button("Pause")) {
+		ticker.pause();
+	}
+	if (ImGui::Button("Resume")) {
+		ticker.resume();
+	}
+	if (ImGui::Button("Stop")) {
+		ticker.stop();
+	}
+	ticker.setSpeed(simulationSpeed);
+
+	// Add the piechart Ui from the biomes
+	cultureCountPieChart(globals, false);
+
+	// if ticker.running or something 
+	//cultureLineChart(globals, false);
+
+	ImGui::End();
+}
