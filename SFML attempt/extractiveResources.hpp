@@ -39,7 +39,10 @@ enum class ResourceType {
 	// Luxury
 	Spices,
 	Gems,
-	Dyes
+	Dyes,
+	
+	// Count (for iteration)
+	NUM_RESOURCES
 };
 
 std::string resourceTypeToString(ResourceType type);
@@ -52,7 +55,7 @@ public:
 	void setResourceAmount(ResourceType type, float amount);
 	
 	// Get amount of resource
-	float getResourceAmount(ResourceType type);
+	float getResourceAmount(ResourceType type) const;
 	// Check if resource exists
 	bool hasResource(ResourceType type);
 	// Get all resources

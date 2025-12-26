@@ -86,6 +86,7 @@ int main()
     int mapType = 0; int mapTypeOld = 0;
     bool showNewMapBool = false; // Get window to draw new map
     bool showBiomeGenBool = false; // Get window to regenerate biomes
+	bool showResourceGenBool = false; // Get window to regenerate resources
 
 	bool changeBiomeColorBool = false; // Change the color of the biomes
 
@@ -104,6 +105,9 @@ int main()
     // Retrieve the window's default view
     float globalZoom = 1;
     sf::View view = window.getDefaultView();
+
+    // Resource Map
+	ResourceType selectedResource = ResourceType::Clay;
 
 	// Ticker simulation
     TickerSimulation ticker;
@@ -166,6 +170,7 @@ int main()
         ImGui::RadioButton("Continents", &mapType, 5); ImGui::SameLine();
         ImGui::RadioButton("Wind", &mapType, 4);
 		ImGui::RadioButton("Cultures", &mapType, 6); ImGui::SameLine();
+		ImGui::RadioButton("Resources", &mapType, 7);
             
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
@@ -196,10 +201,14 @@ int main()
                 drawWindArrowsBool = false;
                 break;
 			case 6:
-                // Resource map
                 drawCulturesMap(map, globals, vertexMap);
                 drawWindArrowsBool = false;
 				break;
+			case 7:
+                drawResourceMap(map, vertexMap, selectedResource);
+				showResourceGenBool = true;
+				drawWindArrowsBool = false;
+                break;
 			}
 		}
 
@@ -259,6 +268,10 @@ int main()
                 showNewMapBool);
 		configLoadSave(config, showLoadConfig, showSaveConfig);
 
+        if (showResourceGenBool)
+        {
+			resourceMapController(map, globals, vertexMap, config, showResourceGenBool, mapType, selectedResource);
+        }
 
         if (!drawHighlightBool) {
             highlight.clear();

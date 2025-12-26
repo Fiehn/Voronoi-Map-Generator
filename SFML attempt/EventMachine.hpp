@@ -119,7 +119,55 @@ static void drawCulturesMap(vor::Voronoi& map, GlobalWorldObjects& globals, Vert
 	vertexMap.update(map);
 }
 
+static void drawResourceMap(vor::Voronoi& map, VertexMap& vertexMap, ResourceType resourceType)
+{
+    // Find the maximum resource amount for normalization
+    float maxAmount = 0.f;
+    for (const auto& cell : map.cells) {
+        float amount = cell.resources.getResourceAmount(resourceType);
+        if (amount > maxAmount) {
+            maxAmount = amount;
+        }
+    }
 
+    // If no resources found, show grey map
+    if (maxAmount < 0.001f) {
+        for (size_t i = 0; i < map.cells.size(); i++) {
+            sf::Color color(80, 80, 80, 255);
+            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+                map.vertices[j].color = color;
+            }
+        }
+        vertexMap.update(map);
+        return;
+    }
+
+    // Color cells based on resource abundance
+    for (size_t i = 0; i < map.cells.size(); i++)
+    {
+        float amount = map.cells[i].resources.getResourceAmount(resourceType);
+        float normalizedAmount = amount / maxAmount;
+
+        sf::Color color;
+        if (normalizedAmount < 0.001f) {
+            // No resource - grey
+            color = sf::Color(80, 80, 80, 255);
+        }
+        else {
+            // Yellow to red gradient based on abundance
+            // Yellow (255, 255, 0) -> Orange (255, 128, 0) -> Red (255, 0, 0)
+            sf::Uint8 red = 255;
+            sf::Uint8 green = static_cast<sf::Uint8>(255 * (1.0f - normalizedAmount));
+            color = sf::Color(red, green, 0, 255);
+        }
+
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+        {
+            map.vertices[j].color = color;
+        }
+    }
+    vertexMap.update(map);
+}
 
 static void drawRivers(GlobalWorldObjects& globals, sf::RenderWindow& window)
 {
@@ -664,6 +712,142 @@ void showNewMap(vor::Voronoi& map,
     }
 
     ImGui::PopItemWidth();
+
+    ImGui::End();
+}
+
+void resourceMapController(vor::Voronoi& map,
+    GlobalWorldObjects& globals,
+    VertexMap& vertexMap,
+    MapConfig& config,
+    bool& showResourceMapBool,
+    int& mapType,
+    ResourceType& selectedResource)
+{
+    if (!showResourceMapBool) {
+        return;
+    }
+
+    ImGui::Begin("Resource Map Controls", &showResourceMapBool);
+    ImGui::Text("Select a resource to display on the map:");
+    ImGui::Separator();
+
+    static ResourceType previousResource = selectedResource;
+
+    // Metals section
+    if (ImGui::CollapsingHeader("Metals", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::RadioButton("Copper", selectedResource == ResourceType::Copper)) {
+            selectedResource = ResourceType::Copper;
+        }
+        if (ImGui::RadioButton("Iron", selectedResource == ResourceType::Iron)) {
+            selectedResource = ResourceType::Iron;
+        }
+        if (ImGui::RadioButton("Tin", selectedResource == ResourceType::Tin)) {
+            selectedResource = ResourceType::Tin;
+        }
+        if (ImGui::RadioButton("Gold", selectedResource == ResourceType::Gold)) {
+            selectedResource = ResourceType::Gold;
+        }
+        if (ImGui::RadioButton("Silver", selectedResource == ResourceType::Silver)) {
+            selectedResource = ResourceType::Silver;
+        }
+        if (ImGui::RadioButton("Lead", selectedResource == ResourceType::Lead)) {
+            selectedResource = ResourceType::Lead;
+        }
+    }
+
+    // Materials section
+    if (ImGui::CollapsingHeader("Materials", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::RadioButton("Lumber", selectedResource == ResourceType::Lumber)) {
+            selectedResource = ResourceType::Lumber;
+        }
+        if (ImGui::RadioButton("Stone", selectedResource == ResourceType::Stone)) {
+            selectedResource = ResourceType::Stone;
+        }
+        if (ImGui::RadioButton("Clay", selectedResource == ResourceType::Clay)) {
+            selectedResource = ResourceType::Clay;
+        }
+        if (ImGui::RadioButton("Coal", selectedResource == ResourceType::Coal)) {
+            selectedResource = ResourceType::Coal;
+        }
+    }
+
+    // Agriculture section
+    if (ImGui::CollapsingHeader("Agriculture", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::RadioButton("Grain", selectedResource == ResourceType::Grain)) {
+            selectedResource = ResourceType::Grain;
+        }
+        if (ImGui::RadioButton("Fruit", selectedResource == ResourceType::Fruit)) {
+            selectedResource = ResourceType::Fruit;
+        }
+        if (ImGui::RadioButton("Vegetables", selectedResource == ResourceType::Vegetables)) {
+            selectedResource = ResourceType::Vegetables;
+        }
+        if (ImGui::RadioButton("Cotton", selectedResource == ResourceType::Cotton)) {
+            selectedResource = ResourceType::Cotton;
+        }
+    }
+
+    // Livestock section
+    if (ImGui::CollapsingHeader("Livestock & Animal Products", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::RadioButton("Livestock", selectedResource == ResourceType::Livestock)) {
+            selectedResource = ResourceType::Livestock;
+        }
+        if (ImGui::RadioButton("Sheep", selectedResource == ResourceType::Sheep)) {
+            selectedResource = ResourceType::Sheep;
+        }
+        if (ImGui::RadioButton("Furs", selectedResource == ResourceType::Furs)) {
+            selectedResource = ResourceType::Furs;
+        }
+        if (ImGui::RadioButton("Fish", selectedResource == ResourceType::Fish)) {
+            selectedResource = ResourceType::Fish;
+        }
+        if (ImGui::RadioButton("Whales", selectedResource == ResourceType::Whales)) {
+            selectedResource = ResourceType::Whales;
+        }
+    }
+
+    // Luxury section
+    if (ImGui::CollapsingHeader("Luxury Goods", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::RadioButton("Spices", selectedResource == ResourceType::Spices)) {
+            selectedResource = ResourceType::Spices;
+        }
+        if (ImGui::RadioButton("Gems", selectedResource == ResourceType::Gems)) {
+            selectedResource = ResourceType::Gems;
+        }
+        if (ImGui::RadioButton("Dyes", selectedResource == ResourceType::Dyes)) {
+            selectedResource = ResourceType::Dyes;
+        }
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Currently displaying: %s", resourceTypeToString(selectedResource).c_str());
+
+    // Color legend
+    ImGui::Separator();
+    ImGui::Text("Legend:");
+    ImGui::ColorButton("##grey", ImVec4(0.31f, 0.31f, 0.31f, 1.0f), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoTooltip);
+    ImGui::SameLine();
+    ImGui::Text("No resource");
+
+    ImGui::ColorButton("##yellow", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoTooltip);
+    ImGui::SameLine();
+    ImGui::Text("Low abundance");
+
+    ImGui::ColorButton("##orange", ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoTooltip);
+    ImGui::SameLine();
+    ImGui::Text("Medium abundance");
+
+    ImGui::ColorButton("##red", ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoTooltip);
+    ImGui::SameLine();
+    ImGui::Text("High abundance");
+
+    // Update map when selection changes
+    if (previousResource != selectedResource) {
+        drawResourceMap(map, vertexMap, selectedResource);
+        previousResource = selectedResource;
+        mapType = 7; // Set to resource map mode
+    }
 
     ImGui::End();
 }

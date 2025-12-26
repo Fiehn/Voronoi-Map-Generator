@@ -36,11 +36,13 @@ std::string resourceTypeToString(ResourceType type) {
 void ExtractiveResource::setResourceAmount(ResourceType type, float amount) {
 	resources[type] = amount;
 }
-float ExtractiveResource::getResourceAmount(ResourceType type) {
-	if (resources.find(type) != resources.end()) {
-		return resources[type];
+
+float ExtractiveResource::getResourceAmount(ResourceType type) const{
+	auto it = resources.find(type);
+	if (it != resources.end()) {
+		return it->second;
 	}
-	return 0.f;
+	return 0.0f;
 }
 bool ExtractiveResource::hasResource(ResourceType type) {
 	return resources.find(type) != resources.end();
