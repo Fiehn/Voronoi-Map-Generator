@@ -149,6 +149,7 @@ public:
 		: running(false), speed(1.0f), stopFlag(false) {}
 
 	void start(vor::Voronoi& map, GlobalWorldObjects& globals, MapConfig& config, VertexMap& vertexMap) {
+		if (running) return; // Already running
 		stopFlag = false;
 		running = true;
 		tickerThread = std::thread(&TickerSimulation::run, this, std::ref(map), std::ref(globals), std::ref(config), std::ref(vertexMap));
@@ -204,7 +205,6 @@ private:
 					break;
 				}
 			}
-
 
 			// Perform the tick
 			tick(map, globals, config, vertexMap, speed, globalsMutex);

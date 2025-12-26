@@ -110,7 +110,7 @@ static void genWorld(vor::Voronoi& map,
 	}
 
     // Total processing steps 
-    const int totalSteps = 18;
+    const int totalSteps = 19;
     int currentStep = 0;
 
     // Initial draw
@@ -209,6 +209,10 @@ static void genWorld(vor::Voronoi& map,
 
     GenStepWrapper::RunStep([&]() {
 		calcBiome(map.cells, globals, config.kmeans_max_iter, config.biome_method); }, "Calculating Biomes", currentStep, 
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+
+    GenStepWrapper::RunStep([&]() {
+		ResourceGen::generateMapResources(map.cells, globals); }, "Generating Resources", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {

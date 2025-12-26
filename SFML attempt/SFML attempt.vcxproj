@@ -147,6 +147,7 @@
   <ItemGroup>
     <ClCompile Include="CellObjects.cpp" />
     <ClCompile Include="Cells.cpp" />
+    <ClCompile Include="extractiveResources.cpp" />
     <ClCompile Include="GlobalWorldObjects.cpp" />
     <ClCompile Include="Include\Dear ImGUI\imgui.cpp" />
     <ClCompile Include="Include\Dear ImGUI\imgui_demo.cpp" />
@@ -169,6 +170,8 @@
     <ClInclude Include="clustering.hpp" />
     <ClInclude Include="Culture.hpp" />
     <ClInclude Include="EventMachine.hpp" />
+    <ClInclude Include="extractiveResources.hpp" />
+    <ClInclude Include="Faction.hpp" />
     <ClInclude Include="GlobalWorldObjects.hpp" />
     <ClInclude Include="Include\Dear ImGUI\imgui.h" />
     <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h" />
@@ -179,7 +182,10 @@
     <ClInclude Include="Map.hpp" />
     <ClInclude Include="mapconfig.hpp" />
     <ClInclude Include="NewMap.hpp" />
+    <ClInclude Include="POP.hpp" />
+    <ClInclude Include="Religion.hpp" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="State.hpp" />
     <ClInclude Include="tickerSimulation.hpp" />
     <ClInclude Include="vertex.hpp" />
     <ClInclude Include="Voronoi.hpp" />

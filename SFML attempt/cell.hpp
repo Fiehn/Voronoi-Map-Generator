@@ -3,13 +3,14 @@ class Cell; // Forward declaration
 #pragma once
 #include <vector>
 #include <SFML/System/Vector2.hpp>
+#include "extractiveResources.hpp"
 
 
 class Cell 
 {  
 public:
     unsigned int id; // Unique Id coming from the points vector
-    Cell(int i) : id(i) { vertex.reserve(10); neighbors.reserve(10); }; // Constructor, am I doing this right?
+    Cell(int i) : id(i) { vertex.reserve(10); neighbors.reserve(10); };
     std::vector<int> vertex; // Id's of vertecies that corespond to the cell and are stored in voronoi_points this should be pointers?
     std::vector<int> neighbors; // Id's of the neighbors
     unsigned int vertex_offset = 0U; // Offset for the vertex buffer
@@ -46,6 +47,8 @@ public:
     bool iceBool = false; // Is Ice cap
 
     int culture = -1; // Will be tied to POP calculations later
+
+	ExtractiveResource resources; // Extractive resources in the cell (std::map<ResourceType, float>)
 
     void sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points);
     

@@ -11,6 +11,7 @@
 #include "cell.hpp"
 #include "GlobalWorldObjects.hpp"
 #include "Map.hpp"
+#include "POP.hpp"
 
 #include "imgui.h"
 #include "imgui-SFML.h"
@@ -164,6 +165,7 @@ int main()
         ImGui::RadioButton("Percepitation", &mapType, 3);
         ImGui::RadioButton("Continents", &mapType, 5); ImGui::SameLine();
         ImGui::RadioButton("Wind", &mapType, 4);
+		ImGui::RadioButton("Cultures", &mapType, 6); ImGui::SameLine();
             
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
@@ -193,6 +195,11 @@ int main()
                 drawContinentMap(map, globals, vertexMap);
                 drawWindArrowsBool = false;
                 break;
+			case 6:
+                // Resource map
+                drawCulturesMap(map, globals, vertexMap);
+                drawWindArrowsBool = false;
+				break;
 			}
 		}
 

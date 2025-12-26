@@ -102,6 +102,24 @@ static void drawContinentMap(vor::Voronoi& map, const GlobalWorldObjects& global
 	vertexMap.update(map);
 }
 
+static void drawCulturesMap(vor::Voronoi& map, GlobalWorldObjects& globals, VertexMap& vertexMap)
+{
+    for (size_t i = 0; i < map.cells.size(); i++)
+    {
+        // If the cell has no culture, skip it
+        if (map.cells[i].culture == -1) continue;
+        // Get the culture of the cell
+        Culture& culture = globals.cultures[map.cells[i].culture];
+        // Set the color for the vertices of the cell
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+        {
+            map.vertices[j].color = culture.color;
+        }
+    }
+	vertexMap.update(map);
+}
+
+
 
 static void drawRivers(GlobalWorldObjects& globals, sf::RenderWindow& window)
 {
@@ -1024,6 +1042,34 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
         ImGui::TableSetColumnIndex(1);
         ImGui::Text("%d", cell.volcanicActivity);
     }
+
+	// resources in cell
+    ImGui::Separator();
+    ImGui::Text("Resources:");
+
+    auto resources = cell.resources.getAllResources();
+    if (resources.empty()) {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No resources in this cell");
+    }
+    else {
+        ImGui::BeginTable("Resources", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+        ImGui::TableSetupColumn("Resource Type");
+        ImGui::TableSetupColumn("Amount");
+        ImGui::TableHeadersRow();
+
+        for (const auto& [resType, amount] : resources) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("%s", resourceTypeToString(resType).c_str());
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%.2f", amount);
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::Separator();
+
 
     ImGui::EndTable();
         
