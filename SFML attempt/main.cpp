@@ -171,6 +171,7 @@ int main()
         ImGui::RadioButton("Wind", &mapType, 4);
 		ImGui::RadioButton("Cultures", &mapType, 6); ImGui::SameLine();
 		ImGui::RadioButton("Resources", &mapType, 7);
+		ImGui::RadioButton("Humidity", &mapType, 8); ImGui::SameLine();
             
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
@@ -207,6 +208,10 @@ int main()
 			case 7:
                 drawResourceMap(map, vertexMap, selectedResource);
 				showResourceGenBool = true;
+				drawWindArrowsBool = false;
+                break;
+            case 8:
+				drawHumidityMap(map, vertexMap);
 				drawWindArrowsBool = false;
                 break;
 			}

@@ -288,7 +288,7 @@ namespace ResourceGen {
 		}
 		// Whales are found in cold and deep waters
 		float tempFactor = 1.f - clamp((cell.temp + 2.f) / 20.f, 1.f, 0.f); // Peak at -2C
-		float heightFactor = clamp(cell.height - 0.5f, 1.f, 0.f); // Deeper waters
+		float heightFactor = clamp(0.3f - cell.height, 1.f, 0.f); // Deeper waters
 		return std::max(0.0f, tempFactor * heightFactor * RandomBetween(0.5f, 1.0f));
 	}
 	float calculateMetalAbundance(const Cell& cell, ResourceType type) {
@@ -309,16 +309,16 @@ namespace ResourceGen {
 				minAmount = 0.3f;
 				break;
 			case ResourceType::Tin:
-				baseChance = 0.8f;
+				baseChance = 0.12f;
 				rarityModifier = 0.8f;
 				break;
 			case ResourceType::Gold:
-				baseChance = 0.05f;
+				baseChance = 0.005f;
 				rarityModifier = 0.5f;
 				maxAmount = 0.5f;
 				break;
 			case ResourceType::Silver:
-				baseChance = 0.1f;
+				baseChance = 0.01f;
 				rarityModifier = 0.6f;
 				maxAmount = 0.6f;
 				break;
@@ -330,14 +330,14 @@ namespace ResourceGen {
 				return 0.f;
 		}
 		// Height increase metal probability (more in mountains)
-		float heightBonus = clamp((cell.height - 0.5f) * 2.f, 1.f, 0.f); 
+		float heightBonus = clamp((cell.height - 0.5f) * 2.5f, 1.f, 0.f); 
 		// Rise increase metal probability (more in rugged terrain)
-		float riseBonus = clamp(cell.rise * 20.f, 1.f, 0.f);
+		float riseBonus = clamp(cell.rise, 1.f, 0.f);
 		// Volcanic activity boost
-		float volcanicBonus = cell.volcanicActivity ? 0.4f : 1.f;
+		float volcanicBonus = cell.volcanicActivity ? 0.3f : 0.f;
 
 		// Probability calculation
-		float probability = baseChance + (heightBonus + riseBonus) * 0.3f + volcanicBonus;
+		float probability = baseChance * 0.05 + (heightBonus + riseBonus) * 0.1f + volcanicBonus;
 		
 		if (RandomBetween(0.f, 1.f) < probability) {
 			return RandomBetween(minAmount, maxAmount) * rarityModifier;
@@ -415,11 +415,11 @@ namespace ResourceGen {
 		}
 		// Temperature factor
 		float tempFactor = 1.f - std::abs(cell.temp - optimalTemp) / tempRange;
-		tempFactor = clamp(tempFactor, 1.f, 0.f);
+		tempFactor = clamp(tempFactor, 0.8f, 2.f);
 
 		// Humidity and precepitation factors
 		float waterFactor = (cell.humidity + clamp(cell.percepitation / 30.f, 1.f, 0.f)) / 2.f;
-		waterFactor = clamp(waterFactor, 1.f, 0.f);
+		waterFactor = clamp(waterFactor, 0.8f, 2.f);
 
 		// height penalty
 		float heightPenalty = 1.f - clamp((cell.height - 0.5f) * 2.f, 1.f, 0.f);
@@ -457,7 +457,7 @@ namespace ResourceGen {
 		default:
 			return 0.f;
 		}
-		return clamp(abundance * RandomBetween(0.7f, 1.1f), 0.f, 1.f);
+		return clamp(abundance * RandomBetween(0.7f, 1.f), 1.f, 0.f);
 	}
 	float calculateLuxuryAbundance(const Cell& cell, ResourceType type) {
 		float abundacen = 0.f;

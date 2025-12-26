@@ -196,7 +196,7 @@ static void genWorld(vor::Voronoi& map,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcPercepitation(map.cells, map.points, globals, config.percepitation_repeats); }, "Calculating Percepetation", currentStep, 
+		calcPercepitation(map.cells, map.points, globals, config.percepitation_repeats, config.max_percipitation,config.ocean_base_moisture, config.moisture_loss_rate,config.orographic_factor); }, "Calculating Percepetation", currentStep, 
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {

@@ -54,6 +54,19 @@ static void drawPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap)
     vertexMap.update(map);
 }
 
+static void drawHumidityMap(vor::Voronoi& map, VertexMap& vertexMap)
+{
+    for (size_t i = 0; i < map.cells.size(); i++)
+    {
+        sf::Color color(0, 0, clamp(255 * map.cells[i].humidity, 255, 0), 255);
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+        {
+            map.vertices[j].color = color;
+        }
+    }
+    vertexMap.update(map);
+}
+
 static void drawHeightMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
     for (std::size_t i = 0; i < map.cells.size(); i++) {

@@ -38,7 +38,11 @@ public:
 
     // Percepitation
     unsigned int percepitation_repeats = 1; // amount of percepitation iterations (NEEDs to be above 1)
-    unsigned int percepitation_smooth_repeats = 2; // amount of percepitation smoothing iterations
+    unsigned int percepitation_smooth_repeats = 0; // amount of percepitation smoothing iterations
+	float max_percipitation = 500.0f; // mm/year cap
+	float ocean_base_moisture = 100.f;
+	float moisture_loss_rate = 0.02f; // amount of moisture lost per cell
+	float orographic_factor = 2.0f; // height influence on percepitation
 
     // Biomes
     unsigned int kmeans_max_iter = 5; // The maximum amount of iterations for the kmeans algorithm
@@ -93,7 +97,11 @@ private:
 			{"prob_smoothing", prob_smoothing},
 			{"n_convergence_lines", n_convergence_lines},
 			{"windstr_alpha", windstr_alpha},
-			{"windstr_beta", windstr_beta}
+			{"windstr_beta", windstr_beta},
+			{"max_percipitation", max_percipitation},
+			{"ocean_base_moisture", ocean_base_moisture},
+			{"moisture_loss_rate", moisture_loss_rate},
+			{"orographic_factor", orographic_factor}
 		};
 	}
 
@@ -124,6 +132,10 @@ private:
 		n_convergence_lines = j.at("n_convergence_lines").get<unsigned int>();
 		windstr_alpha = j.at("windstr_alpha").get<float>();
 		windstr_beta = j.at("windstr_beta").get<float>();
+		max_percipitation = j.at("max_percipitation").get<float>();
+		ocean_base_moisture = j.at("ocean_base_moisture").get<float>();
+		moisture_loss_rate = j.at("moisture_loss_rate").get<float>();
+		orographic_factor = j.at("orographic_factor").get<float>();
 	}
 };
 

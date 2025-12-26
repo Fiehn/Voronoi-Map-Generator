@@ -28,6 +28,10 @@ inline long rand_long() // Should only be used in the case that there is a need 
 
 inline float clamp(float x, float max, float min) 
 {
+	// Check if min is greater than max
+    if (min > max) {
+        std::swap(min, max);
+    }
     if (x < min) { return min; }
     if (x > max) { return max; }
     return x;
