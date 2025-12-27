@@ -858,6 +858,317 @@ void resourceMapController(vor::Voronoi& map,
     ImGui::End();
 }
 
+void planetaryParamsViewer(GlobalWorldObjects& globals, bool& showPlanetaryParamsBool)
+{
+    if (!showPlanetaryParamsBool)
+    {
+        return;
+	}
+    ImGui::Begin("Planetary Parameters", &showPlanetaryParamsBool);
+	const auto& params = globals.planetaryParams;
+
+	// Basic Parameters
+    if (ImGui::CollapsingHeader("Basic Parameters", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::BeginTable("BasicParams", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+        ImGui::TableSetupColumn("Property");
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Rotation Speed");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2fx Earth", params.rotationSpeed);
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Earth = 1.0, affects Coriolis strength and circulation cells");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Rotation Period");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.1f hours", 24.0f / params.rotationSpeed);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Rotation Direction");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%s", params.progradeRotation ? "Prograde" : "Retrograde");
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Prograde = same direction as Earth (counterclockwise from north pole)");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Axial Tilt");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.1f", params.axialTilt);
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Earth = 23.5, affects seasonal variation");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Equator-Pole Temp Diff");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.1fC", params.equatorToPoleTemp);
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Earth = 20C, Mars = 40C");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Greenhouse Effect Factor");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2fx", params.greenhouseEffectFactor);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Atmosphere Height");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.1f km", params.atmosphereHeight);
+
+        ImGui::EndTable();
+    }
+	// Atmospheric Parameters
+    if (ImGui::CollapsingHeader("Atmospheric Composition", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::BeginTable("AtmosphereComposition", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+        ImGui::TableSetupColumn("Gas");
+        ImGui::TableSetupColumn("Percentage");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Total Pressure");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.3f atm", params.atmosphere.totalPressure);
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Earth = 1.0 atm, Mars = 0.006 atm");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Nitrogen (N2)");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f%%", params.atmosphere.nitrogenPercentage);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Oxygen (O2)");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f%%", params.atmosphere.oxygenPercentage);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Carbon Dioxide (CO2)");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f%%", params.atmosphere.carbonDioxidePercentage);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Other Gases");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f%%", params.atmosphere.otherGasesPercentage);
+
+        ImGui::EndTable();
+    }
+
+	// Calculated properties
+    if (ImGui::CollapsingHeader("Calculated Properties", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::BeginTable("CalcProps", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+        ImGui::TableSetupColumn("Property");
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Coriolis Strength");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f", params.getCoriolisStrenght());
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Affects wind deflection. Higher = more east-west flow");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Atmospheric Circulation");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f", params.getAtmosphericCirculationStrength());
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Strength of convection cells. Depends on temp gradient, pressure, and greenhouse effect");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Circulation Cells");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%d (%d per hemisphere)", params.getNumberOfCirculationCells(),
+            params.getNumberOfCirculationCells() / 2);
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Earth = 6 (Hadley, Ferrel, Polar), Venus = 2");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Convergence Zones");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%d", globals.convergenceLines.size());
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Wind Zones");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%d", globals.windDirection.size());
+
+        ImGui::EndTable();
+    }
+    
+    // Wind patterns
+    if (ImGui::CollapsingHeader("Wind Patterns by Zone")) {
+        ImGui::Text("Convergence lines and wind directions:");
+        ImGui::Separator();
+
+        ImGui::BeginTable("WindPatterns", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+        ImGui::TableSetupColumn("Zone");
+        ImGui::TableSetupColumn("Latitude");
+        ImGui::TableSetupColumn("Direction");
+        ImGui::TableSetupColumn("Strength");
+        ImGui::TableHeadersRow();
+
+        for (int i = 0; i < globals.windDirection.size(); i++) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+
+            // Determine zone name
+            std::string zoneName;
+            if (i == 0) {
+                zoneName = "North Polar";
+            }
+            else if (i == globals.windDirection.size() - 1) {
+                zoneName = "South Polar";
+            }
+            else if (std::abs((float)i / globals.windDirection.size() - 0.5f) < 0.15f) {
+                zoneName = "Equatorial";
+            }
+            else {
+                zoneName = (i < globals.windDirection.size() / 2) ? "North Mid-Lat" : "South Mid-Lat";
+            }
+            ImGui::Text("%s", zoneName.c_str());
+
+            ImGui::TableSetColumnIndex(1);
+            if (i < globals.convergenceLines.size()) {
+                float latPercent = globals.convergenceLines[i] * 100.0f;
+                ImGui::Text("%.1f%%", latPercent);
+            }
+            else {
+                ImGui::Text("--");
+            }
+
+            ImGui::TableSetColumnIndex(2);
+            float dir = globals.windDirection[i];
+            std::string dirName;
+            if (dir >= 337.5f || dir < 22.5f) dirName = "N";
+            else if (dir >= 22.5f && dir < 67.5f) dirName = "NE";
+            else if (dir >= 67.5f && dir < 112.5f) dirName = "E";
+            else if (dir >= 112.5f && dir < 157.5f) dirName = "SE";
+            else if (dir >= 157.5f && dir < 202.5f) dirName = "S";
+            else if (dir >= 202.5f && dir < 247.5f) dirName = "SW";
+            else if (dir >= 247.5f && dir < 292.5f) dirName = "W";
+            else dirName = "NW";
+            ImGui::Text("%s (%.0f°)", dirName.c_str(), dir);
+
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text("%.2f", globals.windStrength[i]);
+        }
+
+        ImGui::EndTable();
+    }
+
+    // Comparison to Known planets
+    if (ImGui::CollapsingHeader("Planetary Classification")) {
+        ImGui::Text("Classification based on parameters:");
+        ImGui::Separator();
+
+        // Calculate similarity scores
+        float earthScore = 0.0f;
+        float marsScore = 0.0f;
+
+        // Rotation speed similarity
+        earthScore += 1.0f - std::abs(params.rotationSpeed - 1.0f);
+        marsScore += 1.0f - std::abs(params.rotationSpeed - 0.97f);
+
+        // Pressure similarity (logarithmic scale)
+        earthScore += 1.0f - std::abs(std::log10(params.atmosphere.totalPressure) - std::log10(1.0f)) / 3.0f;
+        marsScore += 1.0f - std::abs(std::log10(params.atmosphere.totalPressure) - std::log10(0.006f)) / 3.0f;
+
+        // Temperature gradient similarity
+        earthScore += 1.0f - std::abs(params.equatorToPoleTemp - 20.0f) / 40.0f;
+        marsScore += 1.0f - std::abs(params.equatorToPoleTemp - 40.0f) / 40.0f;
+
+        earthScore /= 3.0f;
+        marsScore /= 3.0f;
+
+        ImGui::Text("Similarity to Earth: %.1f%%", earthScore * 100.0f);
+        ImGui::ProgressBar(earthScore, ImVec2(-1, 0));
+
+        ImGui::Text("Similarity to Mars: %.1f%%", marsScore * 100.0f);
+        ImGui::ProgressBar(marsScore, ImVec2(-1, 0));
+
+        ImGui::Separator();
+
+        // Classification
+        ImGui::Text("Classification:");
+        if (params.rotationSpeed < 0.3f) {
+            ImGui::BulletText("Slow rotator (like Venus)");
+        }
+        else if (params.rotationSpeed > 1.5f) {
+            ImGui::BulletText("Fast rotator (like Jupiter)");
+        }
+        else {
+            ImGui::BulletText("Earth-like rotation");
+        }
+
+        if (params.atmosphere.totalPressure < 0.1f) {
+            ImGui::BulletText("Thin atmosphere (Mars-like)");
+        }
+        else if (params.atmosphere.totalPressure > 2.0f) {
+            ImGui::BulletText("Dense atmosphere (Venus-like)");
+        }
+        else {
+            ImGui::BulletText("Earth-like atmospheric pressure");
+        }
+
+        if (params.equatorToPoleTemp < 15.0f) {
+            ImGui::BulletText("Low thermal gradient (uniform temps)");
+        }
+        else if (params.equatorToPoleTemp > 30.0f) {
+            ImGui::BulletText("High thermal gradient (extreme temps)");
+        }
+        else {
+            ImGui::BulletText("Earth-like thermal gradient");
+        }
+    }
+
+    ImGui::End();
+}
+
+
 void configLoadSave(MapConfig& config, bool& showLoadConfig, bool& showSaveConfig)
 {
     if (showLoadConfig)

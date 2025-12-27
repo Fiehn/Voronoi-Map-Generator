@@ -30,7 +30,7 @@ public:
     float delta_coast_line = 0.05f; // the range around sealevel that is considered coast (below and above)
 
     // Temperature
-    float global_temp_avg = 35.f; // not the actual average but a value that determines the temperature range
+    float global_temp_avg = 25.f; // not the actual average but a value that determines the temperature range
     unsigned int temp_smooth_repeats = 2; // amount of temperature smoothing iterations
 
     // Sealevel
@@ -52,7 +52,7 @@ public:
     float prob_smoothing = 0.5f;
 
     // Planet Parameters
-	bool earthLike = true; // if true, sets parameters to earth like values
+	bool earthLike = false; // if true, sets parameters to earth like values
     
 
 	// JSON functions

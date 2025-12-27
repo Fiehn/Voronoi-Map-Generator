@@ -88,6 +88,7 @@ int main()
     bool showNewMapBool = false; // Get window to draw new map
     bool showBiomeGenBool = false; // Get window to regenerate biomes
 	bool showResourceGenBool = false; // Get window to regenerate resources
+	bool showPlanetaryParamsBool = false; // Show planetary parameters window
 
 	bool changeBiomeColorBool = false; // Change the color of the biomes
 
@@ -175,7 +176,7 @@ int main()
         ImGui::RadioButton("Continents", &mapType, 5); ImGui::SameLine();
 		ImGui::RadioButton("Cultures", &mapType, 6); ImGui::SameLine();
 		ImGui::RadioButton("Resources", &mapType, 7);
-		ImGui::RadioButton("Humidity", &mapType, 4); ImGui::SameLine();
+		ImGui::RadioButton("Humidity", &mapType, 4);
             
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
@@ -217,13 +218,14 @@ int main()
 			}
 		}
 
-        ImGui::Checkbox("Draw Lines", &drawConvergenceLinesBool);
+		ImGui::Checkbox("Draw Lines", &drawConvergenceLinesBool); ImGui::SameLine();
         ImGui::Checkbox("Wind Arrows", &drawWindArrowsBool);
-        ImGui::Checkbox("Highlight Cell", &drawHighlightBool); 
+		ImGui::Checkbox("Highlight Cell", &drawHighlightBool); ImGui::SameLine();
 		ImGui::Checkbox("Draw Rivers", &drawRiversBool); 
 		ImGui::Checkbox("Draw Lakes", &drawLakesBool); 
         if (ImGui::BeginItemTooltip()) { ImGui::Text("Drawing lakes is currently broken."); ImGui::EndTooltip(); }
 
+		ImGui::Checkbox("Planetary Parameters", &showPlanetaryParamsBool);
 
         ImGui::Text("Number of cells: %d", map.cells.size());
         ImGui::Text("Number of biomes: %d", globals.biomes.size());
@@ -272,7 +274,7 @@ int main()
                 font, config, seed, 
                 showNewMapBool);
 		configLoadSave(config, showLoadConfig, showSaveConfig);
-
+		planetaryParamsViewer(globals, showPlanetaryParamsBool);
         if (showResourceGenBool)
         {
 			resourceMapController(map, globals, vertexMap, config, showResourceGenBool, mapType, selectedResource);

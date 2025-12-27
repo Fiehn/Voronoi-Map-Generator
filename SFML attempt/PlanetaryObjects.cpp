@@ -31,11 +31,11 @@ void PlanetaryParameters::initializeMarsLike() {
 void PlanetaryParameters::initialize() {
 	rotationSpeed = RandomBetween(0.5f, 2.0f);
 	progradeRotation = (rand() % 2 == 0);
-	axialTilt = RandomBetween(0.0f, 45.0f);
+	axialTilt = RandomBetween(12.0f, 40.0f);
 	equatorToPoleTemp = calculateTemperatureGradient();
 
 	// Generate atmospheric composition
-	atmosphere.totalPressure = RandomBetween(0.1f, 3.0f); // in atm
+	atmosphere.totalPressure = RandomBetween(0.7f, 1.8f); // in atm
 	atmosphere.nitrogenPercentage = RandomBetween(50.0f, 90.0f);
 	atmosphere.oxygenPercentage = RandomBetween(10.0f, 30.0f);
 	atmosphere.carbonDioxidePercentage = RandomBetween(0.01f, 5.0f);
@@ -48,8 +48,12 @@ void PlanetaryParameters::initialize() {
 float PlanetaryParameters::greenhouseEffect()
 {
 	// Simplified greenhouse effect calculation
-	float ghEffect = (atmosphere.carbonDioxidePercentage * 0.02f +
-		atmosphere.otherGasesPercentage * 0.01f) * greenhouseEffectFactor;
+	float ghEffect = (atmosphere.carbonDioxidePercentage * 0.5f +
+		atmosphere.otherGasesPercentage * 0.2f);
+
+	// Clamp to reasonable range (Earth: ~33°C boost, Venus: ~500°C boost)
+	ghEffect = clamp(ghEffect, 0.0f, 100.0f);
+
 	return ghEffect;
 }
 float PlanetaryParameters::calculateAtmosphereHeight()
@@ -61,8 +65,13 @@ float PlanetaryParameters::calculateAtmosphereHeight()
 }
 float PlanetaryParameters::calculateTemperatureGradient()
 {
-	// Simplified temperature gradient calculation
-	float gradient = equatorToPoleTemp / (90.0f - axialTilt);
+	float baseGradient = 25.0f; // Earth-like base
+	// rotation effect
+	float rotationEffect = 1.0f / (rotationSpeed + 0.3f);
+
+	float pressureEffect = 1.0f / std::sqrt(atmosphere.totalPressure + 0.1f);
+	float gradient = baseGradient * rotationEffect * pressureEffect;
+	gradient = clamp(gradient * 1.5, 5.0f, 60.0f);
 	return gradient;
 }
 float PlanetaryParameters::getRotationPeriod()

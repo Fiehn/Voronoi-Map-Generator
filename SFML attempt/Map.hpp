@@ -918,32 +918,81 @@ void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals, const s
 
 void calcTemp(std::vector<Cell>& map, GlobalWorldObjects& globals, const std::vector<sf::Vector2f>& points, const int MAXHEIGHT)
 {
-    for (int i = 0; i < map.size(); i++)
-    {   // Take distance to equator and get the distance 
-        // Add an altitute modifier
-        // Ocean Currents (needs implementation)
+    // Find actual equator
+	float equatorY = MAXHEIGHT / 2;
+    if (!globals.convergenceLines.empty())
+    {
+		int middleIndex = globals.convergenceLines.size() / 2;
+		equatorY = globals.convergenceLines[middleIndex] * MAXHEIGHT;
+    }
+    // Planetary temperature modifiers
+	float baseTemp = globals.globalTempAvg;
+	float equatorToPoleGradient = globals.planetaryParams.equatorToPoleTemp;
+	float greenhouseBoost = globals.planetaryParams.greenhouseEffectFactor;
+	float axisTilt = globals.planetaryParams.axialTilt;
 
+    float atmosphericRetention = std::sqrt(globals.planetaryParams.atmosphere.totalPressure);
+
+    for (int i = 0; i < map.size(); i++)
+    {
         float temp = 0.f;
 
-        // Latitute
-        float dist = std::abs(points[i].y - MAXHEIGHT / 2);
-        float c = 0.0015;
-        float b = 5;
-        float a = 5;
-        temp += 1.5 * globals.globalTempAvg - globals.globalTempAvg * (a * expf(-b * expf(-c * dist))); // Gompertz function
-        // Altitute
+        // 1. Latitute based on equator
+        float distFromEquator = std::abs(points[i].y - equatorY);
+        float maxDistFromEquator = MAXHEIGHT * 0.5f; // Maximum distance (pole)
+        float normalizedLatitude = std::min(distFromEquator / maxDistFromEquator, 1.0f);
+
+        // Temperature decrease from equator to pole on planetary gradient
+        // uing a cosine curve for smoother transition
+        float latTemp = baseTemp - (equatorToPoleGradient * std::pow(normalizedLatitude, 1.3f));
+        temp += latTemp;
+
+        // 2. Altitude modifier
+        // Temp decreases with altitude (standard lapse rate ~6.5°C per km, scaled by atmospheric retention)
+        // ocean depth increases temp slightly
         if (map[i].height >= globals.seaLevel)
         {
-            temp += map[i].height * (-50);
+			// Land: standard lapse rate scaled by atmospheric retention
+			float lapseRate = 6.5f / atmosphericRetention; // °C per km
+			float elevationKm = (map[i].height - globals.seaLevel) * 10.0f; // in km
+            temp -= lapseRate * elevationKm;
         }
         else
-        {
-            temp += (1 - map[i].height) * (-50);
+		{
+			// Ocean: slight increase in temp with depth
+			float lapseRate = 6.5f / (atmosphericRetention * 5.0f); // Reduced lapse rate for ocean depth
+			float depth = (globals.seaLevel - map[i].height) * 5.0f; // in km
+            temp -= lapseRate * depth;
         }
-        // Distance from sea (needs to be tuned)
-        temp += map[i].distToOcean * 0.5;
 
-        map[i].temp = temp;
+        // 3. Distance from ocean (continental effect)
+		// land far away from ocean is more extreme
+		// stronger on less atmosphere circulation
+		float continentalityFactor = 1.0f - std::abs(normalizedLatitude - 0.5f) * 2.0f; // Strongest at mid-latitudes
+        float oceanProximityEffect = map[i].distToOcean * 0.3f * continentalityFactor;
+
+		// Effect depends on latitude and atmospheric retention
+		float latitudeFactor = 1.0f - std::abs(normalizedLatitude - 0.5f) * 2.0f; // Strongest at mid-latitudes
+        temp += oceanProximityEffect * latitudeFactor;
+
+        // 4. Axial tilt
+		// higher tilt = more seasonal variation
+		// for now we just add a small modifier based on latitude
+		float tiltEffect = (axisTilt / 23.5f) * normalizedLatitude * 3.0f;
+		temp += RandomBetween(-tiltEffect, tiltEffect);
+
+        // 5. Atmospheric Composition
+		// Greenhouse effect
+        temp += greenhouseBoost * (1.0f - normalizedLatitude * 0.3f);
+
+        // Preassure effects heat retention
+        if (globals.planetaryParams.atmosphere.totalPressure < 0.5f)
+        {
+            // Thin atmosphere: extreme day/night temperature swings (add randomness
+			temp += RandomBetween(-10.0f, 10.0f) * (0.5f - globals.planetaryParams.atmosphere.totalPressure);
+        }
+
+		map[i].temp = temp;
     }
 }
 
