@@ -37,12 +37,13 @@ public:
     float sealevel = 0.5f; // The height at which the ocean starts
 
     // Percepitation
-    unsigned int percepitation_repeats = 1; // amount of percepitation iterations (NEEDs to be above 1)
-    unsigned int percepitation_smooth_repeats = 0; // amount of percepitation smoothing iterations
-	float max_percipitation = 500.0f; // mm/year cap
-	float ocean_base_moisture = 100.f;
+    unsigned int percepitation_repeats = 3; // amount of percepitation iterations (NEEDs to be above 1)
+	float max_percipitation = 300.0f; // cap
+	float ocean_evaporation_factor = 1.0f; // multiplier for ocean evaporation
+	float land_evapotranspiration_factor = 0.6f; // multiplier for land evapotranspiration
 	float moisture_loss_rate = 0.02f; // amount of moisture lost per cell
-	float orographic_factor = 2.0f; // height influence on percepitation
+	float orographic_factor = 3.0f; // height influence on percepitation
+	float condensation_rate = 0.15f; // rate at which moisture condenses into precipitation
 
     // Biomes
     unsigned int kmeans_max_iter = 5; // The maximum amount of iterations for the kmeans algorithm
@@ -50,10 +51,9 @@ public:
     unsigned int biome_method = 1; // Method 1 is GMM and method 2 is Kmeans
     float prob_smoothing = 0.5f;
 
-    // Wind
-    unsigned int n_convergence_lines = 5; // The amount of convergence lines to generate Needs 
-    float windstr_alpha = 2.f;
-    float windstr_beta = 2.f;
+    // Planet Parameters
+	bool earthLike = true; // if true, sets parameters to earth like values
+    
 
 	// JSON functions
 	void save_json(const std::string& filename) const {
@@ -90,18 +90,17 @@ private:
 			{"temp_smooth_repeats", temp_smooth_repeats},
 			{"sealevel", sealevel},
 			{"percepitation_repeats", percepitation_repeats},
-			{"percepitation_smooth_repeats", percepitation_smooth_repeats},
 			{"kmeans_max_iter", kmeans_max_iter},
 			{"n_biomes", n_biomes},
 			{"biome_method", biome_method},
 			{"prob_smoothing", prob_smoothing},
-			{"n_convergence_lines", n_convergence_lines},
-			{"windstr_alpha", windstr_alpha},
-			{"windstr_beta", windstr_beta},
 			{"max_percipitation", max_percipitation},
-			{"ocean_base_moisture", ocean_base_moisture},
 			{"moisture_loss_rate", moisture_loss_rate},
-			{"orographic_factor", orographic_factor}
+			{"orographic_factor", orographic_factor},
+			{"land_evapotranspiration_factor", land_evapotranspiration_factor},
+			{"ocean_evaporation_factor", ocean_evaporation_factor},
+			{"condensation_rate", condensation_rate},
+			{"earthLike", earthLike} 
 		};
 	}
 
@@ -124,18 +123,17 @@ private:
 		temp_smooth_repeats = j.at("temp_smooth_repeats").get<unsigned int>();
 		sealevel = j.at("sealevel").get<float>();
 		percepitation_repeats = j.at("percepitation_repeats").get<unsigned int>();
-		percepitation_smooth_repeats = j.at("percepitation_smooth_repeats").get<unsigned int>();
 		kmeans_max_iter = j.at("kmeans_max_iter").get<unsigned int>();
 		n_biomes = j.at("n_biomes").get<unsigned int>();
 		biome_method = j.at("biome_method").get<int>();
 		prob_smoothing = j.at("prob_smoothing").get<float>();
-		n_convergence_lines = j.at("n_convergence_lines").get<unsigned int>();
-		windstr_alpha = j.at("windstr_alpha").get<float>();
-		windstr_beta = j.at("windstr_beta").get<float>();
 		max_percipitation = j.at("max_percipitation").get<float>();
-		ocean_base_moisture = j.at("ocean_base_moisture").get<float>();
 		moisture_loss_rate = j.at("moisture_loss_rate").get<float>();
 		orographic_factor = j.at("orographic_factor").get<float>();
+		land_evapotranspiration_factor = j.at("land_evapotranspiration_factor").get<float>();
+		ocean_evaporation_factor = j.at("ocean_evaporation_factor").get<float>();
+		condensation_rate = j.at("condensation_rate").get<float>();
+		earthLike = j.at("earthLike").get<bool>();
 	}
 };
 

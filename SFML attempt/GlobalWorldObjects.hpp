@@ -5,6 +5,7 @@ class GlobalWorldObjects; // Forward declaration
 #include <SFML/Graphics.hpp>
 #include "CellObjects.hpp"
 #include "Culture.hpp"
+#include "PlanetaryObjects.hpp"
 
 class GlobalWorldObjects
 {
@@ -34,6 +35,8 @@ public:
 
 	std::vector<Culture> cultures; // List of cultures
 
+	PlanetaryParameters planetaryParams; // Planetary parameters
+
 
 	GlobalWorldObjects();
 	void clearGlobals();
@@ -41,13 +44,14 @@ public:
 	void generateBiomes();
 	void addBiome(std::string name, sf::Color color);
 	void setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength);
-	void generateConvergenceLines(int nrLines, float windstr_alpha, float windstr_beta);
+	void generateConvergenceLines();
 	std::vector<float> getConvergenceLines() const;
 	void setGlobalTemp(float temp);
 	void setSeaLevel(float level);
 	void setGlobalSnowline(float snowline);
 	void setGlobalTreeline(float treeline);
 	void initializeCultures(std::vector<Cell>& map);
+	void generatePlanet(bool earthlike);
 
 };
 

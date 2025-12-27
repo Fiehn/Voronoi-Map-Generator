@@ -163,6 +163,7 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="PlanetaryObjects.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="Voronoi.cpp" />
     <ClCompile Include="windArrows.cpp" />
@@ -184,6 +185,7 @@
     <ClInclude Include="Map.hpp" />
     <ClInclude Include="mapconfig.hpp" />
     <ClInclude Include="NewMap.hpp" />
+    <ClInclude Include="PlanetaryObjects.hpp" />
     <ClInclude Include="POP.hpp" />
     <ClInclude Include="Religion.hpp" />
     <ClInclude Include="resource.h" />

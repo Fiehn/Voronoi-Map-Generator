@@ -44,7 +44,7 @@ static void drawPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
-        sf::Color color(0, clamp(5 * map.cells[i].percepitation, 255, 0), 0, 255);
+        sf::Color color(0, clamp(255 * map.cells[i].percepitation / 100, 255, 0), 0, 255);
 
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
@@ -616,12 +616,6 @@ void showNewMap(vor::Voronoi& map,
         ImGui::EndTooltip();
     }
 
-    ImGui::InputUInt("Nr of Convergence Lines", &config.n_convergence_lines);
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::Text("Defines lines that split the prevailing winds. \nDirections and strengths are then concluded randomly, Earth has 6 zones so input 6.");
-        ImGui::EndTooltip();
-    }
 
     ImGui::InputUInt("Amount of Biomes", &config.n_biomes);
     if (ImGui::IsItemHovered()) {
@@ -657,15 +651,7 @@ void showNewMap(vor::Voronoi& map,
         ImGui::Text("This is the amount of times percepitation is calculated. \nShould not be more than 1 unless you want high contrast.");
         ImGui::EndTooltip();
     }
-    if (config.percepitation_repeats == 0) { config.percepitation_repeats = 1; }
-
-    ImGui::InputUInt("Percepitation Smooths", &config.percepitation_smooth_repeats);
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::Text("This is the amount of times percepitation is smoothed.");
-        ImGui::EndTooltip();
-    }
-
+    
     //ImGui::Checkbox("Advanced Settings", &advancedSettings);
 
     if (ImGui::CollapsingHeader("Advanced Settings")) {
@@ -709,18 +695,6 @@ void showNewMap(vor::Voronoi& map,
         if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
             ImGui::Text("The amount above or below sealine that defines a coast.");
-            ImGui::EndTooltip();
-        }
-        ImGui::DragFloat("Wind str alpha", &config.windstr_alpha, 1.0f, 0.0f, 10.0f);
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::Text("Alpha value for the beta distribution of wind strenght.");
-            ImGui::EndTooltip();
-        }
-        ImGui::DragFloat("Wind str beta", &config.windstr_beta, 1.0f, 0.0f, 10.0f);
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::Text("Beta value for the beta distribution of wind strenght.");
             ImGui::EndTooltip();
         }
         ImGui::InputUInt("Method of Biomes", &config.biome_method); //TODO, fix this input

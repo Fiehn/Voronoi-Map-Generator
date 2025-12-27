@@ -123,10 +123,12 @@ static void genWorld(vor::Voronoi& map,
         globals.clearGlobals();
         globals.setSeaLevel(config.sealevel); // RandomBetween(0.4f, 0.6f)
         globals.setGlobalTemp(config.global_temp_avg);
-        globals.generateConvergenceLines(config.n_convergence_lines, config.windstr_alpha, config.windstr_beta);
+		globals.generatePlanet(config.earthLike);
+        globals.generateConvergenceLines();
+		int numLines = globals.convergenceLines.size();
         lines.clear();
-        lines.resize(2 * config.n_convergence_lines);
-        for (int i = 0; i < config.n_convergence_lines * 2; i++)
+        lines.resize(2 * numLines);
+        for (int i = 0; i < numLines * 2; i++)
         {
             if (i % 2 == 0)
             {
@@ -195,11 +197,7 @@ static void genWorld(vor::Voronoi& map,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcPercepitation(map.cells, map.points, globals, config.percepitation_repeats, config.max_percipitation,config.ocean_base_moisture, config.moisture_loss_rate,config.orographic_factor); }, "Calculating Percepetation", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
-
-    GenStepWrapper::RunStep([&]() {
-		smoothPercepitation(map.cells, config.percepitation_smooth_repeats); }, "Smoothing Percepetation", currentStep, 
+		calcPercepitation(map.cells, map.points, globals, config.percepitation_repeats, config.max_percipitation,config.ocean_evaporation_factor,config.land_evapotranspiration_factor, config.moisture_loss_rate, config.orographic_factor, config.moisture_loss_rate); }, "Calculating Percepetation", currentStep, 
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {

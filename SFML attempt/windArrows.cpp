@@ -308,26 +308,26 @@ sf::VertexArray generateWindArrows(vor::Voronoi& map, float globalZoom, const sf
         arrows.append(sf::Vertex(sf::Vector2f(x_base2, y_base2), arrowColor));
     }
 	// Add streamlines if needed
-    if (drawStreamlines)
-    {
-        WindStreamlines windStreamlines;
-        WindStreamlines::StreamlineConfig streamlineConfig;
-		streamlineConfig.numStreamlines = 200 + static_cast<int>(globalZoom * 50);
-		streamlineConfig.maxSteps = 1000;
-		streamlineConfig.stepSize = 5.f;
-		streamlineConfig.separationDistance = 1.f;
+    //if (drawStreamlines)
+    //{
+    //    WindStreamlines windStreamlines;
+    //    WindStreamlines::StreamlineConfig streamlineConfig;
+	//	streamlineConfig.numStreamlines = 200 + static_cast<int>(globalZoom * 50);
+	//	streamlineConfig.maxSteps = 1000;
+	//	streamlineConfig.stepSize = 5.f;
+	//	streamlineConfig.separationDistance = 1.f;
 
-		sf::VertexArray streamlines = windStreamlines.generateStreamlines(map, view, streamlineConfig);
+    //	sf::VertexArray streamlines = windStreamlines.generateStreamlines(map, view, streamlineConfig);
 
         // Combine arrows and streamlines into one vertex array by copying vertices
-        sf::VertexArray combined(sf::Lines);
+    //    sf::VertexArray combined(sf::Lines);
 
         // Copy streamline vertices (they are lines)
-        for (std::size_t i = 0; i < streamlines.getVertexCount(); i++) {
-            combined.append(streamlines[i]);
-        }
+    //    for (std::size_t i = 0; i < streamlines.getVertexCount(); i++) {
+    //        combined.append(streamlines[i]);
+     //   }
 
-        return combined;
-    }
+     //   return combined;
+    //}
     return arrows;
 }

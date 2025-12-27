@@ -67,6 +67,9 @@
     <ClCompile Include="Voronoi.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="PlanetaryObjects.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Voronoi.hpp">
@@ -148,6 +151,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="windArrows.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PlanetaryObjects.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -966,168 +966,242 @@ void smoothTemps(std::vector<Cell>& map, int smoothTimes)
 void calcPercepitation(std::vector<Cell>& map, 
     const std::vector<sf::Vector2f>& points, 
     GlobalWorldObjects& globals, 
-    int runs = 1,
-    float max_percipitation = 500.0f, // mm/year cap
-    float ocean_base_moisture = 100.f,
-    float moisture_loss_rate = 0.15f, // amount of moisture lost per cell
-	float orographic_factor = 2.0f // height influence on percepitation
+    int runs = 3,
+    float max_percipitation = 500.0f,
+	float ocean_evaporation_factor = 1.0f,
+	float land_evapotranspiration_factor = 0.3f,
+    float moisture_loss_rate = 0.08f,
+	float orographic_factor = 2.5f,
+	float condensation_rate = 0.12f
 )
 {
-    // Algorithm:
-    // 1. Start by assigning a baseline for all cells with ocean cells having larger percepitation
-	// 2. Create a queue of ocean cells and set them as visited while tracking moisture levels
-    // 3. While the queue is not empty, pop the front cell and add a percepitation increase to all neighbors
-    // 4. The percepitation increase is based on the wind direction, wind strength, height and the humidity of the current cell
-    // 5. Add the neighbors to the queue if they are not visited
-    // 6. Repeat until the queue is empty
-
+	// Alogrithm Overview:
+	// 1. For each cell, calculate initial moisture based on evaporation (higher over oceans, modulated by temperature and vegetation)
+	// 2. For a number of advection steps:
+	//    a. For each cell, determine the best neighbor aligned with wind direction
+	//    b. Move moisture to that neighbor based on wind strength
+	//    c. Calculate precipitation based on moisture, temperature, and terrain features (orographic lift)
+	//   d. Reduce moisture by precipitation and natural loss
+	// 3. Repeat for multiple runs to simulate seasonal variations
+	// 4. Average the precipitation over all runs for final value
+	// 5. Clamp and smooth the final precipitation values
+	
     for (int run = 0; run < runs; run++)
     {
-        // Initialize baseline precipitation based on temperature and ocean proximity
-        if (run == 0)
+        std::vector<float> moisture(map.size(), 0.0f);
+        std::vector<float> newPrecipitation(map.size(), 0.0f);
+
+        // Step 1: Generate initial moisture from evaporation
+        for (std::size_t i = 0; i < map.size(); i++)
         {
-            for (std::size_t i = 0; i < map.size(); i++)
+            float evaporation = 0.0f;
+
+            if (map[i].oceanBool)
             {
-                if (map[i].oceanBool == true)
+                float tempFactor = clamp((map[i].temp + 20.0f) / 50.0f, 1.0f, 0.1f);
+                evaporation = ocean_evaporation_factor * tempFactor * 100.0f;
+            }
+            else
+            {
+                float tempFactor = clamp((map[i].temp + 10.0f) / 40.0f, 1.0f, 0.1f);
+                float vegetationFactor = map[i].treeBool ? 1.2f : 0.7f;
+                evaporation = land_evapotranspiration_factor * tempFactor * vegetationFactor * 25.0f;
+            }
+            moisture[i] = evaporation;
+        }
+
+        // Step 2: Moisture advection with precipitation
+        const int advectionSteps = 50;
+
+        // Vary the processing order to avoid bias
+		std::vector<std::size_t> cellOrder(map.size());
+        for (std::size_t i = 0; i < map.size(); i++) {
+            cellOrder[i] = i;
+        }
+        if (run > 0) {
+			std::shuffle(cellOrder.begin(), cellOrder.end(), std::default_random_engine(rand()));
+        }
+                
+        for (int step = 0; step < advectionSteps; step++)
+        {
+            std::vector<float> newMoisture(map.size(), 0.0f);
+            
+            for (std::size_t idx = 0; idx < cellOrder.size(); idx++)
+            {
+				std::size_t i = cellOrder[idx];
+
+                if (moisture[i] < 0.01f) continue;
+
+                float cellMoisture = moisture[i];
+                float windDir = radians(map[i].windDir);
+                float windStr = map[i].windStr;
+
+                // Add slight directional variance per run to simulate seasonal wind shifts
+				float windVariance = std::sin(run * 2.0f) * 20.f; // +/- 20 degrees
+				windDir += radians(windVariance);
+
+                // Find best neighbor aligned with wind
+                int bestNeighbor = -1;
+                float bestAlignment = -1.0f;
+                
+                for (int neighborIdx : map[i].neighbors)
                 {
-                    // Ocean cells: high baseline, temperature dependent
-                    // Warmer water = more evaporation
-                    float tempFactor = clamp((map[i].temp + 20.0f) / 50.0f, 1.0f, 0.1f);
-                    map[i].percepitation = ocean_base_moisture * tempFactor;
+                    if (neighborIdx < 0 || neighborIdx >= map.size()) continue;
+                    
+                    float dx = points[neighborIdx].x - points[i].x;
+                    float dy = points[neighborIdx].y - points[i].y;
+                    float neighborDir = std::atan2(dy, dx);
+
+                    float angleDiff = std::abs(neighborDir - windDir);
+                    if (angleDiff > PI) angleDiff = 2.0f * PI - angleDiff;
+                    
+                    float alignment = std::cos(angleDiff);
+                    
+                    if (alignment > bestAlignment)
+                    {
+                        bestAlignment = alignment;
+                        bestNeighbor = neighborIdx;
+                    }
+                }
+
+                // Calculate precipitation
+                float precipitationAmount = 0.0f;
+
+                // 1. Baseline natural condensation (happens everywhere with sufficient moisture)
+                if (cellMoisture > 10.0f)  // Only if there's enough moisture
+                {
+                    float moistureFactor = std::min(cellMoisture / 100.0f, 1.0f);
+                    float baseCondensation = condensation_rate * moistureFactor * 12.0f;
+
+					// Vary ocndensation rate per run to simulate seasonal changes
+					float seasonalFactor = 0.8f + 0.4f * (run / (float)runs);
+
+                    precipitationAmount += baseCondensation * seasonalFactor;
+                }
+
+                // 2. Temperature-driven condensation (colder air holds less moisture)
+                if (map[i].temp < 20.0f && cellMoisture > 20.0f)
+                {
+                    float coldFactor = (20.0f - map[i].temp) / 30.0f;  // Stronger at colder temps
+                    coldFactor = clamp(coldFactor, 1.0f, 0.0f);
+                    float coldPrecip = cellMoisture * 0.08f * coldFactor;
+                    precipitationAmount += coldPrecip;
+                }
+
+                // 3. Orographic precipitation (mountains force uplift)
+                if (bestNeighbor >= 0 && !map[i].oceanBool)  // Only over land
+                {
+                    float heightDiff = map[bestNeighbor].height - map[i].height;
+                    if (heightDiff > 0.015f)  // Lower threshold for gentler slopes
+                    {
+                        float liftFactor = std::tanh(orographic_factor * heightDiff);
+                        float orographicPrecip = cellMoisture * liftFactor * 0.35f;
+                        precipitationAmount += orographicPrecip;
+                    }
+                }
+
+                // 4. Oceanic storm precipitation (based on moisture and wind)
+                if (map[i].oceanBool && cellMoisture > 50.0f && windStr > 0.6f)
+                {
+                    float stormFactor = (windStr - 0.6f) * 2.5f;  // Stronger winds = more storms
+                    float oceanStormPrecip = cellMoisture * 0.06f * stormFactor;
+                    precipitationAmount += oceanStormPrecip;
+                }
+
+                // Cap precipitation to avoid depleting all moisture
+                precipitationAmount = std::min(precipitationAmount, cellMoisture * 0.65f);
+
+                // Add precipitation
+                newPrecipitation[i] += precipitationAmount;
+
+                // Remaining moisture after precipitation
+                float remainingMoisture = cellMoisture - precipitationAmount;
+
+                // Transfer moisture to downwind neighbor
+                if (bestNeighbor >= 0 && bestAlignment > 0.0f)
+                {
+                    // Transfer efficiency based on wind and alignment
+					// Vary transfer factor per run to simulate seasonal wind strength changes
+                    float runVariation = 0.85 + 0.1f * std::cos(run * 1.5f);
+                    float transferFactor = windStr * std::pow(std::max(0.0f, bestAlignment), 0.4f) * runVariation;
+                    float transferredMoisture = remainingMoisture * transferFactor;
+
+                    // Rain shadow effect (descending terrain)
+                    if (!map[i].oceanBool)  // Only apply to land
+                    {
+                        float heightDiff = map[bestNeighbor].height - map[i].height;
+                        if (heightDiff < -0.02f)
+                        {
+                            transferredMoisture *= 0.70f;  // Rain shadow dries air
+                        }
+                    }
+
+                    // Natural moisture loss during transport
+                    transferredMoisture *= (1.0f - moisture_loss_rate);
+
+                    newMoisture[bestNeighbor] += transferredMoisture;
+                    newMoisture[i] += remainingMoisture * (1.0f - transferFactor);
                 }
                 else
                 {
-                    // Land cells: small baseline (local evapotranspiration)
-                    map[i].percepitation = 20.0f * std::exp(-0.05f * map[i].distToOcean);
+                    // No good neighbor - moisture either precipitates or dissipates
+                    newPrecipitation[i] += remainingMoisture * 0.25f;
+                    newMoisture[i] += remainingMoisture * 0.75f;
                 }
             }
+            
+            moisture = newMoisture;
         }
 
-        // Moisture propagation from ocean inland
-        std::vector<bool> visited(map.size(), false);
-		std::vector<float> moisture(map.size(), 0.0f); // Track moisture levels
-
-        Queue<std::size_t> queue;
-
-        // Start from ocean cells with initial moisture
+        // Step 3: Accumulate precipitation across runs
         for (std::size_t i = 0; i < map.size(); i++)
         {
-            if (map[i].oceanBool)
+            if (run == 0)
             {
-                queue.push(i);
-                visited[i] = true;
-                float tempFactor = clamp((map[i].temp + 20.0f) / 50.0f, 1.0f, 0.1f);
-                moisture[i] = ocean_base_moisture * tempFactor;
+                map[i].percepitation = newPrecipitation[i];
             }
-        }
-
-        while (!queue.empty())
-        {
-            std::size_t idx = queue.pop_front();
-
-            float cellMoisture = moisture[idx];
-			float windDir = radians(map[idx].windDir);
-			float windStr = map[idx].windStr;
-
-			// Process each neighbor
-            for (int neighborIdx : map[idx].neighbors)
+            else
             {
-                if (neighborIdx < 0 || neighborIdx >= map.size()) continue;
-
-				// Calculate wind alignment
-				float dx = points[neighborIdx].x - points[idx].x;
-				float dy = points[neighborIdx].y - points[idx].y;
-				float neighborDir = std::atan2(dy, dx);
-
-				float angleDiff = std::abs(neighborDir - windDir);
-				if (angleDiff > PI) angleDiff = 2 * PI - angleDiff; // Wrap to [0, PI]
-
-				// Wind alignment factor [0,1] - higher means points towards neighbor
-				float windAlignment = std::pow((std::cos(angleDiff) + 1.f) / 2.f,0.7f);
-
-				// Orographic effect based on height difference
-				float heightDiff = map[neighborIdx].height - map[idx].height;
-                float orographicLift = 0.0f;
-				float rainshadowEffect = 1.0f;
-
-                if (heightDiff > 0.0f)
-                {
-					// Ascending terrain - causes percepitation
-                    orographicLift = std::tanh(orographic_factor * heightDiff); // tanh for smooth scaling
-                }
-				else if (heightDiff < -0.1f)
-                {
-                    // Descending terrain - rain shadow reduces moisture but doesn't precipitate
-                    rainshadowEffect = 0.7f; // Keep more moisture in rain shadow areas
-                }
-
-                // Calculate Moisture Transfer
-                float baseTransfer = 0.95f; // Start with 95% transfer
-                float windFactor = 0.5f + 0.5f * windAlignment; // Range [0.5, 1.0]
-                float strengthFactor = 0.7f + 0.3f * windStr; // Range [0.7, 1.0]
-
-                float transferFactor = baseTransfer * windFactor * strengthFactor * (1.0f - moisture_loss_rate);
-                float transferredMoisture = cellMoisture * transferFactor * rainshadowEffect;
-
-				// Precipitation from orographic lift
-                float precipFromLift = transferredMoisture * orographicLift * 0.3f; // 30% of lifted moisture precipitates
-
-                if (!map[neighborIdx].oceanBool)
-                {
-                    map[neighborIdx].percepitation += precipFromLift;
-					map[neighborIdx].percepitation = std::min(map[neighborIdx].percepitation, max_percipitation);
-                }
-
-				// Update moisture level for neighbor
-				float remainingMoisture = transferredMoisture * (1.0f - orographicLift * 0.5f); // Some moisture precipitates
-                
-                moisture[neighborIdx] = std::max(moisture[neighborIdx], remainingMoisture);
-
-                if (!visited[neighborIdx])
-                {
-                    queue.push(neighborIdx);
-                    visited[neighborIdx] = true;
-				}
-            }
-
-        }
-
-    }
-    // Normalize to reasonable values
-	float maxPerc = 0.0f;
-    for (const auto& cell : map)
-    {
-        if (!cell.oceanBool && cell.percepitation > maxPerc)
-        {
-            maxPerc = cell.percepitation;
-		}
-    }
-    if (maxPerc > max_percipitation)
-    {
-        float scale = max_percipitation / maxPerc;
-        for (auto& cell : map)
-        {
-            if (!cell.oceanBool)
-            {
-                cell.percepitation *= scale;
+                // Weight each run equally
+                map[i].percepitation = (map[i].percepitation * run + newPrecipitation[i]) / (run + 1.0f);
             }
         }
     }
-}
-
-void smoothPercepitation(std::vector<Cell>& map, int smoothTimes)
-{
-    for (int j = 0; j < smoothTimes; j++)
+	// Step 4: Add tiny simplex noise for variability (needs a look)
+	SimplexNoise simplexNoise = SimplexNoise(rand());
+    for (std::size_t i = 0; i < map.size(); i++)
     {
-        for (int i = 0; i < map.size(); i++)
+		float noise = simplexNoise.noise(points[i].x * 0.02f, points[i].y * 0.02f) * 2.0f; // small variation
+        map[i].percepitation += noise;
+        map[i].percepitation = std::max(0.0f, map[i].percepitation); // ensure non-negative
+	}
+
+
+	// Step 5: Cap the precipitation values
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+        map[i].percepitation = std::min(map[i].percepitation, max_percipitation);
+	}
+
+    // Step 6: Smooth precipitation for gradual transitions
+    std::vector<float> smoothedPrecip(map.size());
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+        float sum = map[i].percepitation * 2.5f;  // Weight center
+        int count = 2.5f;
+
+        for (int neighborIdx : map[i].neighbors)
         {
-            float percepitation = 0;
-            for (int j = 0; j < map[i].neighbors.size(); j++)
-            {
-                percepitation += map[map[i].neighbors[j]].percepitation;
-            }
-            map[i].percepitation = percepitation / map[i].neighbors.size();
+            sum += map[neighborIdx].percepitation;
+            count++;
         }
+
+        smoothedPrecip[i] = sum / count;
+    }
+
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+        map[i].percepitation = smoothedPrecip[i];
     }
 }
 

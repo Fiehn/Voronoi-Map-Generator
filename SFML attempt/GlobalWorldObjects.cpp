@@ -43,6 +43,17 @@ void GlobalWorldObjects::clearGlobals()
 	continents.clear();
 	lakes.clear();
 	cultures.clear(); 
+	convergenceLines.clear();
+	windDirection.clear();
+	windStrength.clear();
+}
+
+void GlobalWorldObjects::generatePlanet(bool earthlike)
+{
+	if (earthlike)
+		planetaryParams.initializeEarthLike();
+	else
+		planetaryParams.initialize();
 }
 
 void GlobalWorldObjects::setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength)
@@ -52,23 +63,16 @@ void GlobalWorldObjects::setConvergenceLines(std::vector<float> lines, std::vect
 	windStrength = strength;
 }
 
-void GlobalWorldObjects::generateConvergenceLines(int nrLines, float windstr_alpha = 2, float windstr_beta = 2)
+void GlobalWorldObjects::generateConvergenceLines()
 {
 	convergenceLines.clear();
 	windDirection.clear();
 	windStrength.clear();
 
-	std::vector<float> lines;
-	std::vector<float> directions;
-	std::vector<float> strength;
-
-	for (int i = 0; i < nrLines; i++)
-	{
-		// Pushback equally spaced lines
-		lines.push_back((float)i / (float)nrLines);
-		directions.push_back(RandomBetween(0.f, 360.f));
-		strength.push_back(betaDist(windstr_alpha, windstr_beta));
-	}
+	std::vector<float> lines = planetaryParams.calculateCellBoundaries();
+	std::vector<float> directions = planetaryParams.calculateWindDirections(lines);
+	std::vector<float> strength = planetaryParams.calculateWindStrengths(lines);
+	
 	setConvergenceLines(lines, directions, strength);
 }
 
