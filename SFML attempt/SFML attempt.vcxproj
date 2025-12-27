@@ -164,6 +164,8 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
     </ClCompile>
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="Voronoi.cpp" />
+    <ClCompile Include="windArrows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cell.hpp" />
@@ -192,6 +194,7 @@
     <ClInclude Include="CellObjects.hpp" />
     <ClInclude Include="Deprecated.h" />
     <ClInclude Include="util.hpp" />
+    <ClInclude Include="windArrows.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SFML attempt.rc" />

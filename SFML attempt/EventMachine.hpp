@@ -78,19 +78,6 @@ static void drawHeightMap(vor::Voronoi& map, VertexMap& vertexMap)
     vertexMap.update(map);
 }
 
-static void drawWindMap(vor::Voronoi& map, VertexMap& vertexMap) {
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        sf::Color color(255 * map.cells[i].windDir / 360, 255 * map.cells[i].windStr, 0, 255);
-
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
 static void drawContinentMap(vor::Voronoi& map, const GlobalWorldObjects& globals, VertexMap& vertexMap)
 {
     // Get random color per continent
@@ -212,23 +199,30 @@ static void drawContinents(GlobalWorldObjects& globals, sf::RenderWindow& window
 
 
 void eventloop(sf::RenderWindow& window,
-	sf::Event& event,
+    sf::Event& event,
     int& mapType,
     bool& moving,
     sf::Vector2f& oldPos,
     bool& drawHighlightBool,
-	sf::VertexArray& highlight,
-	vor::Voronoi& map,
-	std::size_t& highlightedCell,
-	sf::View& view,
-	float& globalZoom,
-	unsigned int windowWidth,
-	unsigned int windowHeight,
+    sf::VertexArray& highlight,
+    vor::Voronoi& map,
+    std::size_t& highlightedCell,
+    sf::View& view,
+    float& globalZoom,
+    unsigned int windowWidth,
+    unsigned int windowHeight,
     const bool showLoadConfig,
-	const bool showSaveConfig
+    const bool showSaveConfig,
+	sf::VertexArray& windArrows,
+	bool& drawWindArrowsBool
     )
 {
     if (showLoadConfig || showSaveConfig) { return; }
+
+	static sf::Vector2f lastViewCenter = view.getCenter();
+	static float lastViewUpdateDistance = 0.f;
+	const float VIEW_UPDATE_THRESHOLD = 50.f * globalZoom;
+
     switch (event.type) {
     case sf::Event::Closed:
     {
@@ -242,6 +236,7 @@ void eventloop(sf::RenderWindow& window,
         if (event.mouseButton.button == 0) {
             moving = true;
             oldPos = window.mapPixelToCoords(sf::Vector2i(event.mouseButton.x, event.mouseButton.y));
+			lastViewCenter = view.getCenter();
         }
         if (event.mouseButton.button == 1) {
             // This will need to be a values changer.
@@ -253,6 +248,17 @@ void eventloop(sf::RenderWindow& window,
         // Mouse button is released, no longer move
         if (event.mouseButton.button == 0) {
             moving = false;
+
+			// Update wind arrows if view has moved significantly
+            if (drawWindArrowsBool) {
+                sf::Vector2f currentViewCenter = view.getCenter();
+                float distanceMoved = std::sqrt(std::pow(currentViewCenter.x - lastViewCenter.x, 2) + std::pow(currentViewCenter.y - lastViewCenter.y, 2));
+                // If moved more than threshold, update wind arrows
+                if (distanceMoved >= VIEW_UPDATE_THRESHOLD) {
+                    windArrows = generateWindArrows(map, globalZoom, view, window.getSize());
+                    lastViewCenter = currentViewCenter;
+                }
+            }
         }
         break;
 
@@ -260,12 +266,6 @@ void eventloop(sf::RenderWindow& window,
 
         // Close Program
         if (event.key.code == sf::Keyboard::Escape) { window.close(); break; }
-
-        // Wind Map
-        else if (event.key.code == sf::Keyboard::W) {
-            if (mapType == 4) { mapType = 0; }
-            else { mapType = 4; }
-        }
 
         // Temperature map
         else if (event.key.code == sf::Keyboard::T) {
@@ -340,6 +340,17 @@ void eventloop(sf::RenderWindow& window,
         view.setCenter(view_center);
         window.setView(view);
 
+        if (drawWindArrowsBool && moving) {
+			float distanceMoved = std::sqrt(std::pow(deltaPos.x, 2) + std::pow(deltaPos.y, 2));
+			lastViewUpdateDistance += distanceMoved;
+			// Update wind arrows if moved more than threshold
+            if (lastViewUpdateDistance >= VIEW_UPDATE_THRESHOLD) {
+                windArrows = generateWindArrows(map, globalZoom, view, { windowWidth,windowHeight });
+                lastViewUpdateDistance = 0.f;
+                lastViewCenter = view.getCenter();
+            }
+        }
+
         // Save the new position as the old one
         oldPos = window.mapPixelToCoords(sf::Vector2i(event.mouseMove.x, event.mouseMove.y));
         break;
@@ -349,6 +360,8 @@ void eventloop(sf::RenderWindow& window,
     case sf::Event::MouseWheelScrolled: {
         // Ignore the mouse wheel unless we're not moving
         if (moving) { break; }
+
+		float oldZoom = globalZoom;
 
         if (event.mouseWheelScroll.delta <= -1)
         {
@@ -378,6 +391,12 @@ void eventloop(sf::RenderWindow& window,
             view_center.y = globalZoom * windowHeight / 2;
         }
         view.setCenter(view_center);
+
+        if (drawWindArrowsBool && std::abs(oldZoom - globalZoom) > 0.03f) {
+            // Update wind arrows
+			windArrows = generateWindArrows(map, globalZoom, view, { windowWidth,windowHeight });
+			lastViewCenter = view.getCenter();
+        }
 
         window.setView(view);
         break;
@@ -545,7 +564,7 @@ void showNewMap(vor::Voronoi& map,
 
     if (ImGui::Button("Generate New Map", { 200,50 })) {
         genWorld(map, globals, window, vertexMap,
-            windArrows, lines,
+            lines,
             windowWidth, windowHeight,
             font, config, seed);
         showNewMapBool = false;

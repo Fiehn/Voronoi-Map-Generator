@@ -1337,50 +1337,132 @@ void calcLakes(std::vector<Cell>& map)
 
 void calcWind(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, const int MAXHEIGHT, GlobalWorldObjects& globals)
 {
-    std::vector<float> wind = scalarMultiplication(globals.convergenceLines, (float)MAXHEIGHT);
+	// Wind is using simplex noise to generate variation along the convergence lines
 
-    for (int i = 0; i < map.size(); i++)
+    // Generate noise for wind variation
+    int windSpeed = rand();
+	SimplexNoise noiseWind(windSpeed);
+
+	// Find map bounds for normalization
+	float minX = std::numeric_limits<float>::max();
+	float maxX = std::numeric_limits<float>::min();
+	float minY = std::numeric_limits<float>::max();
+	float maxY = std::numeric_limits<float>::min();
+
+    for (const auto& pos : points)
     {
+        minX = std::min(minX, pos.x);
+        maxX = std::max(maxX, pos.x);
+        minY = std::min(minY, pos.y);
+        maxY = std::max(maxY, pos.y);
+	}
+    // Wind parameters
+	const float noiseScale = 0.15f;      // Scale of the noise (smaller = larger features)
+	const float noiseAmplitude = 45.0f;  // Amplitude of the noise in degrees
+	const int octaves = 2;               // detail levels
+	const float persistence = 0.6f;      // amplitude decrease per octave
+
+    // Calculate base wind patterns from latitude zones
+	std::vector<float> convergenceY = scalarMultiplication(globals.convergenceLines, (float)MAXHEIGHT);
+
+    for (size_t i = 0; i < map.size(); i++)
+    {
+		float normalizedX = (points[map[i].id].x - minX) / (maxX - minX);
+		float normalizedY = (points[map[i].id].y - minY) / (maxY - minY);
+
+		// Find closest convergence line
         int closestLine = 0;
         float min_dist = 1000000.f;
-        for (int j = 0; j < wind.size(); j++)
+        for (int j = 0; j < convergenceY.size(); j++)
         {
-            float dist = points[map[i].id].y - wind[j];
+            float dist = points[map[i].id].y - convergenceY[j];
             if (abs(dist) < min_dist)
             {
-                if (dist < 0)
-                {
-                    min_dist = abs(dist);
-                    closestLine = j - 1;
-                }
-                else
-                {
-                    min_dist = abs(dist);
-                    closestLine = j;
-                }
+                min_dist = abs(dist);
+                closestLine = j;
             }
-        }
+		}
 
-        map[i].windDir = normalizeAngle(globals.windDirection[closestLine] + 360.f * RandomBetween(-0.3, 0.3));
-        map[i].windStr = clamp((globals.windStrength[closestLine] + RandomBetween(-0.5, 0.5)) * (1 - clamp(map[i].height, 0.6f, 0.4f)) * 2, 1.f, 0.f);
-    }
-    // get averages of neighbors direction and strength
-    for (int i = 0; i < map.size(); i++)
-    {
-        float sumX = 0.0;
-        float sumY = 0.0;
-        float sumStr = 0.0;
-        for (int j = 0; j < map[i].neighbors.size(); j++)
+        // Base wind from zone
+		float baseDir = globals.windDirection[closestLine];
+		float baseStr = globals.windStrength[closestLine];
+
+		// Distance from convergence line affects strength
+		float distFromLine = min_dist / (MAXHEIGHT / (float)globals.convergenceLines.size());
+		distFromLine = clamp(distFromLine, 1.f, 0.f);
+
+        // strength varies with from zone center
+		float strengthModifier = 0.7f + 0.3f * (1.0f - distFromLine);
+
+        // Generate noise variation for direction
+        float noiseValue = noiseWind.octaveNoise(
+            normalizedX / noiseScale,
+            normalizedY / noiseScale,
+            octaves,
+            persistence
+        );
+
+		// Apply noise to create natural wind variation
+		float windDir = noiseValue * noiseAmplitude;
+
+        // Coriolis-like effect: wind curves near poles
+		float latitudeFactor = std::abs(normalizedY - 0.5f) * 2.0f; // 0 at equator, 1 at poles
+        float coriolisDeflection = latitudeFactor * 15.0f * (normalizedY > 0.5f ? 1.0f : -1.0f);
+
+        // Combining direction components
+		float finalDir = normalizeAngle(baseDir + windDir + coriolisDeflection);
+
+		// Terrain effects on wind strength (mountains block wind) (can be improved)
+        float terrainFactor = 1.0f;
+        if (map[i].height > 0.75f)
         {
-            float radian = radians(map[map[i].neighbors[j]].windDir);
-            sumX += std::cos(radian);
-            sumY += std::sin(radian);
+            terrainFactor = 1.0f - (map[i].height -0.6f) * 0.7f; // reduce strength in high terrain
+		}
+		// Ocean vs land: ocean has stronger more consistent winds
+		float surfaceFactor = map[i].oceanBool ? 1.1f : 0.9f;
 
-            sumStr += map[map[i].neighbors[j]].windStr;
+		// Calculate final wind strength
+		float finalStr = baseStr * strengthModifier * terrainFactor * surfaceFactor;
+        finalStr = clamp(finalStr + RandomBetween(-0.1f, 0.1f), 1.f, 0.f);
+
+		map[i].windDir = finalDir;
+		map[i].windStr = finalStr;
+    }
+
+	// Smoothing winds to create coherent patterns
+	// Average with neighbors
+	std::vector<float> smoothedDirs(map.size(), 0.f);
+	std::vector<float> smoothedStrs(map.size(), 0.f);
+
+    for (size_t i = 0; i < map.size(); i++)
+    {
+		float sumX = 0.f;
+		float sumY = 0.f;
+        float sumStr = 0.f;
+		int count = 0;
+
+		float selfRad = radians(map[i].windDir);
+		sumX += std::cos(selfRad) * 2.0f;
+        sumY += std::sin(selfRad) * 2.0f;
+        sumStr += map[i].windStr * 2.0f;
+		count += 2;
+        for (int neighborIdx : map[i].neighbors)
+        {
+			float neighborRad = radians(map[neighborIdx].windDir);
+            sumX += std::cos(neighborRad);
+            sumY += std::sin(neighborRad);
+			sumStr += map[neighborIdx].windStr;
+            count++;
         }
-        float averageRadians = std::atan2f(sumY, sumX);
-        map[i].windDir = normalizeAngle(averageRadians * 180.0 / PI);
-        map[i].windStr = sumStr / map[i].neighbors.size();
+		float avgRad = std::atan2f(sumY / count, sumX / count);
+		smoothedDirs[i] = normalizeAngle(avgRad * 180.0f / PI);
+		smoothedStrs[i] = sumStr / count;
+    }
+	// Apply smoothed values
+    for (size_t i = 0; i < map.size(); i++)
+    {
+        map[i].windDir = smoothedDirs[i];
+        map[i].windStr = smoothedStrs[i];
     }
 }
 

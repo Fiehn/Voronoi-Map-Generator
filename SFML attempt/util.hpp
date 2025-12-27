@@ -687,6 +687,14 @@ inline float distance(sf::Vector2f a, sf::Vector2f b)
 }
 
 
+static float magnitude(const sf::Vector2f& vec) {
+    return std::sqrt(vec.x * vec.x + vec.y * vec.y);
+}
+static sf::Vector2f normalize(const sf::Vector2f& vec) {
+    float mag = magnitude(vec);
+    if (mag < 0.001f) return sf::Vector2f(0.0f, 0.0f);
+    return sf::Vector2f(vec.x / mag, vec.y / mag);
+}
 
 
 

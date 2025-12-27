@@ -58,7 +58,6 @@ static void genWorld(vor::Voronoi& map,
     GlobalWorldObjects& globals,
     sf::RenderWindow& window,
     VertexMap& vertexMap,
-    sf::VertexArray& windArrows,
     sf::VertexArray& lines,
     const unsigned int MAXWIDTH,
     const unsigned int MAXHEIGHT,
@@ -213,11 +212,6 @@ static void genWorld(vor::Voronoi& map,
 
     GenStepWrapper::RunStep([&]() {
 		ResourceGen::generateMapResources(map.cells, globals); }, "Generating Resources", currentStep,
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
-
-    GenStepWrapper::RunStep([&]() {
-		windArrows.clear();
-		windArrows = vor::windArrows(map); }, "Drawing Wind Arrows", currentStep, 
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {

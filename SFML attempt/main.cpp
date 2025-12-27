@@ -6,6 +6,7 @@
 #include <chrono>
 
 #include "mapconfig.hpp"
+#include "windArrows.hpp"
 #include "Voronoi.hpp"
 #include "vertex.hpp"
 #include "cell.hpp"
@@ -118,9 +119,12 @@ int main()
 
     // Generate the actual map:
     genWorld(map, globals, window, vertexMap,
-        windArrows, lines, 
+        lines, 
         windowWidth, windowHeight,
 		font, config, seed);
+
+    // Draw initial wind arrows
+	windArrows = generateWindArrows(map, globalZoom, view, window.getSize());
 
 	std::size_t maxCellInMap = map.cells.size();
 
@@ -141,7 +145,8 @@ int main()
 				mapType, moving, oldPos,
 				drawHighlightBool, highlight,
 				map, highlightedCell, view, globalZoom,
-				windowWidth, windowHeight, showLoadConfig, showSaveConfig
+				windowWidth, windowHeight, showLoadConfig, showSaveConfig,
+                windArrows, drawWindArrowsBool
                 );
 
 			if (event.type == sf::Event::Closed) {
@@ -168,10 +173,9 @@ int main()
         ImGui::RadioButton("Biome", &mapType, 2); ImGui::SameLine();
         ImGui::RadioButton("Percepitation", &mapType, 3);
         ImGui::RadioButton("Continents", &mapType, 5); ImGui::SameLine();
-        ImGui::RadioButton("Wind", &mapType, 4);
 		ImGui::RadioButton("Cultures", &mapType, 6); ImGui::SameLine();
 		ImGui::RadioButton("Resources", &mapType, 7);
-		ImGui::RadioButton("Humidity", &mapType, 8); ImGui::SameLine();
+		ImGui::RadioButton("Humidity", &mapType, 4); ImGui::SameLine();
             
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
@@ -193,10 +197,6 @@ int main()
 				drawPercepitationMap(map, vertexMap);
                 drawWindArrowsBool = false;
 				break;
-            case 4:
-				drawWindMap(map, vertexMap);
-                drawWindArrowsBool = true;
-				break;
             case 5:
                 drawContinentMap(map, globals, vertexMap);
                 drawWindArrowsBool = false;
@@ -210,7 +210,7 @@ int main()
 				showResourceGenBool = true;
 				drawWindArrowsBool = false;
                 break;
-            case 8:
+            case 4:
 				drawHumidityMap(map, vertexMap);
 				drawWindArrowsBool = false;
                 break;
