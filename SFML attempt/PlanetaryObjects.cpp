@@ -1,6 +1,26 @@
 #include "PlanetaryObjects.hpp"
 #include <vector>
 
+
+float AtmosphericComposition::getTotalPercentage() const {
+	return nitrogenPercentage + oxygenPercentage + carbonDioxidePercentage +
+		methanePercentage + sulfurDioxidePercentage + ammoniaPercentage +
+		waterVaporPercentage + nitrogenDioxidePercentage + otherGasesPercentage;
+}
+void AtmosphericComposition::normalize() {
+	float total = getTotalPercentage();
+	if (total == 0.0f) return; // Avoid division by zero
+	nitrogenPercentage = (nitrogenPercentage / total) * 100.0f;
+	oxygenPercentage = (oxygenPercentage / total) * 100.0f;
+	carbonDioxidePercentage = (carbonDioxidePercentage / total) * 100.0f;
+	methanePercentage = (methanePercentage / total) * 100.0f;
+	sulfurDioxidePercentage = (sulfurDioxidePercentage / total) * 100.0f;
+	ammoniaPercentage = (ammoniaPercentage / total) * 100.0f;
+	waterVaporPercentage = (waterVaporPercentage / total) * 100.0f;
+	nitrogenDioxidePercentage = (nitrogenDioxidePercentage / total) * 100.0f;
+	otherGasesPercentage = (otherGasesPercentage / total) * 100.0f;
+}
+
 void PlanetaryParameters::initializeEarthLike() {
 	rotationSpeed = 1.0f;
 	progradeRotation = true;
@@ -11,9 +31,16 @@ void PlanetaryParameters::initializeEarthLike() {
 	atmosphere.nitrogenPercentage = 78.0f;
 	atmosphere.oxygenPercentage = 21.0f;
 	atmosphere.carbonDioxidePercentage = 0.04f;
-	atmosphere.otherGasesPercentage = 0.96f;
+	atmosphere.methanePercentage = 0.0002f;
+	atmosphere.sulfurDioxidePercentage = 0.0f;
+	atmosphere.ammoniaPercentage = 0.0f;
+	atmosphere.waterVaporPercentage = 0.4f;
+	atmosphere.nitrogenDioxidePercentage = 0.0f;
+	atmosphere.otherGasesPercentage = 0.5598f;
 	atmosphere.totalPressure = 1.0f;
+	atmosphere.normalize();
 }
+
 void PlanetaryParameters::initializeMarsLike() {
 	rotationSpeed = 0.97f;
 	progradeRotation = true;
@@ -21,11 +48,17 @@ void PlanetaryParameters::initializeMarsLike() {
 	equatorToPoleTemp = 40.0f;
 	greenhouseEffectFactor = 0.5f;
 	atmosphereHeight = 11.1f;
-	atmosphere.nitrogenPercentage = 95.0f;
+	atmosphere.nitrogenPercentage = 2.7f;
 	atmosphere.oxygenPercentage = 0.13f;
-	atmosphere.carbonDioxidePercentage = 2.7f;
-	atmosphere.otherGasesPercentage = 2.17f;
+	atmosphere.carbonDioxidePercentage = 95.0f;
+	atmosphere.methanePercentage = 0.0f;
+	atmosphere.sulfurDioxidePercentage = 0.0f;
+	atmosphere.ammoniaPercentage = 0.0f;
+	atmosphere.waterVaporPercentage = 0.03f;
+	atmosphere.nitrogenDioxidePercentage = 0.0f;
+	atmosphere.otherGasesPercentage = 2.14f;
 	atmosphere.totalPressure = 0.006f;
+	atmosphere.normalize();
 }
 
 void PlanetaryParameters::initialize() {
@@ -33,23 +66,78 @@ void PlanetaryParameters::initialize() {
 	progradeRotation = (rand() % 2 == 0);
 	axialTilt = RandomBetween(12.0f, 40.0f);
 	equatorToPoleTemp = calculateTemperatureGradient();
+	// Generate atmospheric pressure first
+	atmosphere.totalPressure = RandomBetween(0.1f, 3.0f); // in atm
 
-	// Generate atmospheric composition
-	atmosphere.totalPressure = RandomBetween(0.7f, 1.8f); // in atm
-	atmosphere.nitrogenPercentage = RandomBetween(50.0f, 90.0f);
-	atmosphere.oxygenPercentage = RandomBetween(10.0f, 30.0f);
-	atmosphere.carbonDioxidePercentage = RandomBetween(0.01f, 5.0f);
-	atmosphere.otherGasesPercentage = 100.0f - (atmosphere.nitrogenPercentage + atmosphere.oxygenPercentage + atmosphere.carbonDioxidePercentage);
+	// Decide on atmosphere type randomly
+	int atmosphereType = RandomBetween(0.0f, 100.0f);
+
+	if (atmosphereType < 55) {
+		// Earth-like atmosphere (N2/O2 dominant)
+		atmosphere.nitrogenPercentage = RandomBetween(60.0f, 85.0f);
+		atmosphere.oxygenPercentage = RandomBetween(15.0f, 30.0f);
+		atmosphere.carbonDioxidePercentage = RandomBetween(0.01f, 2.0f);
+		atmosphere.methanePercentage = RandomBetween(0.0f, 0.5f);
+		atmosphere.sulfurDioxidePercentage = RandomBetween(0.0f, 0.01f);
+		atmosphere.ammoniaPercentage = RandomBetween(0.0f, 0.01f);
+		atmosphere.waterVaporPercentage = RandomBetween(0.1f, 3.0f);
+		atmosphere.nitrogenDioxidePercentage = RandomBetween(0.0f, 0.01f);
+		atmosphere.otherGasesPercentage = 1.0f; // Will be normalized
+	}
+	else if (atmosphereType < 70) {
+		// CO2-rich atmosphere (Mars/Venus-like)
+		atmosphere.carbonDioxidePercentage = RandomBetween(70.0f, 98.0f);
+		atmosphere.nitrogenPercentage = RandomBetween(2.0f, 20.0f);
+		atmosphere.oxygenPercentage = RandomBetween(0.0f, 1.0f);
+		atmosphere.methanePercentage = RandomBetween(0.0f, 0.1f);
+		atmosphere.sulfurDioxidePercentage = RandomBetween(0.0f, 0.5f);
+		atmosphere.ammoniaPercentage = RandomBetween(0.0f, 0.1f);
+		atmosphere.waterVaporPercentage = RandomBetween(0.0f, 0.5f);
+		atmosphere.nitrogenDioxidePercentage = RandomBetween(0.0f, 0.1f);
+		atmosphere.otherGasesPercentage = 1.0f;
+	}
+	else if (atmosphereType < 85) {
+		// Methane-rich atmosphere (Titan-like)
+		atmosphere.nitrogenPercentage = RandomBetween(80.0f, 95.0f);
+		atmosphere.methanePercentage = RandomBetween(3.0f, 15.0f);
+		atmosphere.oxygenPercentage = RandomBetween(0.0f, 0.5f);
+		atmosphere.carbonDioxidePercentage = RandomBetween(0.0f, 0.5f);
+		atmosphere.sulfurDioxidePercentage = RandomBetween(0.0f, 0.1f);
+		atmosphere.ammoniaPercentage = RandomBetween(0.0f, 1.0f);
+		atmosphere.waterVaporPercentage = RandomBetween(0.0f, 0.5f);
+		atmosphere.nitrogenDioxidePercentage = RandomBetween(0.0f, 0.1f);
+		atmosphere.otherGasesPercentage = 1.0f;
+	}
+	else {
+		// Exotic/toxic atmosphere
+		atmosphere.nitrogenPercentage = RandomBetween(20.0f, 60.0f);
+		atmosphere.oxygenPercentage = RandomBetween(0.0f, 10.0f);
+		atmosphere.carbonDioxidePercentage = RandomBetween(5.0f, 30.0f);
+		atmosphere.methanePercentage = RandomBetween(0.0f, 10.0f);
+		atmosphere.sulfurDioxidePercentage = RandomBetween(0.5f, 5.0f);
+		atmosphere.ammoniaPercentage = RandomBetween(0.0f, 10.0f);
+		atmosphere.waterVaporPercentage = RandomBetween(0.0f, 5.0f);
+		atmosphere.nitrogenDioxidePercentage = RandomBetween(0.5f, 5.0f);
+		atmosphere.otherGasesPercentage = RandomBetween(5.0f, 20.0f);
+	}
+
+	// Normalize to ensure sum is exactly 100%
+	atmosphere.normalize();
 
 	greenhouseEffectFactor = greenhouseEffect();
 	atmosphereHeight = calculateAtmosphereHeight();
 }
 
+
 float PlanetaryParameters::greenhouseEffect()
 {
-	// Simplified greenhouse effect calculation
+	// Greenhouse effect calculation based on gas composition
 	float ghEffect = (atmosphere.carbonDioxidePercentage * 0.5f +
-		atmosphere.otherGasesPercentage * 0.2f);
+		atmosphere.methanePercentage * 0.8f +
+		atmosphere.waterVaporPercentage * 0.3f +
+		atmosphere.nitrogenDioxidePercentage * 0.4f +
+		atmosphere.sulfurDioxidePercentage * 0.2f +
+		atmosphere.otherGasesPercentage * 0.1f);
 
 	// Clamp to reasonable range (Earth: ~33°C boost, Venus: ~500°C boost)
 	ghEffect = clamp(ghEffect, 0.0f, 100.0f);
@@ -59,9 +147,14 @@ float PlanetaryParameters::greenhouseEffect()
 float PlanetaryParameters::calculateAtmosphereHeight()
 {
 	// Simplified atmosphere height calculation based on composition and pressure
-	float height = (atmosphere.totalPressure * 100.0f) / 
-		(atmosphere.nitrogenPercentage * 0.78f + atmosphere.oxygenPercentage * 0.21f);
-	return height;
+	float baseHeight = (atmosphere.totalPressure * 100.0f) /
+		(atmosphere.nitrogenPercentage * 0.78f + atmosphere.oxygenPercentage * 0.21f + 0.01f);
+
+	// Lighter gases extend atmosphere higher
+	float methaneEffect = atmosphere.methanePercentage * 5.0f;
+	float ammoniaEffect = atmosphere.ammoniaPercentage * 4.0f;
+
+	return baseHeight + methaneEffect + ammoniaEffect;
 }
 float PlanetaryParameters::calculateTemperatureGradient()
 {
@@ -295,3 +388,114 @@ std::vector<float> PlanetaryParameters::calculateWindStrengths(const std::vector
 	return strengths;
 }
 
+sf::Color PlanetaryParameters::getAtmosphereColor(float timeOfDay) const
+{
+	// Base colors for different gas compositions
+	sf::Color nitrogenOxygenColor(135, 206, 235); // Sky blue (Rayleigh scattering)
+	sf::Color carbonDioxideColor(210, 180, 140); // Tan/butterscotch
+	sf::Color methaneColor(80, 200, 200); // Cyan/turquoise
+	sf::Color sulfurDioxideColor(255, 230, 120); // Pale yellow
+	sf::Color ammoniaColor(240, 240, 220); // Off-white/cream
+	sf::Color waterVaporColor(220, 220, 220); // White haze
+	sf::Color nitrogenDioxideColor(180, 100, 60); // Reddish-brown
+	sf::Color thinAtmosphereColor(25, 25, 40); // Near-black
+	sf::Color denseAtmosphereColor(200, 200, 190); // Pale yellowish-white
+
+	// Calculate atmospheric density factor
+	float densityFactor = clamp(atmosphere.totalPressure / 1.0f, 0.0f, 5.0f);
+
+	// Calculate scattering strengths (normalized by total percentage)
+	float rayleighStrength = (atmosphere.nitrogenPercentage + atmosphere.oxygenPercentage) / 100.0f;
+	rayleighStrength *= densityFactor;
+	rayleighStrength = clamp(rayleighStrength, 0.0f, 1.0f);
+
+	float co2Strength = (atmosphere.carbonDioxidePercentage / 100.0f) * densityFactor;
+	co2Strength = clamp(co2Strength, 0.0f, 1.0f);
+
+	float methaneStrength = (atmosphere.methanePercentage / 100.0f) * densityFactor * 1.5f; // Methane is visually prominent
+	methaneStrength = clamp(methaneStrength, 0.0f, 1.0f);
+
+	float so2Strength = (atmosphere.sulfurDioxidePercentage / 100.0f) * densityFactor * 2.0f; // Very visible
+	so2Strength = clamp(so2Strength, 0.0f, 1.0f);
+
+	float nh3Strength = (atmosphere.ammoniaPercentage / 100.0f) * densityFactor;
+	nh3Strength = clamp(nh3Strength, 0.0f, 1.0f);
+
+	float h2oStrength = (atmosphere.waterVaporPercentage / 100.0f) * densityFactor;
+	h2oStrength = clamp(h2oStrength, 0.0f, 1.0f);
+
+	float no2Strength = (atmosphere.nitrogenDioxidePercentage / 100.0f) * densityFactor * 2.5f; // Very colored
+	no2Strength = clamp(no2Strength, 0.0f, 1.0f);
+
+	// Weighted color blending
+	float totalWeight = rayleighStrength + co2Strength + methaneStrength +
+		so2Strength + nh3Strength + h2oStrength + no2Strength + 0.0001f;
+
+	sf::Color baseColor;
+	baseColor.r = static_cast<sf::Uint8>(
+		(nitrogenOxygenColor.r * rayleighStrength +
+			carbonDioxideColor.r * co2Strength +
+			methaneColor.r * methaneStrength +
+			sulfurDioxideColor.r * so2Strength +
+			ammoniaColor.r * nh3Strength +
+			waterVaporColor.r * h2oStrength +
+			nitrogenDioxideColor.r * no2Strength) / totalWeight
+		);
+	baseColor.g = static_cast<sf::Uint8>(
+		(nitrogenOxygenColor.g * rayleighStrength +
+			carbonDioxideColor.g * co2Strength +
+			methaneColor.g * methaneStrength +
+			sulfurDioxideColor.g * so2Strength +
+			ammoniaColor.g * nh3Strength +
+			waterVaporColor.g * h2oStrength +
+			nitrogenDioxideColor.g * no2Strength) / totalWeight
+		);
+	baseColor.b = static_cast<sf::Uint8>(
+		(nitrogenOxygenColor.b * rayleighStrength +
+			carbonDioxideColor.b * co2Strength +
+			methaneColor.b * methaneStrength +
+			sulfurDioxideColor.b * so2Strength +
+			ammoniaColor.b * nh3Strength +
+			waterVaporColor.b * h2oStrength +
+			nitrogenDioxideColor.b * no2Strength) / totalWeight
+		);
+
+	// Atmospheric density effects
+	if (atmosphere.totalPressure < 0.1f) {
+		// Very thin atmosphere - blend toward space
+		float thinFactor = atmosphere.totalPressure / 0.1f;
+		baseColor.r = static_cast<sf::Uint8>(baseColor.r * thinFactor + thinAtmosphereColor.r * (1.0f - thinFactor));
+		baseColor.g = static_cast<sf::Uint8>(baseColor.g * thinFactor + thinAtmosphereColor.g * (1.0f - thinFactor));
+		baseColor.b = static_cast<sf::Uint8>(baseColor.b * thinFactor + thinAtmosphereColor.b * (1.0f - thinFactor));
+	}
+	else if (atmosphere.totalPressure > 2.0f) {
+		// Very dense atmosphere - blend toward hazy white
+		float denseFactor = clamp((atmosphere.totalPressure - 2.0f) / 3.0f, 0.0f, 1.0f);
+		baseColor.r = static_cast<sf::Uint8>(baseColor.r * (1.0f - denseFactor) + denseAtmosphereColor.r * denseFactor);
+		baseColor.g = static_cast<sf::Uint8>(baseColor.g * (1.0f - denseFactor) + denseAtmosphereColor.g * denseFactor);
+		baseColor.b = static_cast<sf::Uint8>(baseColor.b * (1.0f - denseFactor) + denseAtmosphereColor.b * denseFactor);
+	}
+
+	// Time of day effects
+	float sunAngle = std::abs(timeOfDay - 0.5f) * 2.0f; // 0 at noon, 1 at midnight
+	float horizonProximity = 1.0f - std::abs(sunAngle - 0.5f) * 2.0f; // Peaks at sunrise/sunset
+	horizonProximity = clamp(horizonProximity, 0.0f, 1.0f);
+
+	// Sunset/sunrise reddening (stronger with more scattering gases)
+	if (atmosphere.totalPressure > 0.1f) {
+		float scatteringFactor = rayleighStrength + co2Strength * 0.5f + methaneStrength * 0.3f;
+		float redShift = horizonProximity * scatteringFactor * 75.0f;
+		baseColor.r = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.r) + static_cast<int>(redShift)));
+		baseColor.g = static_cast<sf::Uint8>(std::max(0, static_cast<int>(baseColor.g) - static_cast<int>(redShift * 0.3f)));
+	}
+
+	// Darkness at night
+	float brightness = 1.0f - (sunAngle * 0.7f);
+	baseColor.r = static_cast<sf::Uint8>(baseColor.r * brightness);
+	baseColor.g = static_cast<sf::Uint8>(baseColor.g * brightness);
+	baseColor.b = static_cast<sf::Uint8>(baseColor.b * brightness);
+
+	baseColor.a = 255; // Full opacity
+
+	return baseColor;
+}

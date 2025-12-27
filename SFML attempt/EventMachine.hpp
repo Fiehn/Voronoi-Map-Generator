@@ -1,6 +1,46 @@
 #pragma once
 #include <future>
 
+// Remember to add PopColormap() after the plot
+void pushTempColormap(const char* plot_id, const char* colormap_name, ImU32* colors, int size, bool colorsHaveChanged)
+{
+    if (colorsHaveChanged)
+    {
+        ImPlot::RemoveColormap(colormap_name);
+    }
+    if (ImPlot::GetColormapIndex(colormap_name) == -1)
+    {
+        ImPlotColormap colormap = ImPlot::AddColormap(colormap_name, colors, size, true);
+    }
+    ImPlot::PushColormap(colormap_name);
+    if (colorsHaveChanged)
+    {
+        ImPlot::BustColorCache(plot_id);
+    }
+}
+// Remember to add PopColormap() after the plot
+void pushTempColormap(const char* plot_id, const char* colormap_name, ImVec4* colors, int size, bool colorsHaveChanged)
+{
+    ImU32* colorsU32 = new ImU32[size];
+    for (int i = 0; i < size; i++)
+    {
+        colorsU32[i] = ImColor(colors[i]);
+    }
+    if (colorsHaveChanged)
+    {
+        ImPlot::RemoveColormap(colormap_name);
+    }
+    if (ImPlot::GetColormapIndex(colormap_name) == -1)
+    {
+        ImPlotColormap colormap = ImPlot::AddColormap(colormap_name, colors, size, true);
+    }
+    ImPlot::PushColormap(colormap_name);
+    if (colorsHaveChanged)
+    {
+        ImPlot::BustColorCache(plot_id);
+    }
+}
+
 static sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
 {
     sf::VertexArray highlight(sf::LinesStrip, map.cells[cell].vertex.size() + 1);
@@ -940,47 +980,184 @@ void planetaryParamsViewer(GlobalWorldObjects& globals, bool& showPlanetaryParam
     }
 	// Atmospheric Parameters
     if (ImGui::CollapsingHeader("Atmospheric Composition", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::BeginTable("AtmosphereComposition", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+        // Prepare data for pie chart - only include gases with >0.01% for visibility
+        std::vector<const char*> gasLabels;
+        std::vector<float> gasData;
+        std::vector<ImU32> gasColors;
+        
+        // Add gases if they have significant percentage
+        if (params.atmosphere.nitrogenPercentage > 0.01f) {
+            gasLabels.push_back("N2");
+            gasData.push_back(params.atmosphere.nitrogenPercentage);
+            gasColors.push_back(ImColor(135, 206, 235)); // Sky blue
+        }
+        if (params.atmosphere.oxygenPercentage > 0.01f) {
+            gasLabels.push_back("O2");
+            gasData.push_back(params.atmosphere.oxygenPercentage);
+            gasColors.push_back(ImColor(100, 255, 100)); // Light green
+        }
+        if (params.atmosphere.carbonDioxidePercentage > 0.01f) {
+            gasLabels.push_back("CO2");
+            gasData.push_back(params.atmosphere.carbonDioxidePercentage);
+            gasColors.push_back(ImColor(210, 180, 140)); // Tan
+        }
+        if (params.atmosphere.methanePercentage > 0.01f) {
+            gasLabels.push_back("CH4");
+            gasData.push_back(params.atmosphere.methanePercentage);
+            gasColors.push_back(ImColor(80, 200, 200)); // Cyan
+        }
+        if (params.atmosphere.sulfurDioxidePercentage > 0.01f) {
+            gasLabels.push_back("SO2");
+            gasData.push_back(params.atmosphere.sulfurDioxidePercentage);
+            gasColors.push_back(ImColor(255, 230, 120)); // Pale yellow
+        }
+        if (params.atmosphere.ammoniaPercentage > 0.01f) {
+            gasLabels.push_back("NH3");
+            gasData.push_back(params.atmosphere.ammoniaPercentage);
+            gasColors.push_back(ImColor(240, 240, 220)); // Off-white
+        }
+        if (params.atmosphere.waterVaporPercentage > 0.01f) {
+            gasLabels.push_back("H2O");
+            gasData.push_back(params.atmosphere.waterVaporPercentage);
+            gasColors.push_back(ImColor(220, 220, 220)); // White
+        }
+        if (params.atmosphere.nitrogenDioxidePercentage > 0.01f) {
+            gasLabels.push_back("NO2");
+            gasData.push_back(params.atmosphere.nitrogenDioxidePercentage);
+            gasColors.push_back(ImColor(180, 100, 60)); // Reddish-brown
+        }
+        if (params.atmosphere.otherGasesPercentage > 0.01f) {
+            gasLabels.push_back("Other");
+            gasData.push_back(params.atmosphere.otherGasesPercentage);
+            gasColors.push_back(ImColor(150, 150, 150)); // Gray
+        }
+
+        // Draw pie chart
+        if (!gasLabels.empty()) {
+            pushTempColormap("AtmosphereComposition", "AtmosphereColormap", gasColors.data(), gasColors.size(), false);
+
+            if (ImPlot::BeginPlot("Gas Composition", ImVec2(-1, 250), ImPlotFlags_Equal)) {
+                ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoDecorations);
+                ImPlot::SetupAxis(ImAxis_Y1, nullptr, ImPlotAxisFlags_NoDecorations);
+                ImPlot::PlotPieChart(gasLabels.data(), gasData.data(), static_cast<int>(gasLabels.size()), 0.5, 0.5, 0.4, "%.2f%%", 90, ImPlotPieChartFlags_Normalize);
+                ImPlot::EndPlot();
+            }
+            ImPlot::PopColormap();
+        }
+
+        // Legend with detailed info - show ALL gases
+        ImGui::Separator();
+        ImGui::Text("Detailed Composition:");
+        ImGui::Spacing();
+
+        ImGui::BeginTable("GasComposition", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
         ImGui::TableSetupColumn("Gas");
         ImGui::TableSetupColumn("Percentage");
         ImGui::TableHeadersRow();
 
+        // All gases with their names and colors
+        struct GasInfo {
+            const char* name;
+            float percentage;
+            ImU32 color;
+        };
+
+        std::vector<GasInfo> allGases = {
+            {"Nitrogen (N2)", params.atmosphere.nitrogenPercentage, ImColor(135, 206, 235)},
+            {"Oxygen (O2)", params.atmosphere.oxygenPercentage, ImColor(100, 255, 100)},
+            {"Carbon Dioxide (CO2)", params.atmosphere.carbonDioxidePercentage, ImColor(210, 180, 140)},
+            {"Methane (CH4)", params.atmosphere.methanePercentage, ImColor(80, 200, 200)},
+            {"Sulfur Dioxide (SO2)", params.atmosphere.sulfurDioxidePercentage, ImColor(255, 230, 120)},
+            {"Ammonia (NH3)", params.atmosphere.ammoniaPercentage, ImColor(240, 240, 220)},
+            {"Water Vapor (H2O)", params.atmosphere.waterVaporPercentage, ImColor(220, 220, 220)},
+            {"Nitrogen Dioxide (NO2)", params.atmosphere.nitrogenDioxidePercentage, ImColor(180, 100, 60)},
+            {"Other Gases", params.atmosphere.otherGasesPercentage, ImColor(150, 150, 150)}
+        };
+
+        for (const auto& gas : allGases) {
+            if (gas.percentage > 0.001f) { // Only show if percentage > 0.001%
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::ColorButton("##gascolor", ImColor(gas.color), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoTooltip);
+                ImGui::SameLine();
+                ImGui::Text("%s", gas.name);
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%.3f%%", gas.percentage);
+            }
+        }
+
+        // Show total pressure
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Total Pressure");
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.5f, 1.0f), "Total Pressure");
         ImGui::TableSetColumnIndex(1);
-        ImGui::Text("%.3f atm", params.atmosphere.totalPressure);
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.5f, 1.0f), "%.3f atm", params.atmosphere.totalPressure);
+
+        ImGui::EndTable();
+    }
+
+    // Skybox Color Visualization
+    if (ImGui::CollapsingHeader("Atmospheric Color (Skybox)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        static float timeOfDay = 0.5f; // 0.0 = midnight, 0.5 = noon, 1.0 = midnight
+
+        ImGui::Text("Time of Day:");
+        ImGui::SliderFloat("##TimeOfDay", &timeOfDay, 0.0f, 1.0f, "%.2f");
         if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
-            ImGui::Text("Earth = 1.0 atm, Mars = 0.006 atm");
+            ImGui::Text("0.0 = Midnight, 0.5 = Noon, 1.0 = Midnight");
             ImGui::EndTooltip();
         }
 
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Nitrogen (N2)");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text("%.2f%%", params.atmosphere.nitrogenPercentage);
+        // Display time labels
+        ImGui::SameLine();
+        float hourOfDay = timeOfDay * 24.0f;
+        ImGui::Text("(%.1f:%.0f)", std::floor(hourOfDay), std::fmod(hourOfDay * 60.0f, 60.0f));
 
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Oxygen (O2)");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text("%.2f%%", params.atmosphere.oxygenPercentage);
+        // Generate color gradient showing sky color throughout the day
+        const int numSamples = 48; // Sample every 30 minutes
+        ImGui::Text("Sky Color Throughout Day:");
 
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Carbon Dioxide (CO2)");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text("%.2f%%", params.atmosphere.carbonDioxidePercentage);
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+        ImVec2 canvas_size = ImVec2(ImGui::GetContentRegionAvail().x, 40);
 
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Other Gases");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text("%.2f%%", params.atmosphere.otherGasesPercentage);
+        // Draw gradient bar
+        for (int i = 0; i < numSamples; i++) {
+            float t = (float)i / (numSamples - 1);
+            sf::Color skyColor = params.getAtmosphereColor(t);
 
-        ImGui::EndTable();
+            ImU32 color = ImColor(skyColor.r, skyColor.g, skyColor.b, skyColor.a);
+
+            ImVec2 p1(canvas_pos.x + (canvas_size.x / numSamples) * i, canvas_pos.y);
+            ImVec2 p2(canvas_pos.x + (canvas_size.x / numSamples) * (i + 1), canvas_pos.y + canvas_size.y);
+
+            draw_list->AddRectFilled(p1, p2, color);
+        }
+
+        // Draw border
+        draw_list->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y),
+            ImColor(255, 255, 255, 128), 0.0f, 0, 1.0f);
+
+        // Draw current time indicator
+        float indicatorX = canvas_pos.x + canvas_size.x * timeOfDay;
+        draw_list->AddLine(ImVec2(indicatorX, canvas_pos.y),
+            ImVec2(indicatorX, canvas_pos.y + canvas_size.y),
+            ImColor(255, 255, 0, 255), 2.0f);
+
+        ImGui::Dummy(canvas_size);
+
+        // Show current sky color
+        ImGui::Spacing();
+        sf::Color currentSkyColor = params.getAtmosphereColor(timeOfDay);
+        ImVec4 currentColor(currentSkyColor.r / 255.0f, currentSkyColor.g / 255.0f,
+            currentSkyColor.b / 255.0f, currentSkyColor.a / 255.0f);
+
+        ImGui::Text("Current Sky Color:");
+        ImGui::SameLine();
+        ImGui::ColorButton("##CurrentSky", currentColor,
+            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoBorder, ImVec2(100, 30));
+        ImGui::SameLine();
+        ImGui::Text("RGB(%d, %d, %d)", currentSkyColor.r, currentSkyColor.g, currentSkyColor.b);
     }
 
 	// Calculated properties
@@ -1243,47 +1420,6 @@ void searchFinder(const vor::Voronoi& map, std::vector<std::size_t>& findingCell
 
     ImGui::End();
 }
-
-// Remember to add PopColormap() after the plot
-void pushTempColormap(const char* plot_id, const char* colormap_name, ImU32* colors, int size, bool colorsHaveChanged)
-{
-	if (colorsHaveChanged)
-	{
-		ImPlot::RemoveColormap(colormap_name);
-	}
-	if (ImPlot::GetColormapIndex(colormap_name) == -1)
-	{
-		ImPlotColormap colormap = ImPlot::AddColormap(colormap_name, colors, size, true);
-	}
-	ImPlot::PushColormap(colormap_name);
-	if (colorsHaveChanged)
-    {
-		ImPlot::BustColorCache(plot_id);
-	}
-}
-// Remember to add PopColormap() after the plot
-void pushTempColormap(const char* plot_id, const char* colormap_name, ImVec4* colors, int size, bool colorsHaveChanged)
-{
-	ImU32* colorsU32 = new ImU32[size];
-    for (int i = 0; i < size; i++)
-    {
-		colorsU32[i] = ImColor(colors[i]);
-    }
-    if (colorsHaveChanged)
-    {
-        ImPlot::RemoveColormap(colormap_name);
-    }
-    if (ImPlot::GetColormapIndex(colormap_name) == -1)
-    {
-        ImPlotColormap colormap = ImPlot::AddColormap(colormap_name, colors, size, true);
-    }
-    ImPlot::PushColormap(colormap_name);
-    if (colorsHaveChanged)
-    {
-        ImPlot::BustColorCache(plot_id);
-    }
-}
-
 
 void biomeCountPieChart(GlobalWorldObjects& globals, bool& colorChange)
 {
