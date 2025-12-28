@@ -625,7 +625,7 @@ void continent_interaction(std::vector<Cell>& map,
             float heightModifier = calculateBoundaryHeightModifier(boundaryType, convergenceRate,
                 mainContinent.getAge(), neighborContinent.getAge());
 
-            heightModifier *= (0.5f * collisionIntensity);
+            heightModifier *= (0.25f * collisionIntensity);
 
             switch (boundaryType)
             {
@@ -829,17 +829,27 @@ void random_height_gen(std::vector<Cell>& map,
         // Active cells that have not been assigned a height yet, should be a queue of some sort
         std::vector<std::size_t> active;
         active.reserve(map.size() - 1);
+		int numOceanContinents = static_cast<int>(config.npeaks * config.oceanic_plate_ratio);
 
         for (int i = 0; i < config.npeaks; i++)
         {
             std::size_t index = rand_long() % map.size();
 
+            
 			// Select if the peak should be oceanic or continental
-            if (RandomBetween(0.0, 1.0) < config.oceanic_plate_ratio)
+            if (RandomBetween(0.0f, 1.0f) < 0.5f)
+            {
+                globals.continents.emplace_back(Continent(i));
+                globals.continents[i].plateType = PlateType::Mixed;
+				map[index].height = normalDistPDF(0.5, 0.2);
+				numOceanContinents--;
+            }
+            if (numOceanContinents > 0)
             {
                 globals.continents.emplace_back(Continent(i));
                 globals.continents[i].plateType = PlateType::Oceanic;
                 map[index].height = normalDistPDF(0.3, 0.1);
+				numOceanContinents--;
             }
             else
             {
@@ -851,7 +861,6 @@ void random_height_gen(std::vector<Cell>& map,
             active.insert(std::end(active), std::begin(map[index].neighbors), std::end(map[index].neighbors));
 
             // Continents
-            globals.continents.emplace_back(Continent(i));
             globals.continents[i].addCell(index);
             map[index].continent = i;
 			globals.continents[i].setCenter(points[index]); // Set the center of the continent to the first cell added
@@ -961,7 +970,14 @@ void random_height_gen(std::vector<Cell>& map,
         }
 		cleanUpContinents(map, globals);
         
+        // Simplex noise overlay
+        simplex_noise_continent(map, globals, config, points);
         rise(map); // calculate the rise of the map with the new height values
+
+		simulateErosion(map, globals, config); // simulate erosion on the height values
+        
+        rise(map); // calculate the rise of the map with the new height values
+
     }
 	else if (config.height_method == 3)
     {

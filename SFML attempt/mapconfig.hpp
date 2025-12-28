@@ -33,7 +33,7 @@ public:
 	float continental_crust_thickness = 35.0f; // thickness of continental crust
 	float oceanic_crust_thickness = 7.0f; // thickness of oceanic crust
 	bool enable_erosion = true; // enable erosion simulation
-	int erosion_iterations = 3; // number of erosion simulation iterations
+	int erosion_iterations = 0; // number of erosion simulation iterations
 	float erosion_strength = 0.15f; // strength of erosion effect
 
     // Temperature
