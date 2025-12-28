@@ -29,6 +29,13 @@ public:
     unsigned int height_noise_repeats = 1; // amount of height noise iterations, happens after smoothing
     float delta_coast_line = 0.05f; // the range around sealevel that is considered coast (below and above)
 
+	float oceanic_plate_ratio = 0.5f; // ratio of oceanic plates vs continental plates
+	float continental_crust_thickness = 35.0f; // thickness of continental crust
+	float oceanic_crust_thickness = 7.0f; // thickness of oceanic crust
+	bool enable_erosion = true; // enable erosion simulation
+	int erosion_iterations = 3; // number of erosion simulation iterations
+	float erosion_strength = 0.15f; // strength of erosion effect
+
     // Temperature
     float global_temp_avg = 25.f; // not the actual average but a value that determines the temperature range
     unsigned int temp_smooth_repeats = 2; // amount of temperature smoothing iterations

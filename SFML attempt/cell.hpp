@@ -15,8 +15,8 @@ public:
     std::vector<int> neighbors; // Id's of the neighbors
     unsigned int vertex_offset = 0U; // Offset for the vertex buffer
 
-    float height = 0.f; // Height of the cell, 1 = 8km above sealevel 
-    float rise = 0.f; // Difference in height between the highest and the lowest neighbor cell (0 to 1)
+    float height = 0.f; // Height of the cell (uncapped, sealevel is typically around 0.5)
+    float rise = 0.f; // Difference in height between the highest and the lowest neighbor cell
     float temp = 0.f; // Temperature of the cell (Celsius)
     float windDir = 0.f; // Wind direction (0 to 360 degrees)
     float windStr = 0.f; // Wind strength (0 to 1)

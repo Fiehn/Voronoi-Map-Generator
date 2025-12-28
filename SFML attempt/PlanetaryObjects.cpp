@@ -477,20 +477,45 @@ sf::Color PlanetaryParameters::getAtmosphereColor(float timeOfDay) const
 	}
 
 	// Time of day effects
-	float sunAngle = std::abs(timeOfDay - 0.5f) * 2.0f; // 0 at noon, 1 at midnight
-	float horizonProximity = 1.0f - std::abs(sunAngle - 0.5f) * 2.0f; // Peaks at sunrise/sunset
-	horizonProximity = clamp(horizonProximity, 0.0f, 1.0f);
-
+	// Map timeOfDay (0.0-1.0) to hours (0-24)
+	float hourOfDay = timeOfDay * 24.0f;
+	
+	// Calculate sun elevation angle (simplified - peaks at noon, lowest at midnight)
+	// 0° = horizon (sunrise/sunset), 90° = directly overhead, -90° = midnight
+	float sunElevation = std::sin((timeOfDay - 0.25f) * 2.0f * 3.14159f) * 90.0f;
+	
+	// Calculate horizon proximity with sharp peak
+	// Use exponential falloff for realistic sunset/sunrise duration (~1-2 hours)
+	// Peak occurs when sun is near horizon (elevation near 0°)
+	float horizonDistance = std::abs(sunElevation) / 90.0f; // 0.0 at horizon, 1.0 at zenith/nadir
+	
+	// Sharp Gaussian-like peak centered at horizon
+	// This creates a ~1-2 hour window of peak reddening
+	float horizonSharpness = 8.0f; // Higher = sharper peak
+	float horizonProximity = std::exp(-horizonSharpness * horizonDistance * horizonDistance);
+	
+	// Only apply horizon effects during day (when sun is above horizon)
+	if (sunElevation < 0.0f) {
+		horizonProximity = 0.0f; // No sunset colors at night
+	}
+	
 	// Sunset/sunrise reddening (stronger with more scattering gases)
-	if (atmosphere.totalPressure > 0.1f) {
+	if (atmosphere.totalPressure > 0.1f && horizonProximity > 0.01f) {
 		float scatteringFactor = rayleighStrength + co2Strength * 0.5f + methaneStrength * 0.3f;
-		float redShift = horizonProximity * scatteringFactor * 75.0f;
+		float redShift = horizonProximity * scatteringFactor * 150.0f;
 		baseColor.r = static_cast<sf::Uint8>(std::min(255, static_cast<int>(baseColor.r) + static_cast<int>(redShift)));
 		baseColor.g = static_cast<sf::Uint8>(std::max(0, static_cast<int>(baseColor.g) - static_cast<int>(redShift * 0.3f)));
+		baseColor.b = static_cast<sf::Uint8>(std::max(0, static_cast<int>(baseColor.b) - static_cast<int>(redShift * 0.5f)));
 	}
 
-	// Darkness at night
-	float brightness = 1.0f - (sunAngle * 0.7f);
+	// Darkness at night (smooth transition)
+	// Full brightness when sun > 0°, fade to dark when sun < -18° (astronomical twilight)
+	float brightness = 1.0f;
+	if (sunElevation < 0.0f) {
+		// Transition from full brightness to ~30% over 18° (civil twilight)
+		brightness = clamp(1.0f + (sunElevation / 18.0f) * 0.7f, 0.3f, 1.0f);
+	}
+	
 	baseColor.r = static_cast<sf::Uint8>(baseColor.r * brightness);
 	baseColor.g = static_cast<sf::Uint8>(baseColor.g * brightness);
 	baseColor.b = static_cast<sf::Uint8>(baseColor.b * brightness);

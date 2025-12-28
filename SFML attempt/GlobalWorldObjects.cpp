@@ -13,7 +13,7 @@ void GlobalWorldObjects::setGlobalTreeline(float treeline)
 }
 void GlobalWorldObjects::setSeaLevel(float level)
 {
-	seaLevel = clamp(level, 1.f, 0.f);
+	seaLevel = level;
 	// There needs to be an update of all variables for cells
 }
 void GlobalWorldObjects::setGlobalTemp(float temp)

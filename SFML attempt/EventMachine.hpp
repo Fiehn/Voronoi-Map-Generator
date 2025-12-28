@@ -1,5 +1,6 @@
 #pragma once
 #include <future>
+#include <limits>
 
 // Remember to add PopColormap() after the plot
 void pushTempColormap(const char* plot_id, const char* colormap_name, ImU32* colors, int size, bool colorsHaveChanged)
@@ -109,8 +110,26 @@ static void drawHumidityMap(vor::Voronoi& map, VertexMap& vertexMap)
 
 static void drawHeightMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
+    // Find min/max height for normalization (heights are now uncapped)
+    float minHeight = std::numeric_limits<float>::max();
+    float maxHeight = std::numeric_limits<float>::lowest();
     for (std::size_t i = 0; i < map.cells.size(); i++) {
-        sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + 1.75), 55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+        if (map.cells[i].height < minHeight) minHeight = map.cells[i].height;
+        if (map.cells[i].height > maxHeight) maxHeight = map.cells[i].height;
+    }
+    float heightRange = maxHeight - minHeight;
+    if (heightRange < 0.001f) heightRange = 1.0f; // Prevent division by zero
+
+    for (std::size_t i = 0; i < map.cells.size(); i++) {
+        // Normalize height to [0, 1] for display purposes
+        float normalizedHeight = (map.cells[i].height - minHeight) / heightRange;
+        sf::Uint8 alpha = static_cast<sf::Uint8>(55 + 200 * normalizedHeight);
+        sf::Color color(
+            static_cast<sf::Uint8>(128 * (1 - map.cells[i].oceanBool)),
+            static_cast<sf::Uint8>(255 * (1 - map.cells[i].oceanBool)),
+            static_cast<sf::Uint8>(255 / 3 * (map.cells[i].oceanBool + 1.75)),
+            alpha
+        );
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
             map.vertices[j].color = color;
         }

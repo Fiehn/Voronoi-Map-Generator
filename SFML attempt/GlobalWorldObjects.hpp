@@ -10,7 +10,7 @@ class GlobalWorldObjects; // Forward declaration
 class GlobalWorldObjects
 {
 public:
-	float seaLevel = 0.5f; // The sea level of the world (0 to 1) (1 being the top of the map)
+	float seaLevel = 0.5f; // The sea level threshold for determining ocean/land cells
 	float globalTempAvg = 15.f; // Average temperature of the world, more an abstract value than a real one
 	float globalSnowline = 0.8f; // The line where snow starts to appear on the map (0 to 1) (1 being the top of the map)
 	float globalTreeline = 0.8f; // The line where trees stop appearing on the map (0 to 1) (1 being the top of the map)

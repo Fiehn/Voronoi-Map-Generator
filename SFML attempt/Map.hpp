@@ -79,11 +79,8 @@ void smooth_height(std::vector<Cell>& map, float rise_threshold = 0.1, int repea
                     count_values++;
                 }
 
-                if (height_sum > 0.005) {
+                if (count_values > 0) {
                     map[index].height = height_sum / static_cast<float>(count_values);
-                }
-                else if (map[index].height > 0.5) {
-                    map[index].height = 0.1;
                 }
             }
             // calculate the new rise for next smoothing
@@ -92,124 +89,432 @@ void smooth_height(std::vector<Cell>& map, float rise_threshold = 0.1, int repea
     }
 }
 
-void continent_generation(std::vector<Cell>& map, GlobalWorldObjects& globals, MapConfig& config, const std::vector<sf::Vector2f>& voronoi_points)
+//////////
+// Continet Generation
+//////////
+void assignPlateTypes(std::vector<Continent>& continents, const MapConfig& config)
 {
-    // Generate continents
-	globals.continents.reserve(config.npeaks);
-	for (int i = 0; i < config.npeaks; i++)
-	{
-		globals.continents.emplace_back(Continent(i));
-	}
-    // 
-    std::vector<std::vector<std::size_t>> active;
-    active.reserve(config.npeaks);
-    std::vector<bool> assigned(map.size(), false); 
-    std::size_t size = map.size(); 
-    std::size_t assigned_cells = 0; 
+	// Determine amount of oceanic and continental plates
+	int numOceanicPlates = static_cast<int>(continents.size() * config.oceanic_plate_ratio);
+    int numMixedPlates = static_cast<int>(continents.size() * 0.15f);
+	int numContinentalPlates = static_cast<int>(continents.size()) - numOceanicPlates - numMixedPlates;
 
-    std::size_t index = 0;
-    // Assign the first cells to the continents
-    for (int i = 0; i < config.npeaks; i++)
+	// Randomly assign plate types
+	std::vector<int> plateIndices(continents.size());
+	std::iota(plateIndices.begin(), plateIndices.end(), 0);
+	std::shuffle(plateIndices.begin(), plateIndices.end(), std::default_random_engine(static_cast<unsigned int>(time(0))));
+
+    int assignedCount = 0;
+
+    for (int i = 0; i < numOceanicPlates; i++)
     {
-        // Check if the index is already assigned
-        while (assigned[index]) {
-            index = rand_long() % map.size(); // Pick a new random index
-        }
-        active.push_back(std::vector<std::size_t>()); // Add a new queue for the continent
-        
-        globals.continents[i].addCell(index);
-        map[index].continent = i;
-
-        assigned[index] = true; 
-        assigned_cells++; 
-        for (int j = 0; j < map[index].neighbors.size(); j++)
-        {
-            if (assigned[map[index].neighbors[j]] == false)
-            {
-                active[i].push_back(map[index].neighbors[j]); 
-                assigned[map[index].neighbors[j]] = true;
-                assigned_cells++;
-            }
-        }
+		continents[plateIndices[assignedCount]].plateType = PlateType::Oceanic;
+        continents[plateIndices[assignedCount]].crustThickness = RandomBetween(
+            config.oceanic_crust_thickness * 0.8f,
+            config.oceanic_crust_thickness * 1.2f
+        );
+		assignedCount++;
     }
-    // Assign the rest of the cells to the continents
-    while (assigned_cells < size) 
+    for (int i = 0; i < numMixedPlates; i++)
     {
-        std::size_t i = rand_long() % config.npeaks; 
-        if (active[i].empty()) { continue; } 
-        std::size_t index = 0; 
-        index = pop_random_i(active[i]);
-
-        globals.continents[i].addCell(index);
-        map[index].continent = i;
-
-        for (int j = 0; j < map[index].neighbors.size(); j++) 
-        {
-            if (assigned[map[index].neighbors[j]] == false) 
-            { 
-                active[i].push_back(map[index].neighbors[j]); 
-                assigned[map[index].neighbors[j]] = true; 
-                assigned_cells++; 
-            }
-        }
+		continents[plateIndices[assignedCount]].plateType = PlateType::Mixed;
+        continents[plateIndices[assignedCount]].crustThickness = RandomBetween(
+            (config.oceanic_crust_thickness + config.continental_crust_thickness) / 2.0f * 0.8f,
+            (config.oceanic_crust_thickness + config.continental_crust_thickness) / 2.0f * 1.2f
+		);
+		assignedCount++;
     }
-
-    // Direction for continental drift
-    for (int i = 0; i < config.npeaks; i++)
+    for (int i = 0; i < numContinentalPlates; i++)
     {
-        globals.continents[i].setDirection(sf::Vector2f(RandomBetween(-1.0, 1.0), RandomBetween(-1.0, 1.0)));
-        globals.continents[i].setAge(RandomBetween(0.5f, 1.0f));
-        globals.continents[i].finishContinent(voronoi_points, map);
+        continents[plateIndices[assignedCount]].plateType = PlateType::Continental;
+        continents[plateIndices[assignedCount]].crustThickness = RandomBetween(
+            config.continental_crust_thickness * 0.8f,
+            config.continental_crust_thickness * 1.2f
+        );
+        assignedCount++;
     }
-
-	// Assign any straglers to the nearest continent
-	for (std::size_t i = 0; i < map.size(); i++)
-	{
-		if (map[i].continent == -1)
-		{
-			float min_dist = std::numeric_limits<float>::max();
-			int min_index = -1;
-			for (int j = 0; j < config.npeaks; j++)
-			{
-				float dist = distance(voronoi_points[i], globals.continents[j].getCenter());
-				if (dist < min_dist)
-				{
-					min_dist = dist;
-					min_index = j;
-				}
-			}
-			map[i].continent = min_index;
-			globals.continents[min_index].addCell(i);
-		}
-	}
-
-	// Calculate the height of the continents
-	for (int i = 0; i < config.npeaks; i++) 
-	{
-		float height = RandomBetween(0.1, 0.9); 
-		globals.continents[i].setHeight(height); 
-	}
-
-    // ensure that at least 1/3 of the continents are above 0.5
-    int count = 0;
-    for (int i = 0; i < config.npeaks; i++) 
-    {
-        if (globals.continents[i].getHeight() > 0.5) { count++; }
-    }
-    if (count < config.npeaks / 4)
-    {
-        for (int i = 0; i < static_cast<int>(config.npeaks / 4); i++)
-        {
-            if (globals.continents[i].getHeight() < 0.5) { globals.continents[i].setHeight(normalDistPDF(0.5f,0.2f)); }
-        }
-    }
-
 }
 
-void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals, int mapGenMode = 3)
+void setBaseElevations(std::vector<Cell>& map, GlobalWorldObjects& globals)
 {
-    /// TODO: There is a problem with directions not leading to correct height additions..
-	// Get the interactions between the continents
+	// Set for each cell based on its continent
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+		int continentId = map[i].continent;
+        if (continentId >= 0 && continentId < globals.continents.size())
+        {
+            Continent& continent = globals.continents[continentId];
+
+            float baseHeight = 0.0f;
+
+            switch (continent.plateType)
+            {
+            case PlateType::Oceanic:
+            {
+                // Ocean floor: normal distribution around -0.4 (deep ocean)
+                baseHeight = normalDistPDF(-0.4f, 0.15f);
+                baseHeight += continent.getIsostaticHeight();
+                // Don't clamp here - allow deep trenches!
+                break;
+            }
+
+            case PlateType::Continental:
+            {
+                // Continental: normal distribution around 0.5
+                baseHeight = normalDistPDF(0.5f, 0.2f);
+                baseHeight += continent.getIsostaticHeight();
+                // Don't clamp here - allow high plateaus!
+                break;
+            }
+
+            case PlateType::Mixed:
+            {
+                // Mixed plates: bimodal
+                if (RandomBetween(0.0f, 1.0f) < 0.6f) {
+                    baseHeight = normalDistPDF(-0.15f, 0.1f);
+                }
+                else {
+                    baseHeight = normalDistPDF(0.2f, 0.12f);
+                }
+                baseHeight += continent.getIsostaticHeight();
+                break;
+            }
+            }
+            float microVariation = normalDistPDF(0.0f, 0.02f);
+            map[i].height = baseHeight + microVariation;
+        }
+    }
+}
+
+BoundaryType determineBoundaryType(const Continent& continentA, 
+    const Continent& continentB, float dotProduct)
+{
+    bool converging = dotProduct < -0.2f;
+	bool diverging = dotProduct > 0.6f;
+	bool transform = std::abs(dotProduct + 0.7f) < 0.3f;
+    if (transform) {
+		return BoundaryType::Transform;
+    }
+    if (converging) {
+        // Both continental = Himalayan collision
+        if (continentA.plateType == PlateType::Continental &&
+            continentB.plateType == PlateType::Continental) {
+            return BoundaryType::ContinentalCollision;
+        }
+
+        // Mixed plate interactions
+        if (continentA.plateType == PlateType::Mixed ||
+            continentB.plateType == PlateType::Mixed) {
+            // Mixed plates generally subduct like oceanic due to higher density
+            return BoundaryType::Subduction;
+        }
+
+        // One oceanic, one continental (or at least one oceanic)
+        return BoundaryType::Subduction;
+    }
+
+    if (diverging) {
+        // Both oceanic = mid-ocean ridge
+        if (continentA.plateType == PlateType::Oceanic &&
+            continentB.plateType == PlateType::Oceanic) {
+            return BoundaryType::OceanicRift;
+        }
+
+        // Mixed plate rifting creates island chains
+        if (continentA.plateType == PlateType::Mixed ||
+            continentB.plateType == PlateType::Mixed) {
+            return BoundaryType::OceanicRift;
+        }
+
+        // Continental rifting
+        if (continentA.plateType == PlateType::Continental &&
+            continentB.plateType == PlateType::Continental) {
+            return BoundaryType::ContinentalRift;
+        }
+
+        // Default to oceanic rift for mixed cases
+        return BoundaryType::OceanicRift;
+    }
+
+    return BoundaryType::None;
+}
+float calculateBoundaryHeightModifier(BoundaryType boundaryType,
+    float dotProduct,
+    float continent1Age,
+    float continent2Age)
+{
+	float ageFactor = (continent1Age + continent2Age) / 2.0f;
+    switch (boundaryType)
+    {
+    case BoundaryType::ContinentalCollision:
+        return RandomBetween(0.3f, 0.6f) * ageFactor * std::abs(dotProduct);
+    case BoundaryType::Subduction:
+        return RandomBetween(0.2f, 0.4f) * ageFactor * std::abs(dotProduct);
+    case BoundaryType::OceanicRift:
+        return -RandomBetween(0.1f, 0.2f) * ageFactor;
+    case BoundaryType::ContinentalRift:
+        return -RandomBetween(0.05f, 0.15f) * ageFactor;
+    case BoundaryType::Transform:
+        return RandomBetween(-0.05f, 0.05f);
+    default:
+        return 0.0f;
+    }
+}
+
+void simulateErosion(std::vector<Cell>& map, GlobalWorldObjects& globals, const MapConfig& config)
+{
+    if (!config.enable_erosion) {
+        return;
+	}
+    for (int iteration = 0; iteration < config.erosion_iterations; iteration++)
+    {
+        std::vector<float> heightDeltas(map.size(), 0.0f);
+        for (std::size_t i = 0; i < map.size(); i++) {
+            float erosionRate = 0.0f;
+			// Apply erosion based on height above sea level (relative to seaLevel)
+            float heightAboveSeaLevel = map[i].height - globals.seaLevel;
+            if (heightAboveSeaLevel > 0.1f) {
+				erosionRate = heightAboveSeaLevel * config.erosion_strength;
+            }
+			// Apply erosion based on rise (steepness)
+            erosionRate += map[i].rise * config.erosion_strength * 0.5f;
+			// distribute erosion to neighbors
+			float totalHeightDiff = 0.0f;
+			std::vector<float> heightDiffs(map[i].neighbors.size());
+            for (std::size_t j = 0; j < map[i].neighbors.size(); j++)
+            {
+				int neighborIdx = map[i].neighbors[j];
+				float diff = map[i].height - map[neighborIdx].height;
+                if (diff > 0) {
+                    heightDiffs[j] = diff;
+                    totalHeightDiff += diff;
+                }
+            }
+			// remove from current cell and distribute
+            heightDeltas[i] -= erosionRate;
+            if (totalHeightDiff > 0.001f) {
+				float sediment = erosionRate * 0.7f; // 30% of eroded material is lost
+                for (std::size_t j = 0; j < map[i].neighbors.size(); j++)
+                {
+                    int neighborIdx = map[i].neighbors[j];
+                    float proportion = heightDiffs[j] / totalHeightDiff;
+                    heightDeltas[neighborIdx] += sediment * proportion;
+                }
+            }
+        }
+        // Apply height deltas (no floor - allow negative heights for deep trenches)
+        for (std::size_t i = 0; i < map.size(); i++) {
+            map[i].height += heightDeltas[i];
+        }
+
+		rise(map); // Recalculate rise after erosion
+    }
+}
+
+void continent_generation(std::vector<Cell>& map, GlobalWorldObjects& globals, MapConfig& config, const std::vector<sf::Vector2f>& voronoi_points)
+{
+	// reserve space for continents
+	globals.continents.reserve(config.npeaks);
+    for (int i = 0; i < config.npeaks; i++)
+    {
+        globals.continents.emplace_back(Continent(i));
+    }
+	// Prepare active queues for continent assignment
+	std::vector<std::vector<std::size_t>> active(config.npeaks);
+    std::vector<bool> assigned(map.size(), false);
+	std::size_t size = map.size();
+    std::size_t assigned_cells = 0;
+
+	// Assign seed cells to each continent
+    for (int i = 0; i < config.npeaks; i++)
+    {
+		std::size_t index = rand_long() % size;
+        while (assigned[index])
+        {
+            index = rand_long() % size;
+        }
+        assigned[index] = true;
+        assigned_cells++;
+        map[index].continent = i;
+        globals.continents[i].addCell(index);
+		active[i].push_back(index);
+
+		// add neighbors to active
+        for (int j = 0; j < map[index].neighbors.size(); j++)
+        {
+			std::size_t neighborIdx = map[index].neighbors[j];
+            if (!assigned[neighborIdx])
+            {
+                active[i].push_back(neighborIdx);
+			}
+        }
+	}
+
+	// Grow continents until all cells are assigned
+    while (assigned_cells < size)
+    {
+		std::size_t continetIdx = rand_long() % config.npeaks;
+        if (active[continetIdx].empty()) {
+            continue;
+        }
+		// Get next cell from the continent's active queue
+        std::size_t cellIdx = pop_random_i(active[continetIdx]);
+        if (assigned[cellIdx]) {
+            continue;
+        }
+        assigned[cellIdx] = true;
+        assigned_cells++;
+        map[cellIdx].continent = continetIdx;
+		globals.continents[continetIdx].addCell(cellIdx);
+        // add neighbors to active
+        for (int j = 0; j < map[cellIdx].neighbors.size(); j++)
+        {
+            std::size_t neighborIdx = map[cellIdx].neighbors[j];
+            if (!assigned[neighborIdx])
+            {
+                active[continetIdx].push_back(neighborIdx);
+            }
+        }
+    }
+	// clean up continents
+    if (assigned_cells != size)
+    {
+        for (std::size_t i = 0; i < map.size(); i++)
+        {
+            if (map[i].continent == -1)
+            {
+                // Find nearest continent by checking neighbors
+                for (std::size_t j = 0; j < map[i].neighbors.size(); j++)
+                {
+                    int neighborContinent = map[map[i].neighbors[j]].continent;
+                    if (neighborContinent != -1)
+                    {
+                        map[i].continent = neighborContinent;
+                        globals.continents[neighborContinent].addCell(i);
+                        break;
+                    }
+                }
+
+                // If still no continent, find closest by distance
+                if (map[i].continent == -1)
+                {
+                    float minDist = std::numeric_limits<float>::max();
+                    int closestContinent = 0;
+
+                    for (int j = 0; j < config.npeaks; j++)
+                    {
+                        float dist = distance(voronoi_points[i], globals.continents[j].getCenter());
+                        if (dist < minDist)
+                        {
+                            minDist = dist;
+                            closestContinent = j;
+                        }
+                    }
+
+                    map[i].continent = closestContinent;
+                    globals.continents[closestContinent].addCell(i);
+                }
+            }
+        }
+    }
+    // Create the plates
+    for (int i = 0; i < config.npeaks; i++)
+    {
+        globals.continents[i].setDirection(sf::Vector2f(
+            RandomBetween(-1.0f, 1.0f),
+            RandomBetween(-1.0f, 1.0f)
+		));
+		globals.continents[i].setAge(RandomBetween(0.5f, 1.0f)); // Age in billions of years
+		globals.continents[i].finishContinent(voronoi_points, map);
+
+		globals.continents[i].setHeight(RandomBetween(0.3f, 0.7f)); // Initial height (is replaced later)
+	}
+}
+
+
+void propagateTerrainFeatures(std::vector<Cell>& map,
+    GlobalWorldObjects& globals,
+    std::size_t startCellIndex,
+    float heightIncrease,
+    bool volcanicActivity,
+    BoundaryType boundaryType,
+    int propagation_depth)
+{
+    int continentId = map[startCellIndex].continent;
+    if (continentId < 0 || continentId >= globals.continents.size()) {
+        return;
+    }
+    // determined propagation depth based on boundary type and continent age
+    int propagationDepthAd = 0;
+    float propagationStrength = 0.0f;
+    switch (boundaryType)
+    {
+    case BoundaryType::ContinentalCollision:
+        propagationDepthAd = static_cast<int>(3 + 8 * globals.continents[continentId].getAge());
+        propagationStrength = 0.5f;
+        break;
+    case BoundaryType::Subduction:
+        propagationDepthAd = static_cast<int>(2 + 6 * globals.continents[continentId].getAge());
+        propagationStrength = 0.3f;
+        break;
+    case BoundaryType::OceanicRift:
+        propagationDepthAd = static_cast<int>(1 + 5 * globals.continents[continentId].getAge());
+        propagationStrength = 0.2f;
+        break;
+    case BoundaryType::ContinentalRift:
+        propagationDepthAd = static_cast<int>(1 + 5 * globals.continents[continentId].getAge());
+        propagationStrength = 0.1f;
+        break;
+    case BoundaryType::Transform:
+        propagationDepthAd = 1;
+        propagationStrength = 0.05f;
+        break;
+    default:
+        return;
+    }
+    int propagationDepth = propagation_depth * propagationDepthAd;
+
+    // BFS propagation
+    std::vector<std::size_t> visited(map.size(), false);
+    visited[startCellIndex] = true;
+
+    Queue<std::pair<std::size_t, int>> propagationQ;
+    propagationQ.push(std::make_pair(startCellIndex, 0));
+    while (!propagationQ.empty())
+    {
+        auto [currentCellIndex, depth] = propagationQ.pop_front();
+        if (depth >= propagationDepth) {
+            continue;
+        }
+        // calculate falloff with distance
+        float distanceFactor = 1.0f - (static_cast<float>(depth) / static_cast<float>(propagationDepth));
+        float propagationIncrease = heightIncrease * propagationStrength * distanceFactor;
+        // add to neighbors on the same continent
+        for (std::size_t neighborIdx : map[currentCellIndex].neighbors)
+        {
+            if (!visited[neighborIdx] && map[neighborIdx].continent == continentId)
+            {
+                visited[neighborIdx] = true;
+                map[neighborIdx].height += propagationIncrease;
+                if (volcanicActivity && RandomBetween(0.0f, 1.0f) < 0.3f * distanceFactor)
+                {
+                    map[neighborIdx].volcanicActivity = true;
+                    map[neighborIdx].height = map[neighborIdx].height + RandomBetween(0.05f, 0.1f) * distanceFactor;
+                }
+                propagationQ.push(std::make_pair(neighborIdx, depth + 1));
+            }
+        }
+    }
+}
+
+void continent_interaction(std::vector<Cell>& map, 
+    GlobalWorldObjects& globals,
+    const std::vector<sf::Vector2f>& cellPositions,
+    int mapGenMode = 3,
+    int propagation_depth = 1
+    )
+{
+    // Get the interactions between the continents
     /*
     1. Determine boundry cells
     2. Get direction similarity to neighbors and add height
@@ -219,6 +524,7 @@ void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals, 
     for (std::size_t cellIndex = 0; cellIndex < map.size(); cellIndex++)
     {
         Cell& cell = map[cellIndex];
+        int mainContinentId = cell.continent;
 
         bool isBoundry = false;
         std::vector<int> neighboringContinents;
@@ -228,7 +534,7 @@ void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals, 
             if (neighborIdx >= 0 && neighborIdx < map.size())
             {
                 int neighborContinent = map[neighborIdx].continent;
-                if (neighborContinent != cell.continent 
+                if (neighborContinent != cell.continent
                     && std::find(neighboringContinents.begin(), neighboringContinents.end(), neighborContinent) == neighboringContinents.end())
                 {
                     neighboringContinents.push_back(neighborContinent);
@@ -238,181 +544,172 @@ void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals, 
         }
         if (!isBoundry)
         {
-            if (mapGenMode == 3)
-            {
-                cell.height = globals.continents[cell.continent].getHeight();
-                continue; // If not a boundry
-            }            
+            continue;
         }
+        // add to the boundry list of the main continent
+        globals.continents[mainContinentId].addBoundryCell(cellIndex);
 
-        float heightIncrease = 0.0f;
-        bool volcanicActivity = false;
-        bool isRift = false;
-        bool isTransformBoundry = false;
-        if (isBoundry)
+        Continent& mainContinent = globals.continents[mainContinentId];
+        sf::Vector2f mainDirection = mainContinent.getDirection();
+
+        float totalHeightIncrease = 0.0f;
+        bool hasVolcanicActivity = false;
+        BoundaryType dominantBoundaryType = BoundaryType::None;
+
+        for (int neighborContinentId : neighboringContinents)
         {
-            // add to the boundry list of the continent
-            globals.continents[cell.continent].addBoundryCell(cellIndex);
+            Continent& neighborContinent = globals.continents[neighborContinentId];
+            sf::Vector2f neighborDirection = neighborContinent.getDirection();
 
-            sf::Vector2f mainDirection = globals.continents[cell.continent].getDirection();
-            float mainHeight = globals.continents[cell.continent].getHeight();
-            if (mapGenMode != 3) { mainHeight = map[cellIndex].height; } // Use the cell height instead of the continent height  }
+            // Calculate boundary normal
+            sf::Vector2f cellPos = cellPositions[cellIndex];
+            sf::Vector2f mainCenter = mainContinent.getCenter();
+            sf::Vector2f neighborCenter = neighborContinent.getCenter();
 
-            bool isMainOcean = mainHeight < globals.seaLevel;
+			// Boundary normal poins from main continent to neighbor continent
+			sf::Vector2f boundaryNormal = neighborCenter - mainCenter;
+			float normalMagnitude = std::sqrt(boundaryNormal.x * boundaryNormal.x + boundaryNormal.y * boundaryNormal.y);
+			if (normalMagnitude < 0.001f) { 
+                continue; 
+			}
+			boundaryNormal.x /= normalMagnitude;
+			boundaryNormal.y /= normalMagnitude;
 
-            for (int neighborContinent : neighboringContinents)
-            {
-                sf::Vector2f neighborDirection = globals.continents[neighborContinent].getDirection();
-                float neighborHeight = globals.continents[neighborContinent].getHeight();
-                if (mapGenMode != 3) { mainHeight = map[cellIndex].height; }
-                bool isNeighborOcean = neighborHeight < globals.seaLevel;
+			// Calculate relative motion vectors
+			sf::Vector2f relativeVelocity = mainDirection - neighborDirection;
 
-                // Calculate dotproduct for Direction similarity (also normalize)
-                float mainMagnitude = std::sqrt(mainDirection.x * mainDirection.x + mainDirection.y * mainDirection.y);  
-                float neighborMagnitude = std::sqrt(neighborDirection.x * neighborDirection.x + neighborDirection.y * neighborDirection.y);  
-                
-                if (mainMagnitude > 0.001f && neighborMagnitude > 0.001f) 
-                {
-                    sf::Vector2f mainNormalized(mainDirection.x / mainMagnitude, mainDirection.y / mainMagnitude); 
-                    sf::Vector2f neighborNormalized(neighborDirection.x / neighborMagnitude, neighborDirection.y / neighborMagnitude); 
+			// Project relative velocity onto boundary normal
+			// Positive = converging, Negative = diverging, Zero = transform
+			float convergenceRate = relativeVelocity.x * boundaryNormal.x + relativeVelocity.y * boundaryNormal.y;
+			float tangentialRate = std::abs(relativeVelocity.x * (-boundaryNormal.y) + relativeVelocity.y * boundaryNormal.x);
 
-                    // Calculate dot product
-                    float dotProduct = mainNormalized.x * neighborNormalized.x + mainNormalized.y * neighborNormalized.y; 
+            // Determine boundary type
+			BoundaryType boundaryType;
 
-                    // (-1,1) : -1 is directly diverging and 1 parralel and 0 means converging
-                    if (dotProduct < -0.7f)  // Transform fault boundaries (parallel but opposite directions)
-                    { 
-                        isTransformBoundry = true;
-                        heightIncrease += RandomBetween(-0.05f, 0.05f);
-                        if (RandomBetween(0.0f, 1.0f) < 0.1f) {
-                            volcanicActivity = true;
-                        }
-                    }
-                    else if (std::abs(dotProduct) > 0.25f) // Convergent or divergent boundries
-                    {
-
-                        bool isConverging = dotProduct < 0;  // Negative dot product suggests opposite directions
-                        
-                        float impactFactor = isConverging ? -dotProduct : dotProduct * 0.5;  // Less impact for diverging
-
-                        if (isMainOcean != isNeighborOcean)  // Ocean-continent boundary
-                        {
-                            float baseIncrease = 0.1f * impactFactor;
-
-                            // Oceanic plate subducts under terrestrial
-                            if (isMainOcean)
-                            {
-                                heightIncrease += baseIncrease * 0.5f;
-
-                                if (RandomBetween(0.0f, 1.0f) < 0.7f * std::abs(dotProduct))
-                                {
-                                    volcanicActivity = true;
-                                }
-                            }
-                            else
-                            {
-                                // Neighbor is oceanic and subducts
-                                heightIncrease += baseIncrease * 1.0f;
-                                if (RandomBetween(0.0f, 1.0f) < 0.85f * std::abs(dotProduct))
-                                {
-                                    volcanicActivity = true;
-                                }
-                            }
-                        }
-                        else if (!isMainOcean && !isNeighborOcean) // Continent continent
-                        {
-                            float plateHeightFactor = (mainHeight + neighborHeight) / 2.0f;
-                            heightIncrease += impactFactor * 0.2f * plateHeightFactor; // adjust here! the 0.4f
-                            // Some volcanic activity in continental collisions
-                            if (RandomBetween(0.0f, 1.0f) < 0.4f * std::abs(dotProduct)) {
-                                volcanicActivity = true;
-                            }
-                        }
-                        else // Ocean-ocean boundary
-                        {
-                            // Oceanic collision: island arcs, high volcanic activity
-                            heightIncrease += dotProduct * 0.25f; // Less dramatic height increase
-
-                            // Very high chance of volcanic activity
-                            if (RandomBetween(0.0f, 1.0f) < 0.9f * std::abs(dotProduct)) {
-                                volcanicActivity = true;
-                            }
-                        }                        
-                    }
-                    else {
-                        // Plates moving in approximately perpendicular directions
-                        // Minor deformation
-                        heightIncrease += RandomBetween(-0.02f, 0.02f);
-                    }
+			// Transform if tangentialRate is significantly higher than convergenceRate
+			if (tangentialRate > std::abs(convergenceRate) * 1.5f && tangentialRate > 0.2f) {
+				boundaryType = BoundaryType::Transform;
+			}
+            else if (convergenceRate > 0.2f) { // Converging
+                if (mainContinent.plateType == PlateType::Continental &&
+                    neighborContinent.plateType == PlateType::Continental) {
+                    boundaryType = BoundaryType::ContinentalCollision;
+                }
+                else {
+                    boundaryType = BoundaryType::Subduction;
                 }
             }
-        }
-        // Change based on age of continent
-        heightIncrease *= globals.continents[cell.continent].getAge();
-
-        // Height increase:
-		float baseHeight = globals.continents[cell.continent].getHeight();
-        if (mapGenMode != 3) { baseHeight = map[cellIndex].height; }
-        cell.height = std::min(1.0f, baseHeight + heightIncrease); 
-
-		if (volcanicActivity) {
-			cell.volcanicActivity = true;
-            cell.height = std::min(1.0f, cell.height + RandomBetween(0.1f, 0.2f));
-		}
-
-        // Propagation!
-        const int propagationDepth = std::floorf(2 + 5 * globals.continents[cell.continent].getAge()); // How far to spread the mountain effect
-        std::vector<bool> visited(map.size(), false);
-        visited[cellIndex] = true;
-
-        Queue<std::pair<int, int>> propagationQ;
-        propagationQ.push({ cellIndex, 0 });
-
-        while (!propagationQ.empty())
-        {
-            auto [currentIndex, distance] = propagationQ.pop_front();
-
-            if (distance >= propagationDepth)
-            {
-                continue;
-            }
-            
-            float distanceFactor = 1.0f - static_cast<float>(distance) / propagationDepth;
-            float propagationIncrease = 0.0f;
-
-            if (isRift)
-            {
-                propagationIncrease = heightIncrease * distanceFactor * 0.4f;
-            }
-            else if (isTransformBoundry)
-            {
-                propagationIncrease = heightIncrease * distanceFactor * 0.3f;
+            else if (convergenceRate < -0.2f) { // Diverging
+                if (mainContinent.plateType == PlateType::Oceanic &&
+                    neighborContinent.plateType == PlateType::Oceanic) {
+                    boundaryType = BoundaryType::OceanicRift;
+                }
+                else if (mainContinent.plateType == PlateType::Continental &&
+                    neighborContinent.plateType == PlateType::Continental) {
+                    boundaryType = BoundaryType::ContinentalRift;
+                }
+                else {
+                    boundaryType = BoundaryType::OceanicRift;
+                }
             }
             else {
-				propagationIncrease = heightIncrease * distanceFactor * 0.6f;
-            }
-
-            // Add neighbors
-            for (std::size_t neighborIdx : map[currentIndex].neighbors)
-            {
-                if (!visited[neighborIdx] && neighborIdx >= 0 
-                    && neighborIdx < map.size() 
-                    && map[neighborIdx].continent == cell.continent)
-                {
-					visited[neighborIdx] = true;
-					map[neighborIdx].height = std::min(1.0f, map[neighborIdx].height + propagationIncrease);
-
-                    // Propagate Volcanic activity
-                    if (volcanicActivity && RandomBetween(0.0f, 1.0f) < 0.2f * distanceFactor)
-                    {
-						map[neighborIdx].volcanicActivity = true;
-                        map[neighborIdx].height = std::min(1.0f, map[neighborIdx].height + RandomBetween(0.05f, 0.1f) * distanceFactor);
-                    }
-
-					propagationQ.push({ neighborIdx, distance + 1 });
-				}
+                boundaryType = BoundaryType::None;
 			}
+
+            if (dominantBoundaryType == BoundaryType::None)
+            {
+                dominantBoundaryType = boundaryType;
+            }
+            // Calculate height modifier based on boundary type
+            float collisionIntensity = std::min(std::abs(convergenceRate) - 0.2f, 1.0f);
+            float heightModifier = calculateBoundaryHeightModifier(boundaryType, convergenceRate,
+                mainContinent.getAge(), neighborContinent.getAge());
+
+            heightModifier *= (0.5f * collisionIntensity);
+
+            switch (boundaryType)
+            {
+            case BoundaryType::ContinentalCollision:
+            {
+                // Himmalaya style
+                heightModifier += RandomBetween(0.05f, 0.15f) * collisionIntensity;
+                // Higher chance of volcanic activity in younger continents
+                if (mainContinent.getAge() < 0.7f && RandomBetween(0.0f, 1.0f) < 0.3f * collisionIntensity)
+                {
+                    hasVolcanicActivity = true;
+                }
+                break;
+            }
+            case BoundaryType::Subduction:
+            {
+                // Subduction zones like Andes
+                bool isMainOceanic = mainContinent.plateType == PlateType::Oceanic;
+                if (!isMainOceanic)
+                {
+                    // Continent side gets volcanic mountains
+                    heightModifier += RandomBetween(0.08f, 0.18f);
+
+                    // Higher chance of volcanic activity
+                    if (RandomBetween(0.0f, 1.0f) < 0.6f)
+                    {
+                        hasVolcanicActivity = true;
+                    }
+                }
+                else
+                {
+                    // Oceanic side gets deep trenches
+                    heightModifier -= RandomBetween(0.05f, 0.12f);
+                }
+                break;
+            }
+            case BoundaryType::OceanicRift:
+            {
+                // Mid-ocean ridges
+                heightModifier += RandomBetween(0.02f, 0.08f);
+                // moderate volcanic activity
+                if (RandomBetween(0.0f, 1.0f) < 0.3f)
+                {
+                    hasVolcanicActivity = true;
+                }
+                break;
+            }
+            case BoundaryType::ContinentalRift:
+            {
+                // continental rifts valley formation
+                heightModifier -= RandomBetween(0.05f, 0.12f);
+
+                // minor volcanic activity
+                if (RandomBetween(0.0f, 1.0f) < 0.15f)
+                {
+                    hasVolcanicActivity = true;
+                }
+                break;
+            }
+            case BoundaryType::Transform:
+            {
+                // Minor height changes
+                heightModifier += RandomBetween(-0.02f, 0.02f);
+                // slight chance of volcanic activity
+                if (RandomBetween(0.0f, 1.0f) < 0.05f)
+                {
+                    hasVolcanicActivity = true;
+                }
+                break;
+            }
+            default:
+                break;
+            }
+            totalHeightIncrease += heightModifier;
         }
+        // Apply total height increase to the cell - no clamping
+        cell.height += totalHeightIncrease;
+        if (hasVolcanicActivity) {
+            cell.volcanicActivity = true;
+            cell.height += RandomBetween(0.08f, 0.2f); // Allow tall volcanic peaks
+        }
+
+        // Propagation of mountain building effects
+        propagateTerrainFeatures(map, globals, cellIndex, totalHeightIncrease, hasVolcanicActivity,dominantBoundaryType, propagation_depth);
     }
 }
 
@@ -460,29 +757,17 @@ void simplex_noise_continent(std::vector<Cell>& map,
         // convert noise to [0,1]
         noiseValue = (noiseValue + 1.0f) * 0.5f;
 
-        // Apply noise with strength factor and preserve existing height features
-        float originalHeight = map[i].height;
-        // Different noise application based on terrain type
-        if (originalHeight < 0.45f) {
-            // Ocean floor - gentle noise
-            map[i].height += noiseValue * noiseStrength * 0.5f - (noiseStrength * 0.25f);
-        }
-        else if (originalHeight > 0.7f) {
-            // Mountains - stronger noise to create peaks and valleys
-            map[i].height += noiseValue * noiseStrength * 1.2f - (noiseStrength * 0.6f);
-        }
-        else {
-            // Regular terrain - normal noise
-            map[i].height += noiseValue * noiseStrength - (noiseStrength * 0.5f);
-        }
-        // Clamp height to valid range
-        map[i].height = std::max(0.0f, std::min(1.0f, map[i].height));
+        // Keep noise centered around 0 for natural variation
+        noiseValue = noiseValue * 0.5f; // Range: [-0.5, 0.5]
+
+        // Apply noise - no clamping, let heights be natural
+        map[i].height += noiseValue * noiseStrength;
     }
 
 }
 
 // MEthod should be enum or something
-// 1 = k-peaks, 2 = k-peaks continet, 3 = Continental
+// 1 = k-peaks, 2 = k-peaks continet, 3 = Continental, 4 = Continental 2
 // k-point smooth height generator
 // there is a max of RAND_MAX_LONG (about a million cells)
 void random_height_gen(std::vector<Cell>& map,
@@ -510,7 +795,21 @@ void random_height_gen(std::vector<Cell>& map,
         for (int i = 0; i < config.npeaks; i++)
         {
             std::size_t index = rand_long() % map.size();
-            map[index].height = RandomBetween(0.8, 1.0);
+
+			// Select if the peak should be oceanic or continental
+            if (RandomBetween(0.0, 1.0) < config.oceanic_plate_ratio)
+            {
+                globals.continents.emplace_back(Continent(i));
+                globals.continents[i].plateType = PlateType::Oceanic;
+                map[index].height = normalDistPDF(0.3, 0.1);
+            }
+            else
+            {
+                globals.continents.emplace_back(Continent(i));
+                globals.continents[i].plateType = PlateType::Continental;
+                map[index].height = normalDistPDF(0.7, 0.2);
+			}
+
             active.insert(std::end(active), std::begin(map[index].neighbors), std::end(map[index].neighbors));
 
             // Continents
@@ -518,6 +817,10 @@ void random_height_gen(std::vector<Cell>& map,
             globals.continents[i].addCell(index);
             map[index].continent = i;
 			globals.continents[i].setCenter(points[index]); // Set the center of the continent to the first cell added
+
+			globals.continents[i].setAge(RandomBetween(0.5, 0.9));
+			globals.continents[i].setDirection(sf::Vector2f(RandomBetween(-1.0, 1.0), RandomBetween(-1.0, 1.0)));
+			globals.continents[i].setHeight(map[index].height);
 
             // add the actually inserted neighbors into continent
             for (std::size_t neighbor = 0; neighbor < map[index].neighbors.size(); neighbor++)
@@ -533,24 +836,28 @@ void random_height_gen(std::vector<Cell>& map,
 
             float height_sum = 0.0;
             int count_values = 0;
+
+			Cell& cell = map[index];
             for (std::size_t j = 0; j < map[index].neighbors.size(); j++)
             {
+				size_t neighborIdx = map[index].neighbors[j];
                 // small probability of random height increase, THIS is heavily up to tuning for interesting maps
                 // Also should be reconsidered
                 if (RandomBetween(0.0, 1.0) < config.prob_of_island && height_sum < config.dist_from_mainland && count_values > 1)
                 {
-                    map[map[index].neighbors[j]].height = RandomBetween(0.6, 0.9);
-                    active.insert(std::begin(active), std::begin(map[map[index].neighbors[j]].neighbors), std::end(map[map[index].neighbors[j]].neighbors));
+                    map[neighborIdx].height = normalDistPDF(0.7, 0.3);
+                    active.insert(std::begin(active), std::begin(map[neighborIdx].neighbors), std::end(map[neighborIdx].neighbors));
 					
-					for (std::size_t k = 0; k < map[map[index].neighbors[j]].neighbors.size(); k++)
+					for (std::size_t k = 0; k < map[neighborIdx].neighbors.size(); k++)
 					{
-                        globals.continents[map[index].continent].addCell(map[map[index].neighbors[j]].neighbors[k]);
-                        map[map[map[index].neighbors[j]].neighbors[k]].continent = map[index].continent;
+                        globals.continents[map[index].continent].addCell(map[neighborIdx].neighbors[k]);
+                        map[map[neighborIdx].neighbors[k]].continent = map[index].continent;
                     }
                 }
-                if (map[map[index].neighbors[j]].height != 0.f)
+				// check if neighbor has height
+                if (map[neighborIdx].height != 0.f)
                 {
-                    height_sum = height_sum + map[map[index].neighbors[j]].height;
+                    height_sum = height_sum + map[neighborIdx].height;
                     count_values++;
                 }
                 else
@@ -562,13 +869,13 @@ void random_height_gen(std::vector<Cell>& map,
                         active.push_back(map[index].neighbors[j]);
                         // Add the neighbors to the continent as well
                         globals.continents[map[index].continent].addCell(map[index].neighbors[j]);
-						map[map[index].neighbors[j]].continent = map[index].continent;
+						map[neighborIdx].continent = map[index].continent;
                     }
                 }
             }
             if (count_values == 0) { active.push_back(map[index].id); }
             else {
-                map[index].height = clamp((height_sum / count_values) + RandomBetween(-config.delta_max_neg, config.delta_max_pos), 1.0, 0.0);
+                map[index].height = (height_sum / count_values) + RandomBetween(-config.delta_max_neg, config.delta_max_pos);
             }
         }
         // Fill out missing continent values 
@@ -587,30 +894,15 @@ void random_height_gen(std::vector<Cell>& map,
 				}
             }
 		}
-        for (std::size_t i = 0; i < globals.continents.size(); i++)
-        {
-            std::vector<std::size_t> cells = globals.continents[i].getCells();
-            double sum_height = 0;
-            for (auto cell : cells)
-			{
-				if (cell > map.size()) { throw std::out_of_range("Cell index out of range"); }
-
-                sum_height += map[cell].height;
-            }
-			globals.continents[i].setHeight(sum_height / static_cast<double>(cells.size()));
-
-            globals.continents[i].setAge(RandomBetween(0.5, 0.9));
-			globals.continents[i].setDirection(sf::Vector2f(RandomBetween(-1.0, 1.0), RandomBetween(-1.0, 1.0)));
-        }
 
 		if (config.height_method == 2)
 		{
-            continent_interaction(map, globals, config.height_method);
+            continent_interaction(map, globals, points, config.height_method);
         }
         
         rise(map); // calculate the rise of the map with the new height values
     }
-    else
+	else if (config.height_method == 3)
     {
         // Method 3 is a continental generation method
         /*
@@ -628,7 +920,7 @@ void random_height_gen(std::vector<Cell>& map,
         continent_generation(map, globals, config, voronoi_points);
 
         // Calculate the interactions between the continents
-        continent_interaction(map, globals);
+        continent_interaction(map, globals, points);
 
         rise(map); // calculate the rise of the map with the new height values 
 
@@ -642,6 +934,19 @@ void random_height_gen(std::vector<Cell>& map,
             globals.continents[i].generateBoundryLine(map, voronoi_points);
         }
 		
+		rise(map); // calculate the rise of the map with the new height values
+    }
+    else if (config.height_method == 4)
+    {
+		// Method 4 is an improved continental generation method
+		continent_generation(map, globals, config, voronoi_points);
+		assignPlateTypes(globals.continents, config);
+		setBaseElevations(map, globals);
+		continent_interaction(map, globals, points);
+		simulateErosion(map, globals, config);
+		simplex_noise_continent(map, globals, config, points);
+		rise(map); // calculate the rise of the map with the new height values
+		smooth_height(map, config.rise_threshold, 1, config.smooth_method); // smooth the height values
 		rise(map); // calculate the rise of the map with the new height values
     }
     
@@ -679,8 +984,9 @@ void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float
 {
     for (size_t i = 0; i < map.size(); i++)
     {
-        map[i].height = clamp(map[i].height, 1.0, 0.0);
+        //map[i].height = clamp(map[i].height, 1.0, 0.0);
 
+        // TODO: Make an ocean generator :)
         if (map[i].height <= globals.seaLevel)
         {
             map[i].oceanBool = true;
