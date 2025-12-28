@@ -362,6 +362,7 @@ std::vector<float> PlanetaryParameters::calculateWindStrengths(const std::vector
 
 	std::vector<float> strengths;
 	float baseStrength = getAtmosphericCirculationStrength();
+	baseStrength = clamp(baseStrength * 0.5f, 0.1f, 1.0f);
 	int numZones = cellBoundaries.size() + 1;
 
 	for (int i = 0; i < numZones; i++)
@@ -372,17 +373,17 @@ std::vector<float> PlanetaryParameters::calculateWindStrengths(const std::vector
 		// Mid-latitude zones (Ferrel cells) have moderate winds
 		// Polar zones have weaker winds
 		if (i == 0 || i == numZones - 1) {
-			zoneStrength *= RandomBetween(0.6f, 0.8f); // polar zones
+			zoneStrength *= RandomBetween(0.5f, 0.7f); // polar zones
 		}
 		else if (i == numZones / 2 || i == (numZones / 2) - 1 || i == (numZones / 2) + 1) {
-			zoneStrength *= RandomBetween(0.9f, 1.1f); // equatorial zones
+			zoneStrength *= RandomBetween(0.7f, 0.9f); // equatorial zones
 		}
 		else {
-			zoneStrength *= RandomBetween(0.7f, 0.9f); // mid-latitude zones
+			zoneStrength *= RandomBetween(0.6f, 0.8f); // mid-latitude zones
 		}
 
 		// Clamp to 0.0 - 1.0
-		zoneStrength = clamp(zoneStrength, 0.0f, 1.0f);
+		zoneStrength = clamp(zoneStrength, 1.0f, 0.0f);
 		strengths.push_back(zoneStrength);
 	}
 	return strengths;

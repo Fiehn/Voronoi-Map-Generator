@@ -110,6 +110,21 @@ static void drawHumidityMap(vor::Voronoi& map, VertexMap& vertexMap)
 
 static void drawHeightMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
+    if (true) {
+        for (std::size_t i = 0; i < map.cells.size(); i++) {
+            sf::Color color(
+                (128 * (1 - map.cells[i].oceanBool)), 
+                (255 * (1 - map.cells[i].oceanBool)), 
+                255 / 3 * (map.cells[i].oceanBool + 1.75), 
+                55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
+
+            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+                map.vertices[j].color = color;
+            }
+        }
+        vertexMap.update(map);
+        return;
+    }
     // Find min/max height for normalization (heights are now uncapped)
     float minHeight = std::numeric_limits<float>::max();
     float maxHeight = std::numeric_limits<float>::lowest();
@@ -1624,6 +1639,12 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
 
     ImGui::TableNextRow();
 	ImGui::TableSetColumnIndex(0);
+	ImGui::Text("Humidity");
+	ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.humidity);
+
+    ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
     ImGui::Text("Biome");
 	ImGui::TableSetColumnIndex(1);
 	ImGui::Text("%s", biome.name.c_str());
@@ -1641,6 +1662,12 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
 	ImGui::Text("Ocean");
 	ImGui::TableSetColumnIndex(1);
 	ImGui::Text("%d", cell.oceanBool);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Tree");
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Text("%d", cell.treeBool);
 
 	ImGui::TableNextRow();
 	ImGui::TableSetColumnIndex(0);
@@ -1736,5 +1763,366 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
         ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
         ImGui::TextColored(color, "%s: %.2f", biome.name.c_str(), cell.biome_prob[i]);
     }
+    ImGui::End();
+}
+
+void continentViewer(GlobalWorldObjects& globals, bool& showContinentViewer)
+{
+    if (!showContinentViewer)
+    {
+		return;
+    }
+	ImGui::Begin("Continent Viewer", &showContinentViewer);
+
+    if (globals.continents.empty())
+    {
+		ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "No continents generated.");
+        ImGui::End();
+		return;
+    }
+
+    // Summary section
+    if (ImGui::CollapsingHeader("Summary", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        int oceanicCount = 0, continentalCount = 0, mixedCount = 0;
+        std::size_t totalCells = 0;
+        float avgAge = 0.0f;
+
+        for (const auto& continent : globals.continents)
+        {
+            switch (continent.plateType)
+            {
+            case PlateType::Oceanic: oceanicCount++; break;
+            case PlateType::Continental: continentalCount++; break;
+            case PlateType::Mixed: mixedCount++; break;
+            }
+            totalCells += continent.cells.size();
+            avgAge += continent.age;
+        }
+        avgAge /= globals.continents.size();
+
+        ImGui::BeginTable("SummaryTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+        ImGui::TableSetupColumn("Property");
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Total Continents");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%zu", globals.continents.size());
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Oceanic Plates");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::TextColored(ImVec4(0.3f, 0.5f, 1.0f, 1.0f), "%d", oceanicCount);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Continental Plates");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::TextColored(ImVec4(0.6f, 0.4f, 0.2f, 1.0f), "%d", continentalCount);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Mixed Plates");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%d", mixedCount);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Total Cells");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%zu", totalCells);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Average Plate Age");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f Ga", avgAge);
+
+        ImGui::EndTable();
+    }
+    // Plate Type Distribution
+    if (ImGui::CollapsingHeader("Plate Type Distribution", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        int oceanicCount = 0, continentalCount = 0, mixedCount = 0;
+        for (const auto& continent : globals.continents)
+        {
+            switch (continent.plateType)
+            {
+            case PlateType::Oceanic: oceanicCount++; break;
+            case PlateType::Continental: continentalCount++; break;
+            case PlateType::Mixed: mixedCount++; break;
+            }
+        }
+
+        const char* labels[] = { "Oceanic", "Continental", "Mixed" };
+        float data[] = { static_cast<float>(oceanicCount), static_cast<float>(continentalCount), static_cast<float>(mixedCount) };
+        ImU32 colors[] = { ImColor(77, 128, 255), ImColor(153, 102, 51), ImColor(128, 128, 128) };
+
+        pushTempColormap("PlateDistribution", "PlateColormap", colors, 3, false);
+        if (ImPlot::BeginPlot("Plate Types", ImVec2(-1, 200), ImPlotFlags_Equal))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoDecorations);
+            ImPlot::SetupAxis(ImAxis_Y1, nullptr, ImPlotAxisFlags_NoDecorations);
+            ImPlot::PlotPieChart(labels, data, 3, 0.5, 0.5, 0.4, "%.0f", 90, ImPlotPieChartFlags_Normalize);
+            ImPlot::EndPlot();
+        }
+        ImPlot::PopColormap();
+    }
+    // Individual Continent Details
+    if (ImGui::CollapsingHeader("Continent Details", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        static int selectedContinent = 0;
+
+        // Continent selector
+        ImGui::Text("Select Continent:");
+        ImGui::SameLine();
+        if (ImGui::BeginCombo("##ContinentSelector",
+            ("Continent " + std::to_string(selectedContinent)).c_str()))
+        {
+            for (int i = 0; i < globals.continents.size(); i++)
+            {
+                bool isSelected = (selectedContinent == i);
+                std::string label = "Continent " + std::to_string(i);
+
+                // Add plate type indicator
+                switch (globals.continents[i].plateType)
+                {
+                case PlateType::Oceanic: label += " (Oceanic)"; break;
+                case PlateType::Continental: label += " (Continental)"; break;
+                case PlateType::Mixed: label += " (Mixed)"; break;
+                }
+
+                if (ImGui::Selectable(label.c_str(), isSelected))
+                {
+                    selectedContinent = i;
+                }
+                if (isSelected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        // Clamp selected continent to valid range
+        if (selectedContinent >= globals.continents.size())
+        {
+            selectedContinent = 0;
+        }
+
+        const Continent& continent = globals.continents[selectedContinent];
+
+        ImGui::Separator();
+
+        // Plate type with color indicator
+        ImGui::Text("Plate Type: ");
+        ImGui::SameLine();
+        switch (continent.plateType)
+        {
+        case PlateType::Oceanic:
+            ImGui::TextColored(ImVec4(0.3f, 0.5f, 1.0f, 1.0f), "Oceanic");
+            break;
+        case PlateType::Continental:
+            ImGui::TextColored(ImVec4(0.6f, 0.4f, 0.2f, 1.0f), "Continental");
+            break;
+        case PlateType::Mixed:
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Mixed");
+            break;
+        }
+        ImGui::BeginTable("ContinentDetails", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+        ImGui::TableSetupColumn("Property");
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("ID");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%d", continent.id);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Cell Count");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%zu", continent.cells.size());
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Age");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f Ga (billion years)", continent.age);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Older plates tend to be cooler and denser");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Crust Thickness");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.1f km", continent.crustThickness);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Continental: ~35 km, Oceanic: ~7 km");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Base Density");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f g/cm³", continent.baseDensity);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Center Position");
+        ImGui::TableSetColumnIndex(1);
+        sf::Vector2f center = globals.continents[selectedContinent].getCenter();
+        ImGui::Text("(%.1f, %.1f)", center.x, center.y);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Direction Vector");
+        ImGui::TableSetColumnIndex(1);
+        sf::Vector2f dir = globals.continents[selectedContinent].getDirection();
+        ImGui::Text("(%.2f, %.2f)", dir.x, dir.y);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Plate movement direction for tectonic interactions");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Isostatic Height");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.3f", globals.continents[selectedContinent].getIsostaticHeight());
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Height adjustment based on crustal buoyancy");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::EndTable();
+
+        // Direction visualization
+        ImGui::Separator();
+        ImGui::Text("Movement Direction:");
+
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+        float canvas_size = 80.0f;
+        ImVec2 center_pos(canvas_pos.x + canvas_size / 2, canvas_pos.y + canvas_size / 2);
+
+        // Draw background circle
+        draw_list->AddCircleFilled(center_pos, canvas_size / 2 - 5, ImColor(50, 50, 50, 255));
+        draw_list->AddCircle(center_pos, canvas_size / 2 - 5, ImColor(100, 100, 100, 255), 32, 2.0f);
+
+        // Draw direction arrow
+        sf::Vector2f direction = globals.continents[selectedContinent].getDirection();
+        float mag = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+        if (mag > 0.001f)
+        {
+            float normX = direction.x / mag;
+            float normY = direction.y / mag;
+            float arrowLen = (canvas_size / 2 - 10) * std::min(mag, 1.5f);
+
+            ImVec2 arrowEnd(center_pos.x + normX * arrowLen, center_pos.y + normY * arrowLen);
+
+            // Arrow color based on plate type
+            ImU32 arrowColor;
+            switch (continent.plateType)
+            {
+            case PlateType::Oceanic: arrowColor = ImColor(77, 128, 255, 255); break;
+            case PlateType::Continental: arrowColor = ImColor(153, 102, 51, 255); break;
+            case PlateType::Mixed: arrowColor = ImColor(128, 128, 128, 255); break;
+            }
+
+            draw_list->AddLine(center_pos, arrowEnd, arrowColor, 3.0f);
+
+            // Arrow head
+            float angle = std::atan2(normY, normX);
+            float headLen = 10.0f;
+            ImVec2 head1(arrowEnd.x - headLen * std::cos(angle - 0.4f),
+                arrowEnd.y - headLen * std::sin(angle - 0.4f));
+            ImVec2 head2(arrowEnd.x - headLen * std::cos(angle + 0.4f),
+                arrowEnd.y - headLen * std::sin(angle + 0.4f));
+            draw_list->AddTriangleFilled(arrowEnd, head1, head2, arrowColor);
+        }
+        else
+        {
+            draw_list->AddCircleFilled(center_pos, 5, ImColor(200, 200, 200, 255));
+        }
+
+        ImGui::Dummy(ImVec2(canvas_size, canvas_size));
+    }
+
+    // Continent Comparison Table
+    if (ImGui::CollapsingHeader("All Continents Comparison"))
+    {
+        if (ImGui::BeginTable("AllContinents", 7,
+            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Sortable | ImGuiTableFlags_ScrollY,
+            ImVec2(0, 300)))
+        {
+            ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 30.0f);
+            ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableSetupColumn("Cells", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+            ImGui::TableSetupColumn("Age (Ga)", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+            ImGui::TableSetupColumn("Thickness", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+            ImGui::TableSetupColumn("Density", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+            ImGui::TableSetupColumn("Isostatic", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+            ImGui::TableSetupScrollFreeze(0, 1);
+            ImGui::TableHeadersRow();
+
+            for (std::size_t i = 0; i < globals.continents.size(); i++)
+            {
+                const Continent& c = globals.continents[i];
+                ImGui::TableNextRow();
+
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%d", c.id);
+
+                ImGui::TableSetColumnIndex(1);
+                switch (c.plateType)
+                {
+                case PlateType::Oceanic:
+                    ImGui::TextColored(ImVec4(0.3f, 0.5f, 1.0f, 1.0f), "Oceanic");
+                    break;
+                case PlateType::Continental:
+                    ImGui::TextColored(ImVec4(0.6f, 0.4f, 0.2f, 1.0f), "Continental");
+                    break;
+                case PlateType::Mixed:
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Mixed");
+                    break;
+                }
+
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%zu", c.cells.size());
+
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%.2f", c.age);
+
+                ImGui::TableSetColumnIndex(4);
+                ImGui::Text("%.1f km", c.crustThickness);
+
+                ImGui::TableSetColumnIndex(5);
+                ImGui::Text("%.2f", c.baseDensity);
+
+                ImGui::TableSetColumnIndex(6);
+                ImGui::Text("%.3f", globals.continents[i].getIsostaticHeight());
+            }
+
+            ImGui::EndTable();
+        }
+    }
+
     ImGui::End();
 }

@@ -165,6 +165,7 @@ class Continent {
 public:
     int id;
     Continent(int id);
+    std::vector<std::size_t> cells;
 	
 	PlateType plateType = PlateType::Continental;
     float age = 3.0f;
@@ -208,9 +209,8 @@ public:
     void finishContinent(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map);
 
 private:
-    std::vector<std::size_t> cells;
-    std::vector<sf::Vector2f> boundLines; 
     std::vector<std::size_t> boundCells;
+    std::vector<sf::Vector2f> boundLines; 
 	sf::Vector2f center;
     sf::Vector2f direction;
     double height = 0.5;

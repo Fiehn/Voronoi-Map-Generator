@@ -89,6 +89,7 @@ int main()
     bool showBiomeGenBool = false; // Get window to regenerate biomes
 	bool showResourceGenBool = false; // Get window to regenerate resources
 	bool showPlanetaryParamsBool = false; // Show planetary parameters window
+	bool showContinentViewerBool = false; // Show continent viewer
 
 	bool changeBiomeColorBool = false; // Change the color of the biomes
 
@@ -226,6 +227,7 @@ int main()
         if (ImGui::BeginItemTooltip()) { ImGui::Text("Drawing lakes is currently broken."); ImGui::EndTooltip(); }
 
 		ImGui::Checkbox("Planetary Parameters", &showPlanetaryParamsBool);
+		ImGui::Checkbox("Continent Viewer", &showContinentViewerBool);
 
         ImGui::Text("Number of cells: %d", map.cells.size());
         ImGui::Text("Number of biomes: %d", globals.biomes.size());
@@ -275,6 +277,8 @@ int main()
                 showNewMapBool);
 		configLoadSave(config, showLoadConfig, showSaveConfig);
 		planetaryParamsViewer(globals, showPlanetaryParamsBool);
+        continentViewer(globals, showContinentViewerBool);
+
         if (showResourceGenBool)
         {
 			resourceMapController(map, globals, vertexMap, config, showResourceGenBool, mapType, selectedResource);

@@ -46,6 +46,7 @@ void GlobalWorldObjects::clearGlobals()
 	convergenceLines.clear();
 	windDirection.clear();
 	windStrength.clear();
+	continents.clear();
 }
 
 void GlobalWorldObjects::generatePlanet(bool earthlike)
