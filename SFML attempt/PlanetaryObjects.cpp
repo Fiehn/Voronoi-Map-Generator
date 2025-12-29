@@ -549,7 +549,7 @@ float PlanetaryParameters::getSolarIntensity(float dayOfYear, float normalizedLa
 	// Combine: base intensity PLUS seasonal variation
 	// This gives us realistic variation: equator ~constant, poles highly seasonal
 	float intensity = baseIntensity + seasonalComponent;
-	
+
 	return clamp(intensity, 0.0f, 1.0f);
 }
 
@@ -570,7 +570,7 @@ float PlanetaryParameters::getSeasonalTemperatureOffset(float dayOfYear, float n
 
 		// Maximum temperature swings - increased for visibility
 		float maxSwing = 50.0f * tiltFactor * latitudeFactor * pressureFactor;
-
+	
 		// Seasonal offset
 		float tempOffset = (solarIntensity - avgIntensity) * maxSwing * 3.0f; // Increased multiplier
 		return tempOffset;
@@ -586,16 +586,16 @@ SeasonalModifiers PlanetaryParameters::getSeasonalModifiers(float dayOfYear,
 	modifiers.temperatureAmplitude = getSeasonalTemperatureOffset(dayOfYear, normalizedLatitude, isNorthernHemisphere);
 
 	// TODO: COME BACK TO THIS WITH MORE COMPLEX MODELS
-	float seasonalPrecipFactor = 0.5f + 1.0f * solarIntensity;  // Increased range: 0.5 to 1.5
+	float seasonalPrecipFactor = 0.5f + 1.0f * solarIntensity; 
 	modifiers.preceipitationMultiplier = seasonalPrecipFactor;
 
 	// Wind strength varies with temperature gradients
 	// Stronger in winter when pole-equator gradient is steeper
 	float winterFactor = 1.0f - solarIntensity;  // Higher when less sun
-	modifiers.windStrengthMultiplier = 0.5f + 1.0f * (0.5f + 0.5f * winterFactor * normalizedLatitude); // Increased range
+	modifiers.windStrengthMultiplier = 0.5f + 1.5f * (0.5f + 0.5f * winterFactor * normalizedLatitude); 
 
 	// Humidity follows temperature (warm air holds more moisture)
-	modifiers.humidityMultiplier = 0.3f + 1.4f * solarIntensity; // Increased range: 0.3 to 1.7
+	modifiers.humidityMultiplier = 0.5f + 2.0f * solarIntensity; 
 
 	return modifiers;
 }

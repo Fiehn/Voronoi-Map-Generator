@@ -1873,22 +1873,22 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
             static std::vector<float> yMax(numSamples);
 
             for (int i = 0; i < numSamples; i++) {
-                float dayOfYear = (float)i * yearLength / numSamples;
+				float dayOfYear = (float)i;
                 xData[i] = dayOfYear;
 
                 ClimateDistribution dist;
                 switch (selectedClimateVar) {
                 case 0: // Temperature
-                    dist = seasonCalc->getTemperatureDistribution(cell, position, i);
+                    dist = seasonCalc->getTemperatureDistribution(cell, position, dayOfYear);
                     break;
                 case 1: // Precipitation
-                    dist = seasonCalc->getPercepitationDistribution(cell, position, i);
+                    dist = seasonCalc->getPercepitationDistribution(cell, position, dayOfYear);
                     break;
                 case 2: // Humidity
-                    dist = seasonCalc->getHumidityDistribution(cell, position, i);
+                    dist = seasonCalc->getHumidityDistribution(cell, position, dayOfYear);
                     break;
                 case 3: // Wind Strength
-                    dist = seasonCalc->getWindStrengthDistribution(cell, position, i);
+                    dist = seasonCalc->getWindStrengthDistribution(cell, position, dayOfYear);
                     break;
                 }
                 yMean[i] = dist.mean;

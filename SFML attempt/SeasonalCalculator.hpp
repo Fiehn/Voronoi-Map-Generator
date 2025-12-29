@@ -46,7 +46,7 @@ public:
 		bool isNorthern = isNorthernHemisphere(position);
 
 		// Seasonal offset for mean
-		float seasonalOffset = m_globals.planetaryParams.getSeasonalTemperatureOffset(normalizedLatitude, isNorthern, dayOfYear);
+		float seasonalOffset = m_globals.planetaryParams.getSeasonalTemperatureOffset(dayOfYear, normalizedLatitude, isNorthern);
 		float mean = cell.temp + seasonalOffset;
 
 		// variance increases in winter
