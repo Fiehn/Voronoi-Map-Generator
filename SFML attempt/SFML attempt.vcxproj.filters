@@ -70,6 +70,9 @@
     <ClCompile Include="PlanetaryObjects.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="SeasonalCalculator.hpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Voronoi.hpp">

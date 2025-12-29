@@ -59,6 +59,7 @@ static void genWorld(vor::Voronoi& map,
     sf::RenderWindow& window,
     VertexMap& vertexMap,
     sf::VertexArray& lines,
+	SeasonalCalculator& seasonCalc,
     const unsigned int MAXWIDTH,
     const unsigned int MAXHEIGHT,
     const sf::Font& font,
@@ -109,7 +110,7 @@ static void genWorld(vor::Voronoi& map,
 	}
 
     // Total processing steps 
-    const int totalSteps = 19;
+    const int totalSteps = 22;
     int currentStep = 0;
 
     // Initial draw
@@ -203,6 +204,10 @@ static void genWorld(vor::Voronoi& map,
     GenStepWrapper::RunStep([&]() {
 		calcHumid(map.cells); }, "Calculating Humidity", currentStep, 
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+
+    GenStepWrapper::RunStep([&]() {
+        calcClimateVariance(map.cells, map.points, globals, (float)MAXHEIGHT); }, "Calculating Climate Variance", currentStep,
+        totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
 		calcBiome(map.cells, globals, config.kmeans_max_iter, config.biome_method); }, "Calculating Biomes", currentStep, 

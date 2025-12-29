@@ -17,6 +17,14 @@ struct AtmosphericComposition {
 	void normalize();
 };
 
+struct SeasonalModifiers {
+	float temperatureAmplitude = 0.0f; // Seasonal temperature amplitude
+	float preceipitationMultiplier = 1.0f;
+	float windStrengthMultiplier = 1.0f;
+	float humidityMultiplier = 1.0f;
+	float daylightHoursVariation = 0.0f; // Variation in daylight hours
+};
+
 class PlanetaryParameters {
 public:
 	float rotationSpeed = 1.0f; // Rotation speed of the planet (relative to Earth)
@@ -27,6 +35,9 @@ public:
 	float atmosphereHeight = 100.0f; // Height of the atmosphere in km
 	AtmosphericComposition atmosphere; // Atmospheric composition
 	
+	float orbitalPeriod = 365.25f; // Orbital period in days
+	float orbitalEccentricity = 0.0167f; // Orbital eccentricity
+
 	void initializeEarthLike();
 	void initializeMarsLike();
 	void initialize();
@@ -38,6 +49,13 @@ public:
 	std::vector<float> calculateWindDirections(const std::vector<float>& cellBoundaries) const;
 	std::vector<float> calculateWindStrengths(const std::vector<float>& cellBoundaries) const;
 	sf::Color getAtmosphereColor(float timeOfDay) const;
+
+	float getDayLength() const { return 24.0f / rotationSpeed; }
+	float getYearLength() const { return orbitalPeriod; }
+
+	SeasonalModifiers getSeasonalModifiers(float dayOfYear, float normalizedLatitude, bool isNorthernHemisphere) const;
+	float getSolarIntensity(float dayOfYear, float normalizedLatitude, bool isNorthernHemisphere) const;
+	float getSeasonalTemperatureOffset(float dayOfYear, float normalizedLatitude, bool isNorthernHemisphere) const;
 private:
 	float greenhouseEffect();
 	float calculateAtmosphereHeight();

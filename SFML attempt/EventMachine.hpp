@@ -68,6 +68,36 @@ static void drawTempMap(vor::Voronoi& map, VertexMap& vertexMap) {
     vertexMap.update(map);
 }
 
+// Seasonal temperature map - uses SeasonalCalculator to show temperature at a specific day of year
+static void drawSeasonalTempMap(vor::Voronoi& map, VertexMap& vertexMap, 
+    const SeasonalCalculator& seasonCalc, float dayOfYear) 
+{
+    for (size_t i = 0; i < map.cells.size(); i++)
+    {
+        // Get cell position (approximate from first vertex or use center)
+        sf::Vector2f position(0.f, 0.f);
+        if (!map.cells[i].vertex.empty()) {
+            for (int v : map.cells[i].vertex) {
+                position.x += map.voronoi_points[v].x;
+                position.y += map.voronoi_points[v].y;
+            }
+            position.x /= map.cells[i].vertex.size();
+            position.y /= map.cells[i].vertex.size();
+        }
+        
+        // Get seasonal temperature
+        float seasonalTemp = seasonCalc.getTemperature(map.cells[i], position, dayOfYear);
+        
+        sf::Color color(255, 255 / 2 + clamp(10 * seasonalTemp, 255 / 2, -255), 0, 255); // Increased multiplier for more visible color change
+
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+        {
+            map.vertices[j].color = color;
+        }
+    }
+    vertexMap.update(map);
+}
+
 static void drawBiomeMap(vor::Voronoi& map, const GlobalWorldObjects& globals, VertexMap& vertexMap)
 {
     for (size_t i = 0; i < map.cells.size(); i++)
@@ -95,11 +125,66 @@ static void drawPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap)
     vertexMap.update(map);
 }
 
+// Seasonal precipitation map
+static void drawSeasonalPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap, 
+    const SeasonalCalculator& seasonCalc, float dayOfYear)
+{
+    for (size_t i = 0; i < map.cells.size(); i++)
+    {
+        sf::Vector2f position(0.f, 0.f);
+        if (!map.cells[i].vertex.empty()) {
+            for (int v : map.cells[i].vertex) {
+                position.x += map.voronoi_points[v].x;
+                position.y += map.voronoi_points[v].y;
+            }
+            position.x /= map.cells[i].vertex.size();
+            position.y /= map.cells[i].vertex.size();
+        }
+        
+        float seasonalPrecip = seasonCalc.getPercepitationDistribution(map.cells[i], position, dayOfYear).mean;
+        
+        sf::Color color(0, clamp(255 * seasonalPrecip / 100, 255, 0), 0, 255);
+
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+        {
+            map.vertices[j].color = color;
+        }
+    }
+    vertexMap.update(map);
+}
+
 static void drawHumidityMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
         sf::Color color(0, 0, clamp(255 * map.cells[i].humidity, 255, 0), 255);
+        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
+        {
+            map.vertices[j].color = color;
+        }
+    }
+    vertexMap.update(map);
+}
+
+// Seasonal humidity map
+static void drawSeasonalHumidityMap(vor::Voronoi& map, VertexMap& vertexMap, 
+    const SeasonalCalculator& seasonCalc, float dayOfYear)
+{
+    for (size_t i = 0; i < map.cells.size(); i++)
+    {
+        sf::Vector2f position(0.f, 0.f);
+        if (!map.cells[i].vertex.empty()) {
+            for (int v : map.cells[i].vertex) {
+                position.x += map.voronoi_points[v].x;
+                position.y += map.voronoi_points[v].y;
+            }
+            position.x /= map.cells[i].vertex.size();
+            position.y /= map.cells[i].vertex.size();
+        }
+        
+        float seasonalHumidity = seasonCalc.getHumidityDistribution(map.cells[i], position, dayOfYear).mean;
+        
+        sf::Color color(0, 0, clamp(255 * seasonalHumidity, 255, 0), 255);
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
             map.vertices[j].color = color;
@@ -623,6 +708,7 @@ void showNewMap(vor::Voronoi& map,
     VertexMap& vertexMap,
     sf::VertexArray& windArrows,
     sf::VertexArray& lines,
+	SeasonalCalculator& seasonalCalc,
     const unsigned int windowWidth,
     const unsigned int windowHeight,
     const sf::Font& font,
@@ -638,7 +724,7 @@ void showNewMap(vor::Voronoi& map,
 
     if (ImGui::Button("Generate New Map", { 200,50 })) {
         genWorld(map, globals, window, vertexMap,
-            lines,
+            lines, seasonalCalc,
             windowWidth, windowHeight,
             font, config, seed);
         showNewMapBool = false;
@@ -1584,7 +1670,8 @@ void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
     ImGui::End();
 }
 
-void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects& globals, std::size_t highlightedCell)
+void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects& globals, std::size_t highlightedCell, 
+    const SeasonalCalculator* seasonCalc = nullptr)
 {
     if (highlightedCell == vor::INVALID_INDEX) {
 		return;
@@ -1613,11 +1700,23 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
 	ImGui::TableSetColumnIndex(1);
 	ImGui::Text("%.2f", cell.temp);
 
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Temperature Variance");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.tempVariance);
+
 	ImGui::TableNextRow();
 	ImGui::TableSetColumnIndex(0);
 	ImGui::Text("Precipitation");
 	ImGui::TableSetColumnIndex(1);
 	ImGui::Text("%.2f", cell.percepitation);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Precipitation Variance");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.percepitationVariance);
 
 	ImGui::TableNextRow();
 	ImGui::TableSetColumnIndex(0);
@@ -1642,6 +1741,12 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
 	ImGui::Text("Humidity");
 	ImGui::TableSetColumnIndex(1);
     ImGui::Text("%.2f", cell.humidity);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Humidity Variance");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.humidityVariance);
 
     ImGui::TableNextRow();
 	ImGui::TableSetColumnIndex(0);
@@ -1699,11 +1804,23 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
 	ImGui::TableSetColumnIndex(1);
 	ImGui::Text("%.2f", cell.windDir);
 
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Wind Direction Variance");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.windDirVariance);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Wind Strength");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.windStr);
+
 	ImGui::TableNextRow();
 	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Wind Strength");
+	ImGui::Text("Wind Strength Variance");
 	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%.2f", cell.windStr);
+	ImGui::Text("%.2f", cell.windStrVariance);
 
 	ImGui::TableNextRow();
 	ImGui::TableSetColumnIndex(0);
@@ -1726,8 +1843,112 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
         ImGui::Text("%d", cell.volcanicActivity);
     }
 
-	// resources in cell
-    ImGui::Separator();
+    ImGui::EndTable();
+
+    // Seasonal Climate Curve Visualization
+    if (seasonCalc != nullptr) {
+        ImGui::Separator();
+        if (ImGui::CollapsingHeader("Seasonal Climate Curves", ImGuiTreeNodeFlags_DefaultOpen)) {
+            static int selectedClimateVar = 0;
+            const char* climateVarNames[] = { "Temperature", "Precipitation", "Humidity", "Wind Strength" };
+            ImGui::Combo("Climate Variable", &selectedClimateVar, climateVarNames, IM_ARRAYSIZE(climateVarNames));
+
+            // Get cell position
+            sf::Vector2f position(0.f, 0.f);
+            if (!cell.vertex.empty()) {
+                for (int v : cell.vertex) {
+                    position.x += map.voronoi_points[v].x;
+                    position.y += map.voronoi_points[v].y;
+                }
+                position.x /= cell.vertex.size();
+                position.y /= cell.vertex.size();
+            }
+
+            // Generate data for the whole year (12 months)
+            float yearLength = globals.planetaryParams.getYearLength();
+            const int numSamples = 365;
+            static std::vector<float> xData(numSamples);
+            static std::vector<float> yMean(numSamples);
+            static std::vector<float> yMin(numSamples);
+            static std::vector<float> yMax(numSamples);
+
+            for (int i = 0; i < numSamples; i++) {
+                float dayOfYear = (float)i * yearLength / numSamples;
+                xData[i] = dayOfYear;
+
+                ClimateDistribution dist;
+                switch (selectedClimateVar) {
+                case 0: // Temperature
+                    dist = seasonCalc->getTemperatureDistribution(cell, position, i);
+                    break;
+                case 1: // Precipitation
+                    dist = seasonCalc->getPercepitationDistribution(cell, position, i);
+                    break;
+                case 2: // Humidity
+                    dist = seasonCalc->getHumidityDistribution(cell, position, i);
+                    break;
+                case 3: // Wind Strength
+                    dist = seasonCalc->getWindStrengthDistribution(cell, position, i);
+                    break;
+                }
+                yMean[i] = dist.mean;
+				yMin[i] = dist.getMin();
+				yMax[i] = dist.getMax();
+            }
+
+            // Plot the seasonal curve
+            if (ImPlot::BeginPlot("##SeasonalCurve", ImVec2(-1, 200))) {
+                ImPlot::SetupAxes("Day of Year", climateVarNames[selectedClimateVar]);
+                ImPlot::SetupAxisLimits(ImAxis_X1, 0, yearLength, ImPlotCond_Always);
+                
+                // Plot variance band (min to max)
+                ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
+                ImPlot::PlotShaded("Range", xData.data(), yMin.data(), yMax.data(), numSamples);
+                ImPlot::PopStyleVar();
+                
+                // Plot mean line
+                ImPlot::SetNextLineStyle(ImVec4(1, 0.5f, 0, 1), 2.0f);
+                ImPlot::PlotLine("Mean", xData.data(), yMean.data(), numSamples);
+                
+                // Add season markers
+                float springStart = 0.0f;
+                float summerStart = yearLength * 0.25f;
+                float autumnStart = yearLength * 0.5f;
+                float winterStart = yearLength * 0.75f;
+                
+                ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));
+                double springLine = springStart;
+                double summerLine = summerStart;
+                double autumnLine = autumnStart;
+                double winterLine = winterStart;
+                ImPlot::PlotInfLines("##seasons", &springLine, 1);
+                ImPlot::PlotInfLines("##seasons", &summerLine, 1);
+                ImPlot::PlotInfLines("##seasons", &autumnLine, 1);
+                ImPlot::PlotInfLines("##seasons", &winterLine, 1);
+                ImPlot::PopStyleColor();
+                
+                ImPlot::EndPlot();
+            }
+
+            // Show current season info
+            ImGui::Text("Season labels (Northern Hemisphere):");
+            ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Spring: Day 0-%.0f", yearLength * 0.25f);
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.5f, 1.0f), "Summer: Day %.0f-%.0f", yearLength * 0.25f, yearLength * 0.5f);
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), "Autumn: Day %.0f-%.0f", yearLength * 0.5f, yearLength * 0.75f);
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.7f, 0.85f, 1.0f, 1.0f), "Winter: Day %.0f-%.0f", yearLength * 0.75f, yearLength);
+        }
+    }
+    
+    ImGui::Text("Biome Probabilities: ");
+    for (int i = 0; i < cell.biome_prob.size(); i++)
+    {
+        const Biome& biome = globals.biomes[i];
+        ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
+        ImGui::TextColored(color, "%s: %.2f", biome.name.c_str(), cell.biome_prob[i]);
+    }
+
     ImGui::Text("Resources:");
 
     auto resources = cell.resources.getAllResources();
@@ -1751,18 +1972,6 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
         ImGui::EndTable();
     }
 
-    ImGui::Separator();
-
-
-    ImGui::EndTable();
-        
-    ImGui::Text("Biome Probabilities: ");
-    for (int i = 0; i < cell.biome_prob.size(); i++)
-    {
-        const Biome& biome = globals.biomes[i];
-        ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
-        ImGui::TextColored(color, "%s: %.2f", biome.name.c_str(), cell.biome_prob[i]);
-    }
     ImGui::End();
 }
 

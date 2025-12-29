@@ -23,6 +23,12 @@ public:
     float humidity = 1.f; // Humidity of the cell (0 to 1)
     float percepitation = 0.f; // Percepitation of the cell ( > 0 )
 
+	float tempVariance = 5.0f; // Temperature variance for the cell
+	float windStrVariance = 0.2f; // Wind strength variance for the cell
+	float windDirVariance = 15.f; // Wind direction variance for the cell
+	float humidityVariance = 0.1f; // Humidity variance for the cell
+	float percepitationVariance = 0.2f; // Percepitation variance for the cell
+
 	int continent = -1; // Continent of the cell
 	bool volcanicActivity = false; // Has volcanic activity
 	

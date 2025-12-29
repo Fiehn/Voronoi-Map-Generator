@@ -37,7 +37,6 @@ public:
 
 	PlanetaryParameters planetaryParams; // Planetary parameters
 
-
 	GlobalWorldObjects();
 	void clearGlobals();
 

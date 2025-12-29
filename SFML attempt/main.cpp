@@ -13,6 +13,7 @@
 #include "GlobalWorldObjects.hpp"
 #include "Map.hpp"
 #include "POP.hpp"
+#include "SeasonalCalculator.hpp"
 
 #include "imgui.h"
 #include "imgui-SFML.h"
@@ -112,6 +113,11 @@ int main()
     // Resource Map
 	ResourceType selectedResource = ResourceType::Clay;
 
+    // Seasonal day slider
+    bool useSeasonalView = false;
+    float currentDayOfYear = 0.0f;
+    float previousDayOfYear = -1.0f;
+
 	// Ticker simulation
     TickerSimulation ticker;
     float simulationSpeed = 1.0f;
@@ -119,9 +125,12 @@ int main()
 
     sf::Clock deltaClock;
 
+	// Seasonal Calculator (I should create a collected class for all of these calculators)
+    SeasonalCalculator seasonCalc(globals, windowHeight / 2);
+
     // Generate the actual map:
     genWorld(map, globals, window, vertexMap,
-        lines, 
+        lines, seasonCalc,
         windowWidth, windowHeight,
 		font, config, seed);
 
@@ -182,13 +191,21 @@ int main()
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
 			mapTypeOld = mapType;
+            // Reset seasonal view when changing map types (except for temperature, precipitation, humidity)
+            if (mapType != 1 && mapType != 3 && mapType != 4) {
+                useSeasonalView = false;
+            }
             switch (mapType) {
 			case 0:
 				drawHeightMap(map, vertexMap);
                 drawWindArrowsBool = false;
 				break;
 			case 1:
-				drawTempMap(map, vertexMap);
+                if (useSeasonalView) {
+                    drawSeasonalTempMap(map, vertexMap, seasonCalc, currentDayOfYear);
+                } else {
+				    drawTempMap(map, vertexMap);
+                }
                 drawWindArrowsBool = false;
 				break;
 			case 2:
@@ -196,7 +213,11 @@ int main()
                 drawWindArrowsBool = false;
 				break;
 			case 3:
-				drawPercepitationMap(map, vertexMap);
+                if (useSeasonalView) {
+                    drawSeasonalPercepitationMap(map, vertexMap, seasonCalc, currentDayOfYear);
+                } else {
+				    drawPercepitationMap(map, vertexMap);
+                }
                 drawWindArrowsBool = false;
 				break;
             case 5:
@@ -213,11 +234,61 @@ int main()
 				drawWindArrowsBool = false;
                 break;
             case 4:
-				drawHumidityMap(map, vertexMap);
+                if (useSeasonalView) {
+                    drawSeasonalHumidityMap(map, vertexMap, seasonCalc, currentDayOfYear);
+                } else {
+				    drawHumidityMap(map, vertexMap);
+                }
 				drawWindArrowsBool = false;
                 break;
 			}
 		}
+
+        // Seasonal day slider (only visible when on Temperature, Precipitation, or Humidity map)
+        if (mapType == 1 || mapType == 3 || mapType == 4) {
+            ImGui::Separator();
+            float yearLength = globals.planetaryParams.getYearLength();
+            
+            ImGui::Checkbox("Use Seasonal View", &useSeasonalView);
+            if (ImGui::IsItemHovered()) {
+                ImGui::Text("Enable to show climate at a specific day of year");
+            }
+            
+            if (useSeasonalView) {
+                ImGui::SliderFloat("Day of Year", &currentDayOfYear, 0.0f, yearLength, "%.0f");
+                
+                // Show season name
+                sf::Vector2f centerPos(windowWidth / 2.0f, windowHeight / 2.0f);
+                const char* seasonName = seasonCalc.getSeasonName(centerPos, currentDayOfYear);
+                ImGui::SameLine();
+                ImGui::Text("(%s)", seasonName);
+                
+                // Update map when day changes
+                if (std::abs(currentDayOfYear - previousDayOfYear) > 0.5f) {
+                    if (mapType == 1) {
+                        drawSeasonalTempMap(map, vertexMap, seasonCalc, currentDayOfYear);
+                    } else if (mapType == 3) {
+                        drawSeasonalPercepitationMap(map, vertexMap, seasonCalc, currentDayOfYear);
+                    } else if (mapType == 4) {
+                        drawSeasonalHumidityMap(map, vertexMap, seasonCalc, currentDayOfYear);
+                    }
+                    previousDayOfYear = currentDayOfYear;
+                }
+            } else {
+                // If we just disabled seasonal view, redraw normal map
+                if (previousDayOfYear >= 0.0f) {
+                    if (mapType == 1) {
+                        drawTempMap(map, vertexMap);
+                    } else if (mapType == 3) {
+                        drawPercepitationMap(map, vertexMap);
+                    } else if (mapType == 4) {
+                        drawHumidityMap(map, vertexMap);
+                    }
+                    previousDayOfYear = -1.0f;
+                }
+            }
+            ImGui::Separator();
+        }
 
 		ImGui::Checkbox("Draw Lines", &drawConvergenceLinesBool); ImGui::SameLine();
         ImGui::Checkbox("Wind Arrows", &drawWindArrowsBool);
@@ -239,7 +310,7 @@ int main()
 
 
         // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position
-        highligtedCellObservation(map, globals, highlightedCell);
+        highligtedCellObservation(map, globals, highlightedCell, &seasonCalc);
         
         if (mapType==2)
         {
@@ -271,7 +342,7 @@ int main()
 		searchFinder(map, findingCells, findCell, showFindSearcherBool, maxCellInMap);
         biomeUI.biomePopUp(map, globals, config, showBiomeGenBool, mapType, changeBiomeColorBool);
         showNewMap(map, globals, window, vertexMap,
-                windArrows, lines,
+			windArrows, lines, seasonCalc,
                 windowWidth, windowHeight,
                 font, config, seed, 
                 showNewMapBool);

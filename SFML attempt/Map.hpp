@@ -837,7 +837,7 @@ void random_height_gen(std::vector<Cell>& map,
 
             
 			// Select if the peak should be oceanic or continental
-            if (RandomBetween(0.0f, 1.0f) < 0.5f)
+            if (RandomBetween(0.0f, 1.0f) < 0.1f)
             {
                 globals.continents.emplace_back(Continent(i));
                 globals.continents[i].plateType = PlateType::Mixed;
@@ -971,11 +971,11 @@ void random_height_gen(std::vector<Cell>& map,
 		cleanUpContinents(map, globals);
         
         // Simplex noise overlay
-        simplex_noise_continent(map, globals, config, points);
+        
         rise(map); // calculate the rise of the map with the new height values
 
 		simulateErosion(map, globals, config); // simulate erosion on the height values
-        
+        simplex_noise_continent(map, globals, config, points);
         rise(map); // calculate the rise of the map with the new height values
 
     }
@@ -1389,7 +1389,6 @@ void calcTemp(std::vector<Cell>& map, GlobalWorldObjects& globals, const std::ve
         float normalizedLatitude = std::min(distFromEquator / maxDistFromEquator, 1.0f);
 
         // Temperature decrease from equator to pole on planetary gradient
-        // uing a cosine curve for smoother transition
         float latTemp = baseTemp - (equatorToPoleGradient * std::pow(normalizedLatitude, 1.3f));
         temp += latTemp;
 
@@ -2091,7 +2090,108 @@ void closeOceanCell(std::vector<Cell>& map, const GlobalWorldObjects& globals)
             }
         }
     }
+}
 
+void calcClimateVariance(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, GlobalWorldObjects& globals, float maxHeight)
+{
+    // Calculate Climate variance for each cell
+    // 1. Ocean vs land
+    // 2. coastal proximity
+	// 3. latitude
+	// 4. altitude
+	// 5. atmospheric pressure
 
+	float equatorY = maxHeight / 2;
+    if (!globals.convergenceLines.empty())
+    {
+		int middleIndex = globals.convergenceLines.size() / 2;
+		equatorY = globals.convergenceLines[middleIndex] * maxHeight;
+    }
+	float pressureFactor = 1.0f / std::sqrt(globals.planetaryParams.atmosphere.totalPressure + 0.1f);
+
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+        Cell& cell = map[i];
+
+        float distFromEquator = std::abs(points[i].y - equatorY);
+        float maxDist = maxHeight * 0.5f;
+        float normalizedLatitude = std::min(distFromEquator / maxDist, 1.0f);
+
+        // == Temperature variance ==
+        float baseTempVar = 5.0f;
+
+        // Ocean vs land
+        if (cell.oceanBool)
+        {
+            baseTempVar *= 0.3f; // oceans have lower temp variance
+        }
+        else if (cell.coastBool)
+        {
+            baseTempVar *= 0.6f; // coastal areas have moderate temp variance
+        }
+        else
+        {
+            float continentalFactor = 1.0f + std::min(cell.distToOcean * 0.05f, 0.5f);
+            baseTempVar *= continentalFactor;
+        }
+        // Latitude effect
+        float latitudeVarFactor = 1.0f + normalizedLatitude * 0.8f;
+        baseTempVar *= latitudeVarFactor;
+        // Altitude effect
+        if (cell.height > globals.seaLevel)
+        {
+            float altitudeFactor = 1.0f + (cell.height - globals.seaLevel) * 0.5f;
+            baseTempVar *= altitudeFactor;
+        }
+        // Atmospheric pressure effect
+        baseTempVar *= pressureFactor;
+        cell.tempVariance = baseTempVar;
+
+        // == Wind Variance ==
+        float baseWindVar = 0.1f;
+        // coastal effect
+        if (cell.coastBool)
+        {
+            baseWindVar *= 1.5f;
+        }
+        // mid-latitudes tend to have more variable winds
+        float midLatitudeFactor = 1.0f + (1.0f - std::abs(normalizedLatitude - 0.5f) * 2.0f) * 0.4f;
+        baseWindVar *= midLatitudeFactor;
+
+        cell.windStrVariance = baseWindVar;
+
+        cell.windDirVariance = 15.0f + baseWindVar * 30.0f;
+
+        // == Humidity Variance ==
+        float baseHumidVar = 0.1f;
+        // Dry areas have less humidity variance
+        baseHumidVar *= (1.0f - cell.humidity) + 0.5f;
+        // Coastal areas have less humidity variance
+        if (cell.coastBool || cell.oceanBool)
+        {
+            baseHumidVar *= 0.7f;
+        }
+        cell.humidityVariance = baseHumidVar;
+
+        // == Precipitation Variance ==
+        // I set precip varinace to be a percentage of mean precip
+        float basePrecipVar = 0.4f;
+        // Tropical areas have higher precip variance
+        if (normalizedLatitude < 0.3f)
+        {
+            basePrecipVar *= 1.5f;
+        }
+        // arid areas have higher precip variance
+        if (cell.percepitation < 15.0f && cell.percepitation > 0.1f)
+        {
+            basePrecipVar *= 1.5f;
+        }
+        // Stable oceanic climate has lower precip variance
+        if (cell.oceanBool)
+        {
+            basePrecipVar *= 0.6f;
+        }
+        cell.percepitationVariance = basePrecipVar;
+    }
 }
 

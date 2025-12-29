@@ -525,3 +525,77 @@ sf::Color PlanetaryParameters::getAtmosphereColor(float timeOfDay) const
 
 	return baseColor;
 }
+
+float PlanetaryParameters::getSolarIntensity(float dayOfYear, float normalizedLatitude, bool isNorthernHemisphere) const {
+	// Normalize day of year
+	float yearPhase = (dayOfYear / orbitalPeriod) * 2.0f * PI;
+
+	// Axial tilt effect: determines which hemisphere is tilted toward the sun
+	// At summer solstice, northern hemisphere is tilted toward sun
+	float tiltEffect = std::sin(yearPhase) * (axialTilt / 90.0f);
+
+	// Flip for southern hemisphere
+	if (!isNorthernHemisphere) {
+		tiltEffect = -tiltEffect;
+	}
+
+	// Base solar intensity decreases with latitude (cosine law)
+	float baseIntensity = std::cos(normalizedLatitude * PI * 0.5f);
+
+	// Seasonal variation component - stronger at higher latitudes
+	// This represents the change in sun angle due to tilt
+	float seasonalComponent = tiltEffect * normalizedLatitude * 0.5f;
+
+	// Combine: base intensity PLUS seasonal variation
+	// This gives us realistic variation: equator ~constant, poles highly seasonal
+	float intensity = baseIntensity + seasonalComponent;
+	
+	return clamp(intensity, 0.0f, 1.0f);
+}
+
+float PlanetaryParameters::getSeasonalTemperatureOffset(float dayOfYear, float normalizedLatitude, bool isNorthernHemisphere) const {
+		// Calculate solar intensity for this location and time
+		float solarIntensity = getSolarIntensity(dayOfYear, normalizedLatitude, isNorthernHemisphere);
+
+		// average solar intensity at this latitude
+		float avgIntensity = std::cos(normalizedLatitude * PI * 0.5f);
+
+		// Temperature amplitude based on:
+		// 1. Axial tilt
+		// 2. Latitude
+		// 3. atmospheric pressure
+		float tiltFactor = axialTilt / 23.5f;
+		float latitudeFactor = normalizedLatitude;
+		float pressureFactor = 1.0f / std::sqrt(atmosphere.totalPressure + 0.1f);
+
+		// Maximum temperature swings - increased for visibility
+		float maxSwing = 50.0f * tiltFactor * latitudeFactor * pressureFactor;
+
+		// Seasonal offset
+		float tempOffset = (solarIntensity - avgIntensity) * maxSwing * 3.0f; // Increased multiplier
+		return tempOffset;
+	}
+SeasonalModifiers PlanetaryParameters::getSeasonalModifiers(float dayOfYear, 
+	float normalizedLatitude, bool isNorthernHemisphere) const {
+	SeasonalModifiers modifiers;
+	
+	float yearPhase = (dayOfYear / orbitalPeriod) * 2.0f * PI;
+	float solarIntensity = getSolarIntensity(dayOfYear, normalizedLatitude, isNorthernHemisphere);
+
+	// Temperature amplitude
+	modifiers.temperatureAmplitude = getSeasonalTemperatureOffset(dayOfYear, normalizedLatitude, isNorthernHemisphere);
+
+	// TODO: COME BACK TO THIS WITH MORE COMPLEX MODELS
+	float seasonalPrecipFactor = 0.5f + 1.0f * solarIntensity;  // Increased range: 0.5 to 1.5
+	modifiers.preceipitationMultiplier = seasonalPrecipFactor;
+
+	// Wind strength varies with temperature gradients
+	// Stronger in winter when pole-equator gradient is steeper
+	float winterFactor = 1.0f - solarIntensity;  // Higher when less sun
+	modifiers.windStrengthMultiplier = 0.5f + 1.0f * (0.5f + 0.5f * winterFactor * normalizedLatitude); // Increased range
+
+	// Humidity follows temperature (warm air holds more moisture)
+	modifiers.humidityMultiplier = 0.3f + 1.4f * solarIntensity; // Increased range: 0.3 to 1.7
+
+	return modifiers;
+}
