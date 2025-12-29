@@ -71,7 +71,7 @@ private:
 
 namespace ResourceGen {
 	// Generate resources for a cell based on its properties
-	void generateCellResources(Cell& cell, const GlobalWorldObjects& globals);
+	void generateCellResources(std::vector<Cell>& map, Cell& cell, const GlobalWorldObjects& globals);
 
 	// Generate resources for the entire map
 	void generateMapResources(std::vector<Cell>& map, const GlobalWorldObjects& globals);
@@ -86,5 +86,6 @@ namespace ResourceGen {
 	float calculateLivestockAbundance(const Cell& cell, ResourceType type);
 	float calculateLuxuryAbundance(const Cell& cell, ResourceType type);
 	float calculateLumberAbundance(const Cell& cell);
-	float calculateMaterialAbundance(const Cell& cell, ResourceType type);
+	float calculateMaterialAbundance(std::vector<Cell>& map, Cell& cell, ResourceType type);
+	void propagateMetalResource(std::vector<Cell>& map, Cell& cell, ResourceType type);
 }

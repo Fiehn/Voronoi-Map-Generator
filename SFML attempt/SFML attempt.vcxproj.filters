@@ -84,9 +84,6 @@
     <ClInclude Include="CellObjects.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Deprecated.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="util.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

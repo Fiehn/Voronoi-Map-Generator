@@ -195,7 +195,6 @@
     <ClInclude Include="vertex.hpp" />
     <ClInclude Include="Voronoi.hpp" />
     <ClInclude Include="CellObjects.hpp" />
-    <ClInclude Include="Deprecated.h" />
     <ClInclude Include="util.hpp" />
     <ClInclude Include="windArrows.hpp" />
   </ItemGroup>

@@ -52,7 +52,7 @@ std::map<ResourceType, float> ExtractiveResource::getAllResources() const {
 }
 
 namespace ResourceGen {
-	void generateCellResources(Cell& cell, const GlobalWorldObjects& globals)
+	void generateCellResources(std::vector<Cell>& map, Cell& cell, const GlobalWorldObjects& globals)
 	{
 		cell.resources.clear();
 
@@ -74,28 +74,34 @@ namespace ResourceGen {
 			float copperAmount = calculateMetalAbundance(cell, ResourceType::Copper);
 			if (copperAmount > 0.f) {
 				cell.resources.setResourceAmount(ResourceType::Copper, copperAmount);
+				propagateMetalResource(map,cell, ResourceType::Copper);
 			}
 			float ironAmount = calculateMetalAbundance(cell, ResourceType::Iron);
 			if (ironAmount > 0.f) {
 				cell.resources.setResourceAmount(ResourceType::Iron, ironAmount);
+				propagateMetalResource(map, cell, ResourceType::Iron);
 			}
 			float tinAmount = calculateMetalAbundance(cell, ResourceType::Tin);
 			if (tinAmount > 0.f) {
 				cell.resources.setResourceAmount(ResourceType::Tin, tinAmount);
+				propagateMetalResource(map, cell, ResourceType::Tin);
 			}
 			float goldAmount = calculateMetalAbundance(cell, ResourceType::Gold);
 			if (goldAmount > 0.f) {
 				cell.resources.setResourceAmount(ResourceType::Gold, goldAmount);
+				propagateMetalResource(map,cell, ResourceType::Gold);
 			}
 			float silverAmount = calculateMetalAbundance(cell, ResourceType::Silver);
 			if (silverAmount > 0.f) {
 				cell.resources.setResourceAmount(ResourceType::Silver, silverAmount);
+				propagateMetalResource(map,cell, ResourceType::Silver);
 			}
 			float leadAmount = calculateMetalAbundance(cell, ResourceType::Lead);
 			if (leadAmount > 0.f) {
 				cell.resources.setResourceAmount(ResourceType::Lead, leadAmount);
+				propagateMetalResource(map,cell, ResourceType::Lead);
 			}
-			if (cell.height > 0.8f && RandomBetween(0.0f, 1.0f) < 0.15f)
+			if (cell.height > 0.8f && RandomBetween(0.0f, 1.0f) < 0.05f)
 			{
 				cell.resources.setResourceAmount(ResourceType::Gems, RandomBetween(0.1f, 0.6f));
 			}
@@ -108,15 +114,15 @@ namespace ResourceGen {
 				cell.resources.setResourceAmount(ResourceType::Lumber, lumberAmount);
 			}
 		}
-		float stoneAmount = calculateMaterialAbundance(cell, ResourceType::Stone);
+		float stoneAmount = calculateMaterialAbundance(map, cell, ResourceType::Stone);
 		if (stoneAmount > 0.f) {
 			cell.resources.setResourceAmount(ResourceType::Stone, stoneAmount);
 		}
-		float clayAmount = calculateMaterialAbundance(cell, ResourceType::Clay);
+		float clayAmount = calculateMaterialAbundance(map, cell, ResourceType::Clay);
 		if (clayAmount > 0.f) {
 			cell.resources.setResourceAmount(ResourceType::Clay, clayAmount);
 		}
-		float coalAmount = calculateMaterialAbundance(cell, ResourceType::Coal);
+		float coalAmount = calculateMaterialAbundance(map, cell, ResourceType::Coal);
 		if (coalAmount > 0.f) {
 			cell.resources.setResourceAmount(ResourceType::Coal, coalAmount);
 		}
@@ -194,7 +200,7 @@ namespace ResourceGen {
 	void generateMapResources(std::vector<Cell>& map, const GlobalWorldObjects& globals)
 	{
 		for (auto& cell : map) {
-			generateCellResources(cell, globals);
+			generateCellResources(map, cell, globals);
 		}
 		applyResourceSmoothing(map);
 	}
@@ -300,44 +306,44 @@ namespace ResourceGen {
 		// Different metals have different base chances and rarity
 		switch (type) {
 			case ResourceType::Copper:
-				baseChance = 0.25f;
+				baseChance = 0.0025f;
 				rarityModifier = 1.2f;
 				break;
 			case ResourceType::Iron:
-				baseChance = 0.15f;
+				baseChance = 0.0015f;
 				rarityModifier = 1.0f;
 				minAmount = 0.3f;
 				break;
 			case ResourceType::Tin:
-				baseChance = 0.12f;
+				baseChance = 0.0012f;
 				rarityModifier = 0.8f;
 				break;
 			case ResourceType::Gold:
-				baseChance = 0.005f;
+				baseChance = 0.00005f;
 				rarityModifier = 0.5f;
 				maxAmount = 0.5f;
 				break;
 			case ResourceType::Silver:
-				baseChance = 0.01f;
+				baseChance = 0.0001f;
 				rarityModifier = 0.6f;
 				maxAmount = 0.6f;
 				break;
 			case ResourceType::Lead:
-				baseChance = 0.12f;
+				baseChance = 0.0012f;
 				rarityModifier = 0.9f;
 				break;
 			default:
 				return 0.f;
 		}
 		// Height increase metal probability (more in mountains)
-		float heightBonus = clamp((cell.height - 0.5f) * 2.5f, 1.f, 0.f); 
+		float heightBonus = clamp((cell.height - 0.7f), 1.f, 0.f); 
 		// Rise increase metal probability (more in rugged terrain)
 		float riseBonus = clamp(cell.rise, 1.f, 0.f);
 		// Volcanic activity boost
-		float volcanicBonus = cell.volcanicActivity ? 0.3f : 0.f;
+		float volcanicBonus = cell.volcanicActivity ? 0.01f : 0.f;
 
 		// Probability calculation
-		float probability = baseChance * 0.05 + (heightBonus + riseBonus) * 0.1f + volcanicBonus;
+		float probability = baseChance * 1.0f + (heightBonus + riseBonus) * 0.01f + volcanicBonus;
 		
 		if (RandomBetween(0.f, 1.f) < probability) {
 			return RandomBetween(minAmount, maxAmount) * rarityModifier;
@@ -345,7 +351,7 @@ namespace ResourceGen {
 		return 0.f;
 	}
 
-	float calculateMaterialAbundance(const Cell& cell, ResourceType type) {
+	float calculateMaterialAbundance(std::vector<Cell>& map, Cell& cell, ResourceType type) {
 		float abundance = 0.f;
 
 		switch (type) {
@@ -356,17 +362,18 @@ namespace ResourceGen {
 		case ResourceType::Clay:
 			// Clay is more abundant near water and lower elevations (also wet)
 			if (cell.riverBool || cell.lakeBool || cell.coastBool) {
-				abundance += 0.2f;
+				abundance += 0.4f * RandomBetween(0.7f,1.5f);
 			}
-			abundance += 0.4f - cell.height * 0.4f + RandomBetween(-0.2f, 0.2f);
+			abundance += - cell.height * 0.4f + RandomBetween(-0.2f, 0.2f) + clamp(cell.percepitation * 0.01f,0.2f,0.0f);
 			break;
 		case ResourceType::Coal:
 			// coal is in forested areas with specific geological conditions
 			if (cell.height > 0.5f && cell.height < 0.75f) {
-				float forestBonus = cell.treeBool ? 0.3f : 0.f;
-				float probability = 0.08 + forestBonus;
+				float forestBonus = cell.treeBool ? 0.05f : 0.f;
+				float probability = 0.05 + forestBonus;
 				if (RandomBetween(0.f, 1.f) < probability) {
 					abundance = RandomBetween(0.2f, 0.7f);
+					propagateMetalResource(map, cell, ResourceType::Coal);
 				}
 			}
 			break;
@@ -406,7 +413,7 @@ namespace ResourceGen {
 			// Cotton needs hot humid climates
 			optimalTemp = 25.f;
 			tempRange = 10.f;
-			if (cell.humidity < 0.2f) {
+			if (cell.humidity < 0.2f || cell.tempVariance > 5.0f) {
 				return 0.f;
 			}
 			break;
@@ -464,9 +471,9 @@ namespace ResourceGen {
 		switch (type) {
 		case ResourceType::Spices:
 			// Spices need warm and humid climates
-			if (cell.temp > 20.f && cell.humidity > 0.5f) {
+			if (cell.temp > 18.f && cell.humidity > 0.30f && cell.tempVariance < 5.0f) {
 				float tropicalFactor = clamp((cell.temp - 20.f) / 15.f, 1.f, 0.f);
-				float probability = 0.15f * tropicalFactor + 0.01f;
+				float probability = 0.5f * tropicalFactor + 0.6f - (5.0f - cell.tempVariance) * 1.0f;
 
 				if (RandomBetween(0.f, 1.f) < probability) {
 					abundacen = RandomBetween(0.2f, 0.8f);
@@ -486,5 +493,69 @@ namespace ResourceGen {
 			return 0.f;
 		}
 		return abundacen;
+	}
+
+	void propagateMetalResource(std::vector<Cell>& map, Cell& cell, ResourceType type)
+	{
+		// Propagate to neighbors to create clusters (simulating ore veins)
+		// 1. Start queue with current cell
+		// 2. Set random Ore Vein Strength (random amount of resource to propagate)
+		// 3. While queue not empty and strength > threshold 
+		//   a. Pop cell from queue
+		//   b. For each neighbor
+		//    i. If neighbor does not have resource and is above height, add portion of strength to it
+		//   ii. Decrease strength
+		//  c. If strength > threshold, add neighbors to queue
+
+		float veinStrength = cell.resources.getResourceAmount(type);
+		float minHeight = 0.4f; // Minimum height for propagation
+
+		switch (type) {
+		case ResourceType::Copper:
+			veinStrength *= RandomBetween(2.0f, 3.0f);
+			minHeight = 0.4f;
+			break;
+		case ResourceType::Iron:
+			veinStrength *= RandomBetween(1.5f, 2.5f);
+			minHeight = 0.5f;
+			break;
+		case ResourceType::Tin:
+			veinStrength *= RandomBetween(1.2f, 2.0f);
+			break;
+		case ResourceType::Gold:
+			veinStrength *= RandomBetween(0.5f, 1.5f);
+			minHeight = 0.7f;
+			break;
+		case ResourceType::Silver:
+			veinStrength *= RandomBetween(0.7f, 1.8f);
+			minHeight = 0.6f;
+			break;
+		case ResourceType::Lead:
+			veinStrength *= RandomBetween(1.0f, 2.0f);
+			break;
+		default:
+			veinStrength *= 1.0f;
+			break;
+		}
+
+		std::vector<std::size_t> toProcess;
+		toProcess.push_back(cell.id);
+
+		while (!toProcess.empty() && veinStrength > 0.1f) {
+			std::size_t currentCellIdx = toProcess.back();
+			toProcess.pop_back();
+			Cell& currentCell = map[currentCellIdx];
+			for (std::size_t neighborIdx : currentCell.neighbors) {
+				Cell& neighborCell = map[neighborIdx];
+				if (!neighborCell.oceanBool && neighborCell.height >= minHeight && !neighborCell.resources.hasResource(type)) {
+					// Add portion of vein strength to neighbor
+					float propagatedAmount = veinStrength * RandomBetween(0.2f, 0.7f);
+					neighborCell.resources.setResourceAmount(type, propagatedAmount);
+					veinStrength -= propagatedAmount * 0.3f; // Decrease vein strength
+					// Add neighbor to process list
+					toProcess.push_back(neighborIdx);
+				}
+			}
+		}
 	}
 }
