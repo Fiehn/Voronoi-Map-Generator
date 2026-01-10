@@ -72,7 +72,7 @@ void PlanetaryParameters::initialize() {
 	// Decide on atmosphere type randomly
 	int atmosphereType = RandomBetween(0.0f, 100.0f);
 
-	if (atmosphereType < 55) {
+	if (atmosphereType < 90) {
 		// Earth-like atmosphere (N2/O2 dominant)
 		atmosphere.nitrogenPercentage = RandomBetween(60.0f, 85.0f);
 		atmosphere.oxygenPercentage = RandomBetween(15.0f, 30.0f);
@@ -84,7 +84,7 @@ void PlanetaryParameters::initialize() {
 		atmosphere.nitrogenDioxidePercentage = RandomBetween(0.0f, 0.01f);
 		atmosphere.otherGasesPercentage = 1.0f; // Will be normalized
 	}
-	else if (atmosphereType < 70) {
+	else if (atmosphereType < 94) {
 		// CO2-rich atmosphere (Mars/Venus-like)
 		atmosphere.carbonDioxidePercentage = RandomBetween(70.0f, 98.0f);
 		atmosphere.nitrogenPercentage = RandomBetween(2.0f, 20.0f);
@@ -96,7 +96,7 @@ void PlanetaryParameters::initialize() {
 		atmosphere.nitrogenDioxidePercentage = RandomBetween(0.0f, 0.1f);
 		atmosphere.otherGasesPercentage = 1.0f;
 	}
-	else if (atmosphereType < 85) {
+	else if (atmosphereType < 97) {
 		// Methane-rich atmosphere (Titan-like)
 		atmosphere.nitrogenPercentage = RandomBetween(80.0f, 95.0f);
 		atmosphere.methanePercentage = RandomBetween(3.0f, 15.0f);

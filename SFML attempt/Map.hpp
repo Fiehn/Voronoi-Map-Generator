@@ -1400,7 +1400,7 @@ void calcTemp(std::vector<Cell>& map, GlobalWorldObjects& globals, const std::ve
 			// Land: standard lapse rate scaled by atmospheric retention
 			float lapseRate = 6.5f / atmosphericRetention; // °C per km
 			float elevationKm = (map[i].height - globals.seaLevel) * 10.0f; // in km
-            temp -= lapseRate * elevationKm;
+            temp -= clamp(lapseRate * elevationKm,70.0f,-50.0f);
         }
         else
 		{
@@ -1486,6 +1486,7 @@ void calcPercepitation(std::vector<Cell>& map,
         std::vector<float> newPrecipitation(map.size(), 0.0f);
 
         // Step 1: Generate initial moisture from evaporation
+        #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < map.size(); i++)
         {
             float evaporation = 0.0f;
@@ -1515,7 +1516,44 @@ void calcPercepitation(std::vector<Cell>& map,
         if (run > 0) {
 			std::shuffle(cellOrder.begin(), cellOrder.end(), std::default_random_engine(rand()));
         }
-                
+        
+		// Precompute wind direction and strength for each cell to optimize performance
+        struct WindData {
+            float windDir;
+			float windStr;
+			int bestNeighbor;
+			float bestAlignment;
+        };
+		std::vector<WindData> windCache(map.size());
+
+        #pragma omp parallel for schedule(static)
+        for (std::size_t idx = 0; idx < map.size(); idx++)
+        {
+            float windDir = radians(map[idx].windDir);
+			float windVariance = std::sin(run * 2.0f) * 20.f; // +/- 20 degrees
+			windDir += radians(windVariance);
+
+			int bestNeighbor = -1;
+			float bestAlignment = -1.0f;
+            for (int neighborIdx : map[idx].neighbors)
+            {
+                if (neighborIdx < 0 || neighborIdx >= map.size()) continue;
+                float dx = points[neighborIdx].x - points[idx].x;
+                float dy = points[neighborIdx].y - points[idx].y;
+                float neighborDir = std::atan2(dy, dx);
+                float angleDiff = std::abs(neighborDir - windDir);
+                if (angleDiff > PI) angleDiff = 2.0f * PI - angleDiff;
+                float alignment = std::cos(angleDiff);
+                if (alignment > bestAlignment)
+                {
+                    bestAlignment = alignment;
+                    bestNeighbor = neighborIdx;
+                }
+			}
+			windCache[idx] = { windDir, map[idx].windStr, bestNeighbor, bestAlignment };
+        }
+
+
         for (int step = 0; step < advectionSteps; step++)
         {
             std::vector<float> newMoisture(map.size(), 0.0f);
@@ -1527,36 +1565,7 @@ void calcPercepitation(std::vector<Cell>& map,
                 if (moisture[i] < 0.01f) continue;
 
                 float cellMoisture = moisture[i];
-                float windDir = radians(map[i].windDir);
-                float windStr = map[i].windStr;
-
-                // Add slight directional variance per run to simulate seasonal wind shifts
-				float windVariance = std::sin(run * 2.0f) * 20.f; // +/- 20 degrees
-				windDir += radians(windVariance);
-
-                // Find best neighbor aligned with wind
-                int bestNeighbor = -1;
-                float bestAlignment = -1.0f;
-                
-                for (int neighborIdx : map[i].neighbors)
-                {
-                    if (neighborIdx < 0 || neighborIdx >= map.size()) continue;
-                    
-                    float dx = points[neighborIdx].x - points[i].x;
-                    float dy = points[neighborIdx].y - points[i].y;
-                    float neighborDir = std::atan2(dy, dx);
-
-                    float angleDiff = std::abs(neighborDir - windDir);
-                    if (angleDiff > PI) angleDiff = 2.0f * PI - angleDiff;
-                    
-                    float alignment = std::cos(angleDiff);
-                    
-                    if (alignment > bestAlignment)
-                    {
-                        bestAlignment = alignment;
-                        bestNeighbor = neighborIdx;
-                    }
-                }
+				const WindData& windData = windCache[i];
 
                 // Calculate precipitation
                 float precipitationAmount = 0.0f;
@@ -1568,7 +1577,7 @@ void calcPercepitation(std::vector<Cell>& map,
                     float baseCondensation = condensation_rate * moistureFactor * 12.0f;
 
 					// Vary ocndensation rate per run to simulate seasonal changes
-					float seasonalFactor = 0.8f + 0.4f * (run / (float)runs);
+					float seasonalFactor = 0.8f + 0.4f * (run / static_cast<float>(runs));
 
                     precipitationAmount += baseCondensation * seasonalFactor;
                 }
@@ -1576,30 +1585,26 @@ void calcPercepitation(std::vector<Cell>& map,
                 // 2. Temperature-driven condensation (colder air holds less moisture)
                 if (map[i].temp < 20.0f && cellMoisture > 20.0f)
                 {
-                    float coldFactor = (20.0f - map[i].temp) / 30.0f;  // Stronger at colder temps
-                    coldFactor = clamp(coldFactor, 1.0f, 0.0f);
-                    float coldPrecip = cellMoisture * 0.08f * coldFactor;
-                    precipitationAmount += coldPrecip;
+                    float coldFactor = clamp((20.0f - map[i].temp) / 30.0f, 1.0f, 0.0f);  // Stronger at colder temps
+                    precipitationAmount += cellMoisture * 0.08f * coldFactor;
                 }
 
                 // 3. Orographic precipitation (mountains force uplift)
-                if (bestNeighbor >= 0 && !map[i].oceanBool)  // Only over land
+                if (windData.bestNeighbor >= 0 && !map[i].oceanBool)  // Only over land
                 {
-                    float heightDiff = map[bestNeighbor].height - map[i].height;
+                    float heightDiff = map[windData.bestNeighbor].height - map[i].height;
                     if (heightDiff > 0.015f)  // Lower threshold for gentler slopes
                     {
                         float liftFactor = std::tanh(orographic_factor * heightDiff);
-                        float orographicPrecip = cellMoisture * liftFactor * 0.35f;
-                        precipitationAmount += orographicPrecip;
+                        precipitationAmount += cellMoisture * liftFactor * 0.35f;
                     }
                 }
 
                 // 4. Oceanic storm precipitation (based on moisture and wind)
-                if (map[i].oceanBool && cellMoisture > 50.0f && windStr > 0.6f)
+                if (map[i].oceanBool && cellMoisture > 50.0f && windData.windStr > 0.6f)
                 {
-                    float stormFactor = (windStr - 0.6f) * 2.5f;  // Stronger winds = more storms
-                    float oceanStormPrecip = cellMoisture * 0.06f * stormFactor;
-                    precipitationAmount += oceanStormPrecip;
+                    float stormFactor = (windData.windStr - 0.6f) * 2.5f;  // Stronger winds = more storms
+                    precipitationAmount += cellMoisture * 0.06f * stormFactor;
                 }
 
                 // Cap precipitation to avoid depleting all moisture
@@ -1612,18 +1617,18 @@ void calcPercepitation(std::vector<Cell>& map,
                 float remainingMoisture = cellMoisture - precipitationAmount;
 
                 // Transfer moisture to downwind neighbor
-                if (bestNeighbor >= 0 && bestAlignment > 0.0f)
+                if (windData.bestNeighbor >= 0 && windData.bestAlignment > 0.0f)
                 {
                     // Transfer efficiency based on wind and alignment
 					// Vary transfer factor per run to simulate seasonal wind strength changes
                     float runVariation = 0.85 + 0.1f * std::cos(run * 1.5f);
-                    float transferFactor = windStr * std::pow(std::max(0.0f, bestAlignment), 0.4f) * runVariation;
+                    float transferFactor = windData.windStr * std::pow(std::max(0.0f, windData.bestAlignment), 0.4f) * runVariation;
                     float transferredMoisture = remainingMoisture * transferFactor;
 
                     // Rain shadow effect (descending terrain)
                     if (!map[i].oceanBool)  // Only apply to land
                     {
-                        float heightDiff = map[bestNeighbor].height - map[i].height;
+                        float heightDiff = map[windData.bestNeighbor].height - map[i].height;
                         if (heightDiff < -0.02f)
                         {
                             transferredMoisture *= 0.70f;  // Rain shadow dries air
@@ -1633,7 +1638,7 @@ void calcPercepitation(std::vector<Cell>& map,
                     // Natural moisture loss during transport
                     transferredMoisture *= (1.0f - moisture_loss_rate);
 
-                    newMoisture[bestNeighbor] += transferredMoisture;
+                    newMoisture[windData.bestNeighbor] += transferredMoisture;
                     newMoisture[i] += remainingMoisture * (1.0f - transferFactor);
                 }
                 else
@@ -1644,10 +1649,11 @@ void calcPercepitation(std::vector<Cell>& map,
                 }
             }
             
-            moisture = newMoisture;
+			moisture = std::move(newMoisture);
         }
 
         // Step 3: Accumulate precipitation across runs
+        #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < map.size(); i++)
         {
             if (run == 0)
@@ -1663,15 +1669,16 @@ void calcPercepitation(std::vector<Cell>& map,
     }
 	// Step 4: Add tiny simplex noise for variability (needs a look)
 	SimplexNoise simplexNoise = SimplexNoise(rand());
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < map.size(); i++)
     {
 		float noise = simplexNoise.noise(points[i].x * 0.02f, points[i].y * 0.02f) * 2.0f; // small variation
-        map[i].percepitation += noise;
-        map[i].percepitation = std::max(0.0f, map[i].percepitation); // ensure non-negative
+        map[i].percepitation = std::max(0.0f, map[i].percepitation + noise); // ensure non-negative
 	}
 
 
 	// Step 5: Cap the precipitation values
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < map.size(); i++)
     {
         map[i].percepitation = std::min(map[i].percepitation, max_percipitation);
@@ -1679,6 +1686,7 @@ void calcPercepitation(std::vector<Cell>& map,
 
     // Step 6: Smooth precipitation for gradual transitions
     std::vector<float> smoothedPrecip(map.size());
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < map.size(); i++)
     {
         float sum = map[i].percepitation * 2.5f;  // Weight center
@@ -1687,12 +1695,13 @@ void calcPercepitation(std::vector<Cell>& map,
         for (int neighborIdx : map[i].neighbors)
         {
             sum += map[neighborIdx].percepitation;
-            count++;
+            count += 1;
         }
 
-        smoothedPrecip[i] = sum / count;
+        smoothedPrecip[i] = sum / static_cast<float>(count);
     }
 
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < map.size(); i++)
     {
         map[i].percepitation = smoothedPrecip[i];

@@ -79,164 +79,6 @@ sf::VertexArray windArrowsGrid(vor::Voronoi& map)
     return windArrows;
 }
 
-sf::VertexArray WindStreamlines::generateStreamlines(
-    vor::Voronoi& map,
-    const sf::View& view,
-    const StreamlineConfig& config)
-{
-    sf::VertexArray streamlines(sf::Lines);
-
-    // Calculate visible area in world coordinates
-    sf::Vector2f viewCenter = view.getCenter();
-    sf::Vector2f viewSize = view.getSize();
-    sf::FloatRect visibleArea(
-        viewCenter.x - viewSize.x / 2.f,
-        viewCenter.y - viewSize.y / 2.f,
-        viewSize.x,
-        viewSize.y
-    );
-    // Track existing streamline positions to maintain separation
-    std::vector<std::vector<sf::Vector2f>> existingStreamlines;
-
-    // Seed streamlines at random positions within the visible area
-    for (int i = 0; i < config.numStreamlines; i++)
-    {
-        // Random starting point
-        sf::Vector2f seedPoint(
-            visibleArea.left + RandomBetween(0.f, visibleArea.width),
-            visibleArea.top + RandomBetween(0.f, visibleArea.height)
-        );
-		// Check separation from existing streamlines
-        if (!isSeparated(seedPoint, existingStreamlines, config.separationDistance)) {
-            continue; // Skip this seed point if too close to existing streamlines
-		}
-        // Trace streamline from seed point
-        std::vector<sf::Vector2f> streamline = traceStreamline(map, seedPoint, visibleArea, config);
-		// Only add if the streamline has points
-        if (streamline.size() > 3) {
-			existingStreamlines.push_back(streamline);
-            addStreamlineToVertexArray(streamlines, streamline, map, config);
-        }
-    }
-	return streamlines;
-}
-std::vector<sf::Vector2f> WindStreamlines::traceStreamline(
-    vor::Voronoi& map,
-    sf::Vector2f seedPoint,
-    const sf::FloatRect& visibleArea,
-    const StreamlineConfig& config)
-{
-    std::vector<sf::Vector2f> points;
-    sf::Vector2f currentPos = seedPoint;
-
-    for (int step = 0; step < config.maxSteps; step++)
-    {
-		// Check if still in visible area
-        if (!visibleArea.contains(currentPos)) {
-            break; // Stop if outside visible area
-        }
-
-		// Get wind vector at current position
-        sf::Vector2f windVector = getWindVectorAt(map, currentPos);
-
-		// If wind strength is too low, stop the streamline
-        if (magnitude(windVector) < 0.01f) {
-            break;
-		}
-
-        // Add current point 
-		points.push_back(currentPos);
-
-        // Move along the wind vector
-        sf::Vector2f normalizedWind = normalize(windVector);
-		currentPos += normalizedWind * config.stepSize;
-
-        // Check for convergence
-        if (points.size() > 5) {
-            bool tooClose = false;
-            for (size_t i = 0; i < points.size() - 5; i++) {
-                if (distance(currentPos, points[i]) < config.stepSize * 20.f)
-                {
-					tooClose = true;
-					break;
-                }
-            }
-            if (tooClose) {
-                break; // Stop if converging
-			}
-        }
-    }
-	return points;
-}
-
-sf::Vector2f WindStreamlines::getWindVectorAt(vor::Voronoi& map, sf::Vector2f position)
-{
-	// Find cell at position
-    int cellIndex = map.getCellIndex(position);
-    if (cellIndex == vor::INVALID_INDEX) {
-        return sf::Vector2f(0.f, 0.f); // No wind outside valid cells
-    }
-    const Cell& cell = map.cells[cellIndex];
-    float windRad = radians(cell.windDir);
-    sf::Vector2f windVector(
-        std::cos(windRad) * cell.windStr,
-        std::sin(windRad) * cell.windStr
-    );
-	return windVector;
-}
-
-void WindStreamlines::addStreamlineToVertexArray(
-    sf::VertexArray& vertexArray,
-    const std::vector<sf::Vector2f>& streamline,
-    vor::Voronoi& map,
-    const StreamlineConfig& config)
-{
-    for (size_t i = 0; i < streamline.size() - 1; i++)
-    {
-		sf::Vector2f p1 = streamline[i];
-		sf::Vector2f p2 = streamline[i + 1];
-
-        // Get wind strength at this point for coloring
-		int cellIndex = map.getCellIndex(p1);
-        float windStrength = 0.5f;
-
-        if (cellIndex != vor::INVALID_INDEX)
-        {
-			windStrength = map.cells[cellIndex].windStr;
-        }
-
-        // Color based on wind strength
-        sf::Color lineColor = config.fadeWithStrength ?
-            getWindColor(windStrength) 
-            : sf::Color(255, 255, 255, 180);
-		// Fade towards end of streamline
-        float fadeProgress = static_cast<float>(i) / streamline.size();
-        lineColor.a = static_cast<sf::Uint8>(180 * (1.0f - fadeProgress * 0.5));
-
-		// Add line segment to vertex array
-        vertexArray.append(sf::Vertex(p1, lineColor));
-		vertexArray.append(sf::Vertex(p2, lineColor));
-    }
-}
-
-bool WindStreamlines::isSeparated(
-    const sf::Vector2f& point,
-    const std::vector<std::vector<sf::Vector2f>>& existingStreamlines,
-    float minDistance)
-{
-    for (const auto& streamline : existingStreamlines) 
-    {
-        for (const auto& existingPoint : streamline)
-        {
-            if (distance(point, existingPoint) < minDistance) {
-				return false; // Too close to an existing streamline point
-            }
-        }
-    }
-	return true; // Sufficiently separated
-}
-
-
 
 sf::VertexArray generateWindArrows(vor::Voronoi& map, float globalZoom, const sf::View& view, const sf::Vector2u& windowSize)
 { // create a vertex array drawing arrows by the wind direction
@@ -272,7 +114,8 @@ sf::VertexArray generateWindArrows(vor::Voronoi& map, float globalZoom, const sf
     sf::VertexArray arrows(sf::Triangles, 3 * estimatedArrows);
 
     // Arrow sizing based on zoom
-    float arrowBaseLength = 15.0f * (1.0f + globalZoom * 2.0f);
+    float baseArrowLength = clamp(33000.f / map.cells.size(), 1.0f, 0.01f);
+    float arrowBaseLength = 15.0f * baseArrowLength * (1.0f + globalZoom * 2.0f);
     float vaseAngleOffset = PI / 8.0f;
 
     // Draw arrows for individual cells
@@ -307,27 +150,6 @@ sf::VertexArray generateWindArrows(vor::Voronoi& map, float globalZoom, const sf
         arrows.append(sf::Vertex(sf::Vector2f(x_base1, y_base1), arrowColor));
         arrows.append(sf::Vertex(sf::Vector2f(x_base2, y_base2), arrowColor));
     }
-	// Add streamlines if needed
-    //if (drawStreamlines)
-    //{
-    //    WindStreamlines windStreamlines;
-    //    WindStreamlines::StreamlineConfig streamlineConfig;
-	//	streamlineConfig.numStreamlines = 200 + static_cast<int>(globalZoom * 50);
-	//	streamlineConfig.maxSteps = 1000;
-	//	streamlineConfig.stepSize = 5.f;
-	//	streamlineConfig.separationDistance = 1.f;
-
-    //	sf::VertexArray streamlines = windStreamlines.generateStreamlines(map, view, streamlineConfig);
-
-        // Combine arrows and streamlines into one vertex array by copying vertices
-    //    sf::VertexArray combined(sf::Lines);
-
-        // Copy streamline vertices (they are lines)
-    //    for (std::size_t i = 0; i < streamlines.getVertexCount(); i++) {
-    //        combined.append(streamlines[i]);
-     //   }
-
-     //   return combined;
-    //}
+	
     return arrows;
 }

@@ -73,6 +73,15 @@
     <ClCompile Include="SeasonalCalculator.hpp">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="POP_Manager.hpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="POP_Manager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="POP_generator.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Voronoi.hpp">
@@ -135,16 +144,10 @@
     <ClInclude Include="tickerSimulation.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="POP.hpp">
+    <ClInclude Include="POP_data.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Religion.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="State.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Faction.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="extractiveResources.hpp">
@@ -154,6 +157,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PlanetaryObjects.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Language.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="POP_generator.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

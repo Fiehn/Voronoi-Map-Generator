@@ -37,8 +37,8 @@ public:
 	float erosion_strength = 0.15f; // strength of erosion effect
 
     // Temperature
-    float global_temp_avg = 25.f; // not the actual average but a value that determines the temperature range
-    unsigned int temp_smooth_repeats = 2; // amount of temperature smoothing iterations
+    float global_temp_avg = 35.f; // not the actual average but a value that determines the temperature range
+    unsigned int temp_smooth_repeats = 0; // amount of temperature smoothing iterations
 
     // Sealevel
     float sealevel = 0.5f; // The height at which the ocean starts
@@ -61,6 +61,23 @@ public:
     // Planet Parameters
 	bool earthLike = false; // if true, sets parameters to earth like values
     
+	// POP Generation Config
+	float population_density = 1.0f; // Multiplier for population density
+	float urbanization_rate = 0.3f; // Percentage of population in urban areas
+	float coastal_preference = 1.2f; // Multiplier for coastal population preference
+	int min_cultures = 5;		// Minimum number of cultures
+	int max_cultures = 20;		// Maximum number of cultures
+	float culture_mixing_rate = 0.1f; // Rate of cultural mixing
+	int min_religions = 3;		// Minimum number of religions
+	int max_religions = 15;		// Maximum number of religions
+	float religious_conversion_rate = 0.05f; // Rate of religious conversion
+	int min_languages = 4;		// Minimum number of languages
+	int max_languages = 25;		// Maximum number of languages
+	float language_shift_rate = 0.07f; // Rate of language shift
+	float wealth_variance = 0.3f; // Variance in wealth distribution
+	float literacy_base = 0.2f;   // Base literacy rate
+	float literacy_variance = 0.25f; // Variance in literacy rates
+	float coastal_population_preference = 1.2f; // Multiplier for coastal population preference
 
 	// JSON functions
 	void save_json(const std::string& filename) const {
@@ -107,7 +124,23 @@ private:
 			{"land_evapotranspiration_factor", land_evapotranspiration_factor},
 			{"ocean_evaporation_factor", ocean_evaporation_factor},
 			{"condensation_rate", condensation_rate},
-			{"earthLike", earthLike} 
+			{"earthLike", earthLike},
+			{"population_density", population_density},
+			{"urbanization_rate", urbanization_rate},
+			{"coastal_preference", coastal_preference},
+			{"min_cultures", min_cultures},
+			{"max_cultures", max_cultures},
+			{"culture_mixing_rate", culture_mixing_rate},
+			{"min_religions", min_religions},
+			{"max_religions", max_religions},
+			{"religious_conversion_rate", religious_conversion_rate},
+			{"min_languages", min_languages},
+			{"max_languages", max_languages},
+			{"language_shift_rate", language_shift_rate},
+			{"wealth_variance", wealth_variance},
+			{"literacy_base", literacy_base},
+			{"literacy_variance", literacy_variance},
+			{"coastal_population_preference", coastal_population_preference} 
 		};
 	}
 
@@ -141,6 +174,22 @@ private:
 		ocean_evaporation_factor = j.at("ocean_evaporation_factor").get<float>();
 		condensation_rate = j.at("condensation_rate").get<float>();
 		earthLike = j.at("earthLike").get<bool>();
+		population_density = j.at("population_density").get<float>();
+		urbanization_rate = j.at("urbanization_rate").get<float>();
+		coastal_preference = j.at("coastal_preference").get<float>();
+		min_cultures = j.at("min_cultures").get<int>();
+		max_cultures = j.at("max_cultures").get<int>();
+		culture_mixing_rate = j.at("culture_mixing_rate").get<float>();
+		min_religions = j.at("min_religions").get<int>();
+		max_religions = j.at("max_religions").get<int>();
+		religious_conversion_rate = j.at("religious_conversion_rate").get<float>();
+		min_languages = j.at("min_languages").get<int>();
+		max_languages = j.at("max_languages").get<int>();
+		language_shift_rate = j.at("language_shift_rate").get<float>();
+		wealth_variance = j.at("wealth_variance").get<float>();
+		literacy_base = j.at("literacy_base").get<float>();
+		literacy_variance = j.at("literacy_variance").get<float>();
+		coastal_population_preference = j.at("coastal_population_preference").get<float>();
 	}
 };
 

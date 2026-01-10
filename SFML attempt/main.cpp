@@ -12,7 +12,9 @@
 #include "cell.hpp"
 #include "GlobalWorldObjects.hpp"
 #include "Map.hpp"
-#include "POP.hpp"
+#include "POP_data.hpp"
+#include "POP_Manager.hpp"
+#include "POP_generator.hpp"
 #include "SeasonalCalculator.hpp"
 
 #include "imgui.h"
@@ -53,7 +55,7 @@ int main()
     }
     
     // Create the global world objects
-    GlobalWorldObjects globals; 
+    GlobalWorldObjects globals;
 
     // Empty additionals
     sf::VertexArray windArrows;
@@ -75,6 +77,9 @@ int main()
     VertexMap vertexMap;
     std::cout << "Vertex Buffer Available? " << vertexMap.useVertexBuffer << std::endl;
 
+	// Create the POP Manager
+	PopManager popManager;
+
     // Create the view
     sf::Vector2f oldPos;
     bool moving = false;
@@ -91,6 +96,7 @@ int main()
 	bool showResourceGenBool = false; // Get window to regenerate resources
 	bool showPlanetaryParamsBool = false; // Show planetary parameters window
 	bool showContinentViewerBool = false; // Show continent viewer
+	bool showPopulationVierwerBool = false; // Show population viewer
 
 	bool changeBiomeColorBool = false; // Change the color of the biomes
 
@@ -132,7 +138,7 @@ int main()
     genWorld(map, globals, window, vertexMap,
         lines, seasonCalc,
         windowWidth, windowHeight,
-		font, config, seed);
+		font, config, seed, popManager);
 
     // Draw initial wind arrows
 	windArrows = generateWindArrows(map, globalZoom, view, window.getSize());
@@ -299,6 +305,7 @@ int main()
 
 		ImGui::Checkbox("Planetary Parameters", &showPlanetaryParamsBool);
 		ImGui::Checkbox("Continent Viewer", &showContinentViewerBool);
+		ImGui::Checkbox("Population Viewer", &showPopulationVierwerBool);
 
         ImGui::Text("Number of cells: %d", map.cells.size());
         ImGui::Text("Number of biomes: %d", globals.biomes.size());
@@ -310,7 +317,7 @@ int main()
 
 
         // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position
-        highligtedCellObservation(map, globals, highlightedCell, &seasonCalc);
+        highligtedCellObservation(map, globals, highlightedCell, &seasonCalc, &popManager);
         
         if (mapType==2)
         {
@@ -344,11 +351,12 @@ int main()
         showNewMap(map, globals, window, vertexMap,
 			windArrows, lines, seasonCalc,
                 windowWidth, windowHeight,
-                font, config, seed, 
+                font, config, seed, popManager,
                 showNewMapBool);
 		configLoadSave(config, showLoadConfig, showSaveConfig);
 		planetaryParamsViewer(globals, showPlanetaryParamsBool);
         continentViewer(globals, showContinentViewerBool);
+		populationViewer(popManager, globals, showPopulationVierwerBool, map);
 
         if (showResourceGenBool)
         {

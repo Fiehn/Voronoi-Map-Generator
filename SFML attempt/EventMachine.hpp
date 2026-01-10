@@ -714,6 +714,7 @@ void showNewMap(vor::Voronoi& map,
     const sf::Font& font,
     MapConfig& config,
     unsigned int& seed,
+    PopManager& popManager,
     bool& showNewMapBool)
 {
 	if (!showNewMapBool) {
@@ -726,7 +727,7 @@ void showNewMap(vor::Voronoi& map,
         genWorld(map, globals, window, vertexMap,
             lines, seasonalCalc,
             windowWidth, windowHeight,
-            font, config, seed);
+            font, config, seed, popManager);
         showNewMapBool = false;
     }
 
@@ -1670,35 +1671,35 @@ void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
     ImGui::End();
 }
 
-void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects& globals, std::size_t highlightedCell, 
-    const SeasonalCalculator* seasonCalc = nullptr)
+void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects& globals, std::size_t highlightedCell,
+    const SeasonalCalculator* seasonCalc = nullptr, const PopManager* popManager = nullptr)
 {
     if (highlightedCell == vor::INVALID_INDEX) {
-		return;
-	}
+        return;
+    }
     ImGui::Begin("Highlighted Cell");
-	
+
     const Cell& cell = map.cells[highlightedCell];
 
     const Biome& biome = globals.biomes[cell.biome];
     ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
 
-	ImGui::BeginTable("Highlighted Cell", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
-	ImGui::TableSetupColumn("Property");
-	ImGui::TableSetupColumn("Value");
-	ImGui::TableHeadersRow();
+    ImGui::BeginTable("Highlighted Cell", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+    ImGui::TableSetupColumn("Property");
+    ImGui::TableSetupColumn("Value");
+    ImGui::TableHeadersRow();
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
     ImGui::Text("Cell Id");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%d", highlightedCell);
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", highlightedCell);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Temperature");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%.2f", cell.temp);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Temperature");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.temp);
 
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
@@ -1706,11 +1707,11 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
     ImGui::TableSetColumnIndex(1);
     ImGui::Text("%.2f", cell.tempVariance);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Precipitation");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%.2f", cell.percepitation);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Precipitation");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.percepitation);
 
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
@@ -1718,28 +1719,28 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
     ImGui::TableSetColumnIndex(1);
     ImGui::Text("%.2f", cell.percepitationVariance);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Elevation");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%.2f", cell.height);
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Rise");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%.2f", cell.rise);
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Distance to Ocean");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%d", cell.distToOcean);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Elevation");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.height);
 
     ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Humidity");
-	ImGui::TableSetColumnIndex(1);
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Rise");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.rise);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Distance to Ocean");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", cell.distToOcean);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Humidity");
+    ImGui::TableSetColumnIndex(1);
     ImGui::Text("%.2f", cell.humidity);
 
     ImGui::TableNextRow();
@@ -1749,60 +1750,60 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
     ImGui::Text("%.2f", cell.humidityVariance);
 
     ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
+    ImGui::TableSetColumnIndex(0);
     ImGui::Text("Biome");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%s", biome.name.c_str());
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%s", biome.name.c_str());
     ImGui::SameLine();
     ImGui::ColorButton("colorHighlightedCell", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoTooltip);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Coast");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%d", cell.coastBool);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Coast");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", cell.coastBool);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Ocean");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%d", cell.oceanBool);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Ocean");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", cell.oceanBool);
 
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
     ImGui::Text("Tree");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%d", cell.treeBool);
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", cell.treeBool);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("River");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%d", cell.riverBool);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("River");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", cell.riverBool);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Lake");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%d", cell.lakeBool);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Lake");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", cell.lakeBool);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("River Id");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%d", cell.riverId);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("River Id");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", cell.riverId);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Lake Id");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%d", cell.lakeId);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Lake Id");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", cell.lakeId);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Wind Direction");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%.2f", cell.windDir);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Wind Direction");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.windDir);
 
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
@@ -1816,17 +1817,17 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
     ImGui::TableSetColumnIndex(1);
     ImGui::Text("%.2f", cell.windStr);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Wind Strength Variance");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%.2f", cell.windStrVariance);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Wind Strength Variance");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.2f", cell.windStrVariance);
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Text("Culture");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%d", cell.culture);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Culture");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", cell.culture);
 
     if (!globals.continents.empty())
     {
@@ -1844,6 +1845,154 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
     }
 
     ImGui::EndTable();
+
+    // Population Information Section
+    if (popManager != nullptr) {
+        ImGui::Separator();
+        ImGui::Text("Population Information:");
+        ImGui::Spacing();
+
+        // Count total population and POPs in this cell
+        size_t totalPopulation = 0;
+        size_t totalPops = 0;
+        std::map<uint16_t, size_t> culturePopulation; // Culture ID -> Population
+        std::map<uint16_t, size_t> religionPopulation; // Religion ID -> Population
+        std::map<uint16_t, size_t> languagePopulation; // Language ID -> Population
+
+        // Iterate through all POPs in this province/cell
+        popManager->ForEachPopInProvince(highlightedCell, [&](PopHandle handle, size_t index) {
+            const PopData& popData = popManager->GetPopData();
+
+            totalPops++;
+            int32_t popCount = popData.count[index];
+            totalPopulation += popCount;
+
+            // Aggregate by culture
+            uint16_t cultureId = popData.culture_id[index];
+            culturePopulation[cultureId] += popCount;
+
+            // Aggregate by religion
+            uint16_t religionId = popData.religion_id[index];
+            religionPopulation[religionId] += popCount;
+
+            // Aggregate by language
+            uint16_t languageId = popData.language_id[index];
+            languagePopulation[languageId] += popCount;
+            });
+
+        ImGui::BeginTable("PopulationInfo", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+        ImGui::TableSetupColumn("Property");
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Total Population");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%zu", totalPopulation);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Number of POPs");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%zu", totalPops);
+
+        ImGui::EndTable();
+
+        // Culture breakdown
+        if (!culturePopulation.empty()) {
+            ImGui::Spacing();
+            ImGui::Text("Cultures:");
+            ImGui::BeginTable("Cultures", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+            ImGui::TableSetupColumn("Culture");
+            ImGui::TableSetupColumn("Population");
+            ImGui::TableSetupColumn("Percentage");
+            ImGui::TableHeadersRow();
+
+            for (const auto& [cultureId, population] : culturePopulation) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                if (cultureId < globals.cultures.size()) {
+                    const Culture& culture = globals.cultures[cultureId];
+                    ImVec4 cultureColor(culture.color.r / 255.0f, culture.color.g / 255.0f,
+                        culture.color.b / 255.0f, 1.0f);
+                    ImGui::ColorButton("##culturecolor", cultureColor,
+                        ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoTooltip);
+                    ImGui::SameLine();
+                    ImGui::Text("%s", culture.name.c_str());
+                }
+                else {
+                    ImGui::Text("Unknown (%d)", cultureId);
+                }
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%zu", population);
+                ImGui::TableSetColumnIndex(2);
+                float percentage = (totalPopulation > 0) ? (100.0f * population / totalPopulation) : 0.0f;
+                ImGui::Text("%.1f%%", percentage);
+            }
+            ImGui::EndTable();
+        }
+
+        // Religion breakdown
+        if (!religionPopulation.empty()) {
+            ImGui::Spacing();
+            ImGui::Text("Religions:");
+            ImGui::BeginTable("Religions", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+            ImGui::TableSetupColumn("Religion");
+            ImGui::TableSetupColumn("Followers");
+            ImGui::TableSetupColumn("Percentage");
+            ImGui::TableHeadersRow();
+
+            for (const auto& [religionId, followers] : religionPopulation) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                if (religionId < globals.religions.size()) {
+                    ImGui::Text("%s", globals.religions[religionId].name.c_str());
+                }
+                else {
+                    ImGui::Text("Unknown (%d)", religionId);
+                }
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%zu", followers);
+                ImGui::TableSetColumnIndex(2);
+                float percentage = (totalPopulation > 0) ? (100.0f * followers / totalPopulation) : 0.0f;
+                ImGui::Text("%.1f%%", percentage);
+            }
+            ImGui::EndTable();
+        }
+
+        // Language breakdown
+        if (!languagePopulation.empty()) {
+            ImGui::Spacing();
+            ImGui::Text("Languages:");
+            ImGui::BeginTable("Languages", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+            ImGui::TableSetupColumn("Language");
+            ImGui::TableSetupColumn("Speakers");
+            ImGui::TableSetupColumn("Percentage");
+            ImGui::TableHeadersRow();
+
+            for (const auto& [languageId, speakers] : languagePopulation) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                if (languageId < globals.languages.size()) {
+                    ImGui::Text("%s", globals.languages[languageId].name.c_str());
+                }
+                else {
+                    ImGui::Text("Unknown (%d)", languageId);
+                }
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%zu", speakers);
+                ImGui::TableSetColumnIndex(2);
+                float percentage = (totalPopulation > 0) ? (100.0f * speakers / totalPopulation) : 0.0f;
+                ImGui::Text("%.1f%%", percentage);
+            }
+            ImGui::EndTable();
+        }
+
+        if (totalPops == 0) {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No population in this cell");
+        }
+    }
 
     // Seasonal Climate Curve Visualization
     if (seasonCalc != nullptr) {
@@ -1873,7 +2022,7 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
             static std::vector<float> yMax(numSamples);
 
             for (int i = 0; i < numSamples; i++) {
-				float dayOfYear = (float)i;
+                float dayOfYear = (float)i;
                 xData[i] = dayOfYear;
 
                 ClimateDistribution dist;
@@ -1892,30 +2041,30 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
                     break;
                 }
                 yMean[i] = dist.mean;
-				yMin[i] = dist.getMin();
-				yMax[i] = dist.getMax();
+                yMin[i] = dist.getMin();
+                yMax[i] = dist.getMax();
             }
 
             // Plot the seasonal curve
             if (ImPlot::BeginPlot("##SeasonalCurve", ImVec2(-1, 200))) {
                 ImPlot::SetupAxes("Day of Year", climateVarNames[selectedClimateVar]);
                 ImPlot::SetupAxisLimits(ImAxis_X1, 0, yearLength, ImPlotCond_Always);
-                
+
                 // Plot variance band (min to max)
                 ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
                 ImPlot::PlotShaded("Range", xData.data(), yMin.data(), yMax.data(), numSamples);
                 ImPlot::PopStyleVar();
-                
+
                 // Plot mean line
                 ImPlot::SetNextLineStyle(ImVec4(1, 0.5f, 0, 1), 2.0f);
                 ImPlot::PlotLine("Mean", xData.data(), yMean.data(), numSamples);
-                
+
                 // Add season markers
                 float springStart = 0.0f;
                 float summerStart = yearLength * 0.25f;
                 float autumnStart = yearLength * 0.5f;
                 float winterStart = yearLength * 0.75f;
-                
+
                 ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));
                 double springLine = springStart;
                 double summerLine = summerStart;
@@ -1926,7 +2075,7 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
                 ImPlot::PlotInfLines("##seasons", &autumnLine, 1);
                 ImPlot::PlotInfLines("##seasons", &winterLine, 1);
                 ImPlot::PopStyleColor();
-                
+
                 ImPlot::EndPlot();
             }
 
@@ -1940,7 +2089,7 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
             ImGui::TextColored(ImVec4(0.7f, 0.85f, 1.0f, 1.0f), "Winter: Day %.0f-%.0f", yearLength * 0.75f, yearLength);
         }
     }
-    
+
     ImGui::Text("Biome Probabilities: ");
     for (int i = 0; i < cell.biome_prob.size(); i++)
     {
@@ -2327,6 +2476,236 @@ void continentViewer(GlobalWorldObjects& globals, bool& showContinentViewer)
 
                 ImGui::TableSetColumnIndex(6);
                 ImGui::Text("%.3f", globals.continents[i].getIsostaticHeight());
+            }
+
+            ImGui::EndTable();
+        }
+    }
+
+    ImGui::End();
+}
+
+void populationViewer(PopManager& popManager, GlobalWorldObjects& globals,
+    bool& showPopulationViewer, const vor::Voronoi& map)
+{
+    if (!showPopulationViewer)
+    {
+        return;
+    }
+
+    ImGui::Begin("Population Viewer", &showPopulationViewer);
+
+    // Summary statistics
+    if (ImGui::CollapsingHeader("Summary", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        size_t totalPops = popManager.GetTotalPopCount();
+        size_t totalPopulation = popManager.GetTotalPopulation();
+
+        ImGui::BeginTable("PopSummary", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+        ImGui::TableSetupColumn("Property");
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Total POPs");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%zu", totalPops);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Total Population");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%zu", totalPopulation);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Cultures");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%zu", globals.cultures.size());
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Religions");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%zu", globals.religions.size());
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Languages");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%zu", globals.languages.size());
+
+        ImGui::EndTable();
+    }
+    // Culture distribution
+    if (ImGui::CollapsingHeader("Culture Distribution", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        if (!globals.cultures.empty())
+        {
+            std::vector<const char*> labels;
+            std::vector<float> data;
+            std::vector<ImU32> colors;
+
+            for (const auto& culture : globals.cultures)
+            {
+                labels.push_back(culture.name.c_str());
+                data.push_back(static_cast<float>(culture.total_population));
+                colors.push_back(ImColor(culture.color.r, culture.color.g, culture.color.b));
+            }
+
+            if (!labels.empty())
+            {
+                pushTempColormap("CultureDistribution", "CultureColormap", colors.data(),
+                    colors.size(), false);
+
+                if (ImPlot::BeginPlot("Cultures", ImVec2(-1, 200), ImPlotFlags_Equal))
+                {
+                    ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoDecorations);
+                    ImPlot::SetupAxis(ImAxis_Y1, nullptr, ImPlotAxisFlags_NoDecorations);
+                    ImPlot::PlotPieChart(labels.data(), data.data(), static_cast<int>(labels.size()),
+                        0.5, 0.5, 0.4, "%.0f", 90, ImPlotPieChartFlags_Normalize);
+                    ImPlot::EndPlot();
+                }
+                ImPlot::PopColormap();
+            }
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "No cultures generated.");
+        }
+    }
+    // Religion distribution
+    if (ImGui::CollapsingHeader("Religion Distribution"))
+    {
+        if (!globals.religions.empty())
+        {
+            std::vector<const char*> labels;
+            std::vector<float> data;
+
+            for (const auto& religion : globals.religions)
+            {
+                labels.push_back(religion.name.c_str());
+                data.push_back(static_cast<float>(religion.total_followers));
+            }
+
+            if (!labels.empty() && ImPlot::BeginPlot("Religions", ImVec2(-1, 200)))
+            {
+                ImPlot::SetupAxes("Religion", "Followers");
+                ImPlot::PlotBars("Followers", data.data(), static_cast<int>(data.size()));
+                ImPlot::EndPlot();
+            }
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "No religions generated.");
+        }
+    }
+    // Detailed culture table
+    if (ImGui::CollapsingHeader("Culture Details"))
+    {
+        if (ImGui::BeginTable("CultureDetails", 8,
+            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Sortable | ImGuiTableFlags_ScrollY,
+            ImVec2(0, 300)))
+        {
+            ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 30.0f);
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+            ImGui::TableSetupColumn("Color", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+            ImGui::TableSetupColumn("Population", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableSetupColumn("Innovation", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+            ImGui::TableSetupColumn("Militarism", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+            ImGui::TableSetupColumn("Individualism", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            ImGui::TableSetupColumn("Materialism", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableSetupScrollFreeze(0, 1);
+            ImGui::TableHeadersRow();
+
+            for (const auto& culture : globals.cultures)
+            {
+                ImGui::TableNextRow();
+
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%d", culture.id);
+
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%s", culture.name.c_str());
+
+                ImGui::TableSetColumnIndex(2);
+                ImVec4 col(culture.color.r / 255.0f, culture.color.g / 255.0f,
+                    culture.color.b / 255.0f, 1.0f);
+                ImGui::ColorButton("##culturecolor", col,
+                    ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoTooltip);
+
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%llu", culture.total_population);
+
+                ImGui::TableSetColumnIndex(4);
+                ImGui::Text("%.2f", culture.inovation_rate);
+
+                ImGui::TableSetColumnIndex(5);
+                ImGui::Text("%.2f", culture.military_tradition);
+
+                ImGui::TableSetColumnIndex(6);
+                ImGui::Text("%.2f", culture.individualism);
+
+                ImGui::TableSetColumnIndex(7);
+                ImGui::Text("%.2f", culture.materialism);
+            }
+
+            ImGui::EndTable();
+        }
+    }
+    // Detailed religion table
+    if (ImGui::CollapsingHeader("Religion Details"))
+    {
+        if (ImGui::BeginTable("ReligionDetails", 7,
+            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Sortable | ImGuiTableFlags_ScrollY,
+            ImVec2(0, 300)))
+        {
+            ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 30.0f);
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+            ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            ImGui::TableSetupColumn("Followers", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableSetupColumn("Dogmatism", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableSetupColumn("Proselytism", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            ImGui::TableSetupColumn("Tolerance", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+            ImGui::TableSetupScrollFreeze(0, 1);
+            ImGui::TableHeadersRow();
+
+            for (const auto& religion : globals.religions)
+            {
+                ImGui::TableNextRow();
+
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%d", religion.id);
+
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%s", religion.name.c_str());
+
+                ImGui::TableSetColumnIndex(2);
+                const char* typeStr = "Unknown";
+                switch (religion.type)
+                {
+                case ReligionType::Monotheistic: typeStr = "Monotheistic"; break;
+                case ReligionType::Polytheistic: typeStr = "Polytheistic"; break;
+                case ReligionType::Animistic: typeStr = "Animistic"; break;
+                case ReligionType::Pantheistic: typeStr = "Pantheistic"; break;
+                case ReligionType::Philosophical: typeStr = "Philosophical"; break;
+                case ReligionType::Humanistic: typeStr = "Humanistic"; break;
+                case ReligionType::Syncretic: typeStr = "Syncretic"; break;
+                }
+                ImGui::Text("%s", typeStr);
+
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%llu", religion.total_followers);
+
+                ImGui::TableSetColumnIndex(4);
+                ImGui::Text("%.2f", religion.dogmatism);
+
+                ImGui::TableSetColumnIndex(5);
+                ImGui::Text("%.2f", religion.proselytism);
+
+                ImGui::TableSetColumnIndex(6);
+                ImGui::Text("%.2f", religion.tolerance);
             }
 
             ImGui::EndTable();

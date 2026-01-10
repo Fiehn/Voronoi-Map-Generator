@@ -164,6 +164,9 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
     </ClCompile>
     <ClCompile Include="PlanetaryObjects.cpp" />
+    <ClCompile Include="POP_generator.cpp" />
+    <ClCompile Include="POP_Manager.cpp" />
+    <ClCompile Include="POP_Manager.hpp" />
     <ClCompile Include="SeasonalCalculator.hpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="Voronoi.cpp" />
@@ -175,22 +178,22 @@
     <ClInclude Include="Culture.hpp" />
     <ClInclude Include="EventMachine.hpp" />
     <ClInclude Include="extractiveResources.hpp" />
-    <ClInclude Include="Faction.hpp" />
     <ClInclude Include="GlobalWorldObjects.hpp" />
     <ClInclude Include="Include\Dear ImGUI\imgui.h" />
     <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h" />
     <ClInclude Include="Include\ImPlot\implot.h" />
     <ClInclude Include="Include\ImPlot\implot_internal.h" />
     <ClInclude Include="Include\nlohmann\json.hpp" />
+    <ClInclude Include="Language.hpp" />
     <ClInclude Include="MainMenu.hpp" />
     <ClInclude Include="Map.hpp" />
     <ClInclude Include="mapconfig.hpp" />
     <ClInclude Include="NewMap.hpp" />
     <ClInclude Include="PlanetaryObjects.hpp" />
-    <ClInclude Include="POP.hpp" />
+    <ClInclude Include="POP_data.hpp" />
+    <ClInclude Include="POP_generator.hpp" />
     <ClInclude Include="Religion.hpp" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="State.hpp" />
     <ClInclude Include="tickerSimulation.hpp" />
     <ClInclude Include="vertex.hpp" />
     <ClInclude Include="Voronoi.hpp" />

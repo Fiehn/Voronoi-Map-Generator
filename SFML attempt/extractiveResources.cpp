@@ -482,7 +482,7 @@ namespace ResourceGen {
 			break;
 		case ResourceType::Dyes:
 			// Dyes are diverse but often found in warm climates
-			if (cell.humidity > 0.3f && cell.temp > 10.f) {
+			if (cell.humidity > 0.25f && cell.temp > 10.f) {
 				float probability = 0.12f;
 				if (RandomBetween(0.f, 1.f) < probability) {
 					abundacen = RandomBetween(0.2f, 0.7f);

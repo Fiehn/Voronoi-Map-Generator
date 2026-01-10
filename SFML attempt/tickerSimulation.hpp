@@ -17,6 +17,7 @@ float deltaOverExtension(Cell cell)
 
 size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& globals, int cultureIndex, std::vector<Culture>& newCultures)
 {
+	/*
 	// Add a new cell from any of the neighbors in cells
 	// 1. Find a valid random cell with neighbors not in cells
 	// 2. calculate the overExtension cost of the cell
@@ -81,6 +82,8 @@ size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& globals, in
 
 	}
 	return foundCells; // Return the found cell
+	*/
+	return vor::INVALID_INDEX;
 }
 
 
@@ -219,6 +222,7 @@ private:
 void cultureCountPieChart(GlobalWorldObjects& globals, bool colorChange = false)
 {
 	// Biome distribution pie chart
+	/*
 	std::vector<const char*> labels;
 	std::vector<float> data;
 	ImU32 colors[1000];
@@ -248,11 +252,13 @@ void cultureCountPieChart(GlobalWorldObjects& globals, bool colorChange = false)
 		ImPlot::EndPlot();
 	}
 	ImPlot::PopColormap();
+	*/
 }
 
 /// There is a problem with indexes being 16 bit and it running out..
 void cultureLineChart(GlobalWorldObjects& globals, bool colorChange = false)
 {
+	/*
 	// Store historical data for each culture across ticks
 	static std::map<int, std::vector<float>> cultureHistory; // culture_id -> historical data
 	static int tickCount = 0;
@@ -338,6 +344,7 @@ void cultureLineChart(GlobalWorldObjects& globals, bool colorChange = false)
 		pushTempColormap("Culture Distribution", "CultureColormap", colorArray, globals.cultures.size(), true);
 		delete[] colorArray;
 	}
+	*/
 }
 
 void tickerControls(TickerSimulation& ticker, 
