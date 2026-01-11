@@ -4,9 +4,6 @@ class GlobalWorldObjects; // Forward declaration
 #include <vector>
 #include <SFML/Graphics.hpp>
 #include "CellObjects.hpp"
-#include "Culture.hpp"
-#include "Religion.hpp"
-#include "Language.hpp"
 #include "PlanetaryObjects.hpp"
 
 class GlobalWorldObjects
@@ -35,10 +32,6 @@ public:
 
 	std::vector<Continent> continents; // List of continents
 
-	std::vector<Culture> cultures; // List of cultures
-	std::vector<Religion> religions; // List of religions
-	std::vector<Language> languages; // List of languages
-
 	PlanetaryParameters planetaryParams; // Planetary parameters
 
 	GlobalWorldObjects();
@@ -55,18 +48,6 @@ public:
 	void setGlobalTreeline(float treeline);
 	
 	void generatePlanet(bool earthlike);
-	void addCulture(const Culture& culture) 
-	{
-		cultures.push_back(culture);
-	}
-	void addReligion(const Religion& religion)
-	{
-		religions.push_back(religion);
-	}
-	void addLanguage(const Language& language)
-	{
-		languages.push_back(language);
-	}
 };
 
 

@@ -15,7 +15,7 @@ float deltaOverExtension(Cell cell)
 	return overExtension;
 }
 
-size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& globals, int cultureIndex, std::vector<Culture>& newCultures)
+size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& globals, int cultureIndex)
 {
 	/*
 	// Add a new cell from any of the neighbors in cells
@@ -89,6 +89,7 @@ size_t cultureChangeTick(std::vector<Cell>& map, GlobalWorldObjects& globals, in
 
 std::vector<std::size_t> cultureTicker(std::vector<Cell>& cells, GlobalWorldObjects& globals)
 {
+	/*
 	std::vector<std::size_t> changed_cells;
 	changed_cells.reserve(globals.cultures.size());
 
@@ -110,6 +111,8 @@ std::vector<std::size_t> cultureTicker(std::vector<Cell>& cells, GlobalWorldObje
 	}
 
 	return changed_cells;
+	*/
+	return std::vector<std::size_t>();
 }
 
 void tick(vor::Voronoi& map, GlobalWorldObjects& globals, MapConfig& config, VertexMap& vertexMap, float deltaTime, std::mutex& globalsMutex)
@@ -133,11 +136,11 @@ void tick(vor::Voronoi& map, GlobalWorldObjects& globals, MapConfig& config, Ver
 		std::size_t cellId = change[i];
 		Cell& cell = map.cells[cellId];
 		if (cell.culture == -1) throw std::runtime_error("Cell has no culture");
-		Culture& culture = globals.cultures[cell.culture];
+		//Culture& culture = globals.cultures[cell.culture];
 
 		for (size_t j = map.cells[cellId].vertex_offset; j < map.cells[cellId].vertex_offset + map.cells[cellId].vertex.size() * 3; j++)
 		{
-			map.vertices[j].color = culture.color;
+			//map.vertices[j].color = culture.color;
 		}
 	}
 	// Update the vertex buffer

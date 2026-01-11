@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include "Logger.h"
 
 // Struct to wrap the generation steps
 struct GenStepWrapper {
@@ -16,9 +17,11 @@ struct GenStepWrapper {
         float maxWidth,
         float maxHeight
     ) {// Execute the function and time it
+		LOG_INFO(Generations, "Starting step: %s", description.c_str());
         auto start = std::chrono::high_resolution_clock::now();
         func();
         auto end = std::chrono::high_resolution_clock::now();
+		LOG_INFO(Generations, "Completed step: %s", description.c_str());
 
         // Update progress
         currentStep++;
@@ -218,38 +221,7 @@ static void genWorld(vor::Voronoi& map,
 		ResourceGen::generateMapResources(map.cells, globals); }, "Generating Resources", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
-    GenStepWrapper::RunStep([&]() {
-        PopGenerator popGen(seed);
-		PopGenerationConfig popConfig;
-		popConfig.population_density = config.population_density;
-		popConfig.min_cultures = config.min_cultures;
-		popConfig.max_cultures = config.max_cultures;
-		popConfig.min_religions = config.min_religions;
-		popConfig.max_religions = config.max_religions;
-		popConfig.min_languages = config.min_languages;
-		popConfig.max_languages = config.max_languages;
-        popConfig.culture_mixing_rate = config.culture_mixing_rate;
-		globals.cultures = popGen.GenerateCultures(popConfig,map);
-		globals.religions = popGen.GenerateReligions(popConfig, map);
-		globals.languages = popGen.GenerateLanguages(popConfig, map);
-        }, "Generating Religins, Cultures and Languages", currentStep,
-        totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
-
-    GenStepWrapper::RunStep([&]() {
-        PopGenerator popGen(seed);
-		PopGenerationConfig popConfig;
-		popConfig.coastal_preference = config.coastal_population_preference;
-		popConfig.population_density = config.population_density;
-		popConfig.urbanization_rate = config.urbanization_rate;
-		popConfig.wealth_variance = config.wealth_variance;
-		popConfig.literacy_base = config.literacy_base;
-		popConfig.literacy_variance = config.literacy_variance;
-		popConfig.religious_conversion_rate = config.religious_conversion_rate;
-		popConfig.language_shift_rate = config.language_shift_rate;
-
-		popGen.GenerateInitialPopulation(popManager, popConfig, map, globals);
-        }, "Generating POP's", currentStep,
-        totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+    // POP AND culture
 
     GenStepWrapper::RunStep([&]() {
 		vertexMap.clear();

@@ -2,7 +2,7 @@
 #include <cmath>
 #include <sstream>
 #include <iomanip>
-
+/*
 PopGenerator::PopGenerator(unsigned int seed)
 {
 	if (seed == 0) {
@@ -301,3 +301,4 @@ std::string PopGenerator::GenerateName(const std::string& type)
 	return name;
 }
 
+*/

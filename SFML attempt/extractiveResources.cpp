@@ -2,7 +2,6 @@
 #include "extractiveResources.hpp"
 #include "Cell.hpp"
 #include "GlobalWorldObjects.hpp"
-#include "util.hpp"
 #include <map>
 
 std::string resourceTypeToString(ResourceType type) {

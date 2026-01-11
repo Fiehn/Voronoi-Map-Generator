@@ -5,6 +5,10 @@
 #include <cstdlib>
 #include <chrono>
 
+#include "Logger.h"
+
+#include "util.hpp"
+
 #include "mapconfig.hpp"
 #include "windArrows.hpp"
 #include "Voronoi.hpp"

@@ -5,6 +5,7 @@
 #include <vector>
 #include "cell.hpp"
 #include <iostream>
+#include "util.hpp"
 
 class Biome {
 public:

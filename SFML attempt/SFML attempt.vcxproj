@@ -147,6 +147,8 @@
   <ItemGroup>
     <ClCompile Include="CellObjects.cpp" />
     <ClCompile Include="Cells.cpp" />
+    <ClCompile Include="CrashHandler.cpp" />
+    <ClCompile Include="CultureManager.cpp" />
     <ClCompile Include="extractiveResources.cpp" />
     <ClCompile Include="GlobalWorldObjects.cpp" />
     <ClCompile Include="Include\Dear ImGUI\imgui.cpp" />
@@ -159,6 +161,8 @@
     <ClCompile Include="Include\ImPlot\implot.cpp" />
     <ClCompile Include="Include\ImPlot\implot_items.cpp" />
     <ClCompile Include="Include\SFML ImGUI\imgui-SFML.cpp" />
+    <ClCompile Include="LanguageManager.cpp" />
+    <ClCompile Include="Logger.cpp" />
     <ClCompile Include="main.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
@@ -175,7 +179,8 @@
   <ItemGroup>
     <ClInclude Include="cell.hpp" />
     <ClInclude Include="clustering.hpp" />
-    <ClInclude Include="Culture.hpp" />
+    <ClInclude Include="CultureData.hpp" />
+    <ClInclude Include="CultureManager.hpp" />
     <ClInclude Include="EventMachine.hpp" />
     <ClInclude Include="extractiveResources.hpp" />
     <ClInclude Include="GlobalWorldObjects.hpp" />
@@ -184,7 +189,10 @@
     <ClInclude Include="Include\ImPlot\implot.h" />
     <ClInclude Include="Include\ImPlot\implot_internal.h" />
     <ClInclude Include="Include\nlohmann\json.hpp" />
-    <ClInclude Include="Language.hpp" />
+    <ClInclude Include="LanguageManager.hpp" />
+    <ClInclude Include="LanguageData.hpp" />
+    <ClInclude Include="LogCommon.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="MainMenu.hpp" />
     <ClInclude Include="Map.hpp" />
     <ClInclude Include="mapconfig.hpp" />

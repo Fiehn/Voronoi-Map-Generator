@@ -65,6 +65,12 @@ inline float RandomBetween(float smallNumber, float bigNumber)
     return (((float)rand() / RAND_MAX) * diff) + smallNumber;
 }
 
+inline int RandomBetweenInt(int smallNumber, int bigNumber)
+{
+    int diff = bigNumber - smallNumber;
+	return (rand() % diff) + smallNumber;
+}
+
 sf::Vector2f randomGradient();
 
 template <typename T>

@@ -13,6 +13,12 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="Header Files\Debugger">
+      <UniqueIdentifier>{bd6de381-9e0b-4e43-adf3-b9b3d09c69fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Debugger">
+      <UniqueIdentifier>{77896b58-0973-425d-b8c7-983abf70f22e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -82,6 +88,18 @@
     <ClCompile Include="POP_generator.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="CultureManager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="LanguageManager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="CrashHandler.cpp">
+      <Filter>src\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="Logger.cpp">
+      <Filter>src\Debugger</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Voronoi.hpp">
@@ -138,7 +156,7 @@
     <ClInclude Include="MainMenu.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Culture.hpp">
+    <ClInclude Include="CultureData.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="tickerSimulation.hpp">
@@ -159,11 +177,23 @@
     <ClInclude Include="PlanetaryObjects.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Language.hpp">
+    <ClInclude Include="LanguageData.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="POP_generator.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CultureManager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LanguageManager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LogCommon.h">
+      <Filter>Header Files\Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="Logger.h">
+      <Filter>Header Files\Debugger</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
