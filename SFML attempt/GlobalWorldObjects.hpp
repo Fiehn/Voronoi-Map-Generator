@@ -5,6 +5,9 @@ class GlobalWorldObjects; // Forward declaration
 #include <SFML/Graphics.hpp>
 #include "CellObjects.hpp"
 #include "PlanetaryObjects.hpp"
+#include "LanguageManager.hpp"
+#include "CultureManager.hpp"
+#include "ReligionManager.hpp"
 
 class GlobalWorldObjects
 {
@@ -33,6 +36,11 @@ public:
 	std::vector<Continent> continents; // List of continents
 
 	PlanetaryParameters planetaryParams; // Planetary parameters
+
+	// === SocioCultural Managers ===
+	LanguageManager languageManager; // Language manager
+	CultureManager cultureManager; // Culture manager
+	ReligionManager religionManager; // Religion manager
 
 	GlobalWorldObjects();
 	void clearGlobals();

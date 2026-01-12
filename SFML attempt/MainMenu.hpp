@@ -1,5 +1,9 @@
 #pragma once
 #include <functional>
+#include "PantheonGraphView.hpp"
+
+// Forward declarations
+static void pantheonTestWindow(bool& showPantheonTest);
 
 class MenuButton {
 public:
@@ -117,8 +121,13 @@ bool mainMenu(sf::RenderWindow& window, MapConfig& config, unsigned int MAXWIDTH
 	MenuButton loadConfigFile(&window, font, "Load Config File", sf::Vector2f(300, 80), sf::Vector2f(MAXWIDTH / 2 - 150, 400));
     loadConfigFile.on_click = [&]() { showLoadConfig = true; std::cout << "Load config" << std::endl; };
     
+    // Add pantheon test button
+    bool showPantheonTest = false;
+    MenuButton pantheonTestButton(&window, font, "Test Pantheon Generator", sf::Vector2f(300, 80), sf::Vector2f(MAXWIDTH / 2 - 150, 550));
+    pantheonTestButton.on_click = [&]() { showPantheonTest = true; std::cout << "Opening pantheon test" << std::endl; };
+    
 	bool exit = false;
-	MenuButton exitButton(&window, font, "Exit", sf::Vector2f(300, 80), sf::Vector2f(MAXWIDTH / 2 - 150, 550));
+	MenuButton exitButton(&window, font, "Exit", sf::Vector2f(300, 80), sf::Vector2f(MAXWIDTH / 2 - 150, 700));
     exitButton.on_click = [&]() { std::cout << "Exiting" << std::endl; exit = true; };
 
     sf::Clock deltaClock;
@@ -139,11 +148,17 @@ bool mainMenu(sf::RenderWindow& window, MapConfig& config, unsigned int MAXWIDTH
             }
             randomButton.handle_event(event);
 			loadConfigFile.handle_event(event);
+            pantheonTestButton.handle_event(event);
             exitButton.handle_event(event);
         }
         ImGui::SFML::Update(window, deltaClock.restart());
 
         configLoadSave(config, showLoadConfig, showSaveConfig);
+        
+        // Handle pantheon test window
+        if (showPantheonTest) {
+            pantheonTestWindow(showPantheonTest);
+        }
 
         window.clear();
 
@@ -152,6 +167,7 @@ bool mainMenu(sf::RenderWindow& window, MapConfig& config, unsigned int MAXWIDTH
 
         randomButton.draw_button();
 		loadConfigFile.draw_button();
+		pantheonTestButton.draw_button();
 		exitButton.draw_button();
 
 		if (exit == true) {
@@ -163,4 +179,89 @@ bool mainMenu(sf::RenderWindow& window, MapConfig& config, unsigned int MAXWIDTH
         window.display();
     }
 	return true;
+}
+
+// Add pantheon test window function
+static void pantheonTestWindow(bool& showPantheonTest) {
+    // Test cell configuration
+    static Cell testCell(0);
+    static bool cellInitialized = false;
+    static ReligionManager religionManager;
+    static ReligionHandle testReligion;
+    static bool religionGenerated = false;
+    
+    // Initialize test cell with default values
+    if (!cellInitialized) {
+        testCell.height = 0.5f;
+        testCell.temp = 20.0f;
+        testCell.percepitation = 50.0f;
+        testCell.humidity = 0.5f;
+        testCell.coastBool = false;
+        testCell.riverBool = false;
+        testCell.oceanBool = false;
+        testCell.distToOcean = 5;
+        testCell.windStr = 0.5f;
+        testCell.windDir = 180.0f;
+        testCell.tempVariance = 10.0f;
+        testCell.continent = 0;
+        testCell.volcanicActivity = false;
+        cellInitialized = true;
+    }
+    
+    ImGui::Begin("Pantheon Test Generator", &showPantheonTest);
+    
+    ImGui::Text("Configure Test Cell Properties:");
+    ImGui::Separator();
+    
+    // Cell configuration controls
+    ImGui::DragFloat("Height", &testCell.height, 0.01f, -1.0f, 2.0f);
+    ImGui::DragFloat("Temperature", &testCell.temp, 0.5f, -50.0f, 50.0f);
+    ImGui::DragFloat("Precipitation", &testCell.percepitation, 1.0f, 0.0f, 200.0f);
+    ImGui::DragFloat("Humidity", &testCell.humidity, 0.01f, 0.0f, 1.0f);
+    
+    ImGui::Separator();
+    ImGui::Text("Geographical Features:");
+    ImGui::Checkbox("Ocean", &testCell.oceanBool);
+    ImGui::SameLine();
+    ImGui::Checkbox("Coast", &testCell.coastBool);
+    ImGui::SameLine();
+    ImGui::Checkbox("River", &testCell.riverBool);
+    ImGui::Checkbox("Volcanic Activity", &testCell.volcanicActivity);
+    ImGui::DragInt("Distance to Ocean", &testCell.distToOcean, 1.0f, 0, 100);
+    
+    ImGui::Separator();
+    ImGui::Text("Climate Variance:");
+    ImGui::DragFloat("Temp Variance", &testCell.tempVariance, 0.1f, 0.0f, 30.0f);
+    ImGui::DragFloat("Wind Strength", &testCell.windStr, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat("Wind Direction", &testCell.windDir, 1.0f, 0.0f, 360.0f);
+    
+    ImGui::Separator();
+    
+    // Religion type selection
+    static int religionTypeIdx = 2; // Default to Polytheistic
+    const char* religionTypes[] = { "Animistic", "Philosophical", "Mystical", "Monotheistic", "Polytheistic", "Humanistic", "Atheistic" };
+    ImGui::Combo("Religion Type", &religionTypeIdx, religionTypes, IM_ARRAYSIZE(religionTypes));
+    
+    // Generate button
+    if (ImGui::Button("Generate Pantheon", ImVec2(200, 40))) {
+        // Create test religion
+        ReligionCreateInfo info;
+        info.name = "Test Religion";
+        info.religion_type = static_cast<ReligionType>(religionTypeIdx);
+        info.origin_cell_id = 0;
+        info.founding_date = 0;
+        
+        testReligion = religionManager.CreateReligion(info);
+        religionManager.GenerateProtoPantheon(testReligion, testCell);
+        religionGenerated = true;
+    }
+    
+    ImGui::End();
+    
+    // Show graph if religion has been generated
+    if (religionGenerated && religionManager.IsValid(testReligion)) {
+        static PantheonGraphView graphView(&religionManager);
+        graphView.SetReligion(testReligion);
+        graphView.Draw();
+    }
 }

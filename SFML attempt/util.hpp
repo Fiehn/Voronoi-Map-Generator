@@ -1,4 +1,3 @@
-
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
@@ -67,8 +66,14 @@ inline float RandomBetween(float smallNumber, float bigNumber)
 
 inline int RandomBetweenInt(int smallNumber, int bigNumber)
 {
-    int diff = bigNumber - smallNumber;
-	return (rand() % diff) + smallNumber;
+    if (smallNumber > bigNumber) {
+        std::swap(smallNumber, bigNumber);
+    }
+    int diff = bigNumber - smallNumber + 1;
+    if (diff <= 0) {
+        return smallNumber; // Edge case: return the only valid value
+    }
+    return (rand() % diff) + smallNumber;
 }
 
 sf::Vector2f randomGradient();

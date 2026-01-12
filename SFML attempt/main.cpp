@@ -16,7 +16,6 @@
 #include "cell.hpp"
 #include "GlobalWorldObjects.hpp"
 #include "Map.hpp"
-#include "POP_data.hpp"
 #include "POP_Manager.hpp"
 #include "POP_generator.hpp"
 #include "SeasonalCalculator.hpp"

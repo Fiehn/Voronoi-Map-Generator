@@ -1,7 +1,6 @@
 #pragma once
 #include "POP_Manager.hpp"
 #include "Voronoi.hpp"
-#include "Religion.hpp"
 #include "GlobalWorldObjects.hpp"
 #include "mapconfig.hpp"
 
@@ -27,10 +26,28 @@ public:
 private:
 	// Starting Location Selection
 	std::vector<size_t> selectStartingLocations(const vor::Voronoi& map, size_t num_locations);
-	// First Cultures Generation
+	// Proto-language generation
+	std::vector<LanguageHandle> generateProtoLanguages(GlobalWorldObjects& globals,
+		const std::vector<size_t>& starting_cells,
+		const vor::Voronoi& map);
 
+	// Proto-religion generation
+	std::vector<ReligionHandle> generateProtoReligions(GlobalWorldObjects& globals,
+		const std::vector<size_t>& starting_cells,
+		const vor::Voronoi& map);
 
+	// Generate Founding cultures 
+	std::vector<CultureHandle> generateFoundingCultures(GlobalWorldObjects& globals,
+		const std::vector<size_t>& starting_cells,
+		const std::vector<LanguageHandle>& proto_languages,
+		const std::vector<ReligionHandle>& proto_religions,
+		const vor::Voronoi& map);
 
+	void createInitialPops(PopManager& popManager,
+		const std::vector<size_t>& starting_cells,
+		const std::vector<CultureHandle>& founding_cultures,
+		const std::vector<LanguageHandle>& languages,
+		const std::vector<ReligionHandle>& religions);
 };
 
 

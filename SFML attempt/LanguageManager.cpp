@@ -352,7 +352,7 @@ void LanguageManager::ApplySoundChanges(LanguageHandle handle, const std::vector
 LanguageManager::LanguageManager()
 {
 	// Reserve initial capacity
-	m_data.reserve(100);
+	m_data.reserve(256);
 }
 
 LanguageHandle LanguageManager::CreateProtoLanguage(const std::string& name,

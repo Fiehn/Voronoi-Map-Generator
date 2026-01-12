@@ -29,26 +29,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -171,6 +171,7 @@
     <ClCompile Include="POP_generator.cpp" />
     <ClCompile Include="POP_Manager.cpp" />
     <ClCompile Include="POP_Manager.hpp" />
+    <ClCompile Include="ReligionManager.cpp" />
     <ClCompile Include="SeasonalCalculator.hpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="Voronoi.cpp" />
@@ -197,10 +198,13 @@
     <ClInclude Include="Map.hpp" />
     <ClInclude Include="mapconfig.hpp" />
     <ClInclude Include="NewMap.hpp" />
+    <ClInclude Include="PantheonGraphView.hpp" />
     <ClInclude Include="PlanetaryObjects.hpp" />
     <ClInclude Include="POP_data.hpp" />
     <ClInclude Include="POP_generator.hpp" />
     <ClInclude Include="Religion.hpp" />
+    <ClInclude Include="ReligionData.hpp" />
+    <ClInclude Include="ReligionManager.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="tickerSimulation.hpp" />
     <ClInclude Include="vertex.hpp" />

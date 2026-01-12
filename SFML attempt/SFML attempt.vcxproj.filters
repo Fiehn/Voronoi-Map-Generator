@@ -19,27 +19,27 @@
     <Filter Include="src\Debugger">
       <UniqueIdentifier>{77896b58-0973-425d-b8c7-983abf70f22e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\POPs">
+      <UniqueIdentifier>{70ef5f64-e5de-41e8-a18d-f7b8c766bcb8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\ImGui">
+      <UniqueIdentifier>{63675876-1b91-435b-bb93-1c301def24ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\POPs\Data">
+      <UniqueIdentifier>{20e3f213-7ffc-4ada-b382-8b772c83b16d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\POPs\Managers">
+      <UniqueIdentifier>{16fc5cae-8c11-40ea-ac0a-e7ad018d077a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ImGui">
+      <UniqueIdentifier>{b788a07d-ef5c-4cad-97ab-a95889c66f57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Pops">
+      <UniqueIdentifier>{ec24bc21-df6c-4ff6-bcae-341b9f6e37e9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Include\Dear ImGUI\imgui.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\Dear ImGUI\imgui_draw.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\Dear ImGUI\imgui_tables.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\Dear ImGUI\imgui_widgets.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\SFML ImGUI\imgui-SFML.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\Dear ImGUI\imgui_demo.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="GlobalWorldObjects.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -50,18 +50,6 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="CellObjects.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\ImGuiFD-main\ImGuiFD.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\ImGuiFD-main\ImGuiFDNative.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\ImPlot\implot.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\ImPlot\implot_items.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="extractiveResources.cpp">
@@ -79,26 +67,59 @@
     <ClCompile Include="SeasonalCalculator.hpp">
       <Filter>Header Files</Filter>
     </ClCompile>
-    <ClCompile Include="POP_Manager.hpp">
-      <Filter>Header Files</Filter>
-    </ClCompile>
-    <ClCompile Include="POP_Manager.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="POP_generator.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="CultureManager.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="LanguageManager.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="CrashHandler.cpp">
       <Filter>src\Debugger</Filter>
     </ClCompile>
     <ClCompile Include="Logger.cpp">
       <Filter>src\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\Dear ImGUI\imgui.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\Dear ImGUI\imgui_demo.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\Dear ImGUI\imgui_draw.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\Dear ImGUI\imgui_tables.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\Dear ImGUI\imgui_widgets.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\ImGuiFD-main\ImGuiFD.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\ImGuiFD-main\ImGuiFDNative.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\SFML ImGUI\imgui-SFML.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\ImPlot\implot.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\ImPlot\implot_items.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="POP_generator.cpp">
+      <Filter>src\Pops</Filter>
+    </ClCompile>
+    <ClCompile Include="POP_Manager.cpp">
+      <Filter>src\Pops</Filter>
+    </ClCompile>
+    <ClCompile Include="LanguageManager.cpp">
+      <Filter>src\Pops</Filter>
+    </ClCompile>
+    <ClCompile Include="CultureManager.cpp">
+      <Filter>src\Pops</Filter>
+    </ClCompile>
+    <ClCompile Include="ReligionManager.cpp">
+      <Filter>src\Pops</Filter>
+    </ClCompile>
+    <ClCompile Include="POP_Manager.hpp">
+      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -123,16 +144,10 @@
     <ClInclude Include="vertex.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Dear ImGUI\imgui.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Map.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\nlohmann\json.hpp">
@@ -144,25 +159,13 @@
     <ClInclude Include="EventMachine.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\ImPlot\implot.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\ImPlot\implot_internal.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="NewMap.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MainMenu.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CultureData.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="tickerSimulation.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="POP_data.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Religion.hpp">
@@ -177,23 +180,50 @@
     <ClInclude Include="PlanetaryObjects.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LanguageData.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="POP_generator.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CultureManager.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="LanguageManager.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="LogCommon.h">
       <Filter>Header Files\Debugger</Filter>
     </ClInclude>
     <ClInclude Include="Logger.h">
       <Filter>Header Files\Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Dear ImGUI\imgui.h">
+      <Filter>Header Files\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h">
+      <Filter>Header Files\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ImPlot\implot.h">
+      <Filter>Header Files\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ImPlot\implot_internal.h">
+      <Filter>Header Files\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="POP_generator.hpp">
+      <Filter>Header Files\POPs</Filter>
+    </ClInclude>
+    <ClInclude Include="LanguageData.hpp">
+      <Filter>Header Files\POPs\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="CultureData.hpp">
+      <Filter>Header Files\POPs\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="POP_data.hpp">
+      <Filter>Header Files\POPs\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="CultureManager.hpp">
+      <Filter>Header Files\POPs\Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="LanguageManager.hpp">
+      <Filter>Header Files\POPs\Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="ReligionData.hpp">
+      <Filter>Header Files\POPs\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="ReligionManager.hpp">
+      <Filter>Header Files\POPs\Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="PantheonGraphView.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
