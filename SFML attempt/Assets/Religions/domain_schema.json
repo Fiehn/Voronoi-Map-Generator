@@ -1,0 +1,40 @@
+{
+    "title": "Religious Domains",
+    "semantic_vector": {
+        "type": "object",
+        "semantic_vector": {
+            "thermai": {
+                "type": "number", "minimum": -1.0, "maximum": 1.0
+            },
+            "baric": {
+                "type": "number", "minimum": -1.0, "maximum": 1.0
+            },
+            "lumic": {
+                "type": "number", "minimum": -1.0, "maximum": 1.0
+            },
+            "vital": {
+                "type": "number", "minimum": -1.0, "maximum": 1.0
+            },
+            "entropic": {
+                "type": "number", "minimum": -1.0, "maximum": 1.0
+            },
+            "valence": {
+                "type": "number", "minimum": -1.0, "maximum": 1.0
+            },
+            "arousal": {
+                "type": "number", "minimum": -1.0, "maximum": 1.0
+            },
+            "dominance": {
+                "type": "number", "minimum": -1.0, "maximum": 1.0
+            }
+        },
+        "required": ["thermai", "baric", "lumic", "vital", "entropic", "valence", "arousal", "dominance"]
+    },
+    "type": "object",
+    "domain_tags": {
+        "type": "array",
+        "items": {
+            "type": "string"
+        }
+    }
+}

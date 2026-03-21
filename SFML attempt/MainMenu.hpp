@@ -183,15 +183,24 @@ bool mainMenu(sf::RenderWindow& window, MapConfig& config, unsigned int MAXWIDTH
 
 // Add pantheon test window function
 static void pantheonTestWindow(bool& showPantheonTest) {
+    // === Core ECS & Simulation State ===
+    static bool initialized = false;
+    static flecs::world testWorld;
+    static ReligionManager religionManager;
+    static History testHistory;
+    static flecs::entity testReligion = flecs::entity::null();
+    static uint32_t currentTick = 0;
+    static vor::Voronoi dummyMap; // Dummy map for the myth phase rule weights
+
     // Test cell configuration
     static Cell testCell(0);
-    static bool cellInitialized = false;
-    static ReligionManager religionManager;
-    static ReligionHandle testReligion;
-    static bool religionGenerated = false;
-    
-    // Initialize test cell with default values
-    if (!cellInitialized) {
+
+    // Initialize ECS world and Religion Manager only once
+    if (!initialized) {
+        // Load domains, archetypes, and religion types into testWorld
+        religionManager.initialize(testWorld);
+
+        // Cell setup
         testCell.height = 0.5f;
         testCell.temp = 20.0f;
         testCell.percepitation = 50.0f;
@@ -205,63 +214,123 @@ static void pantheonTestWindow(bool& showPantheonTest) {
         testCell.tempVariance = 10.0f;
         testCell.continent = 0;
         testCell.volcanicActivity = false;
-        cellInitialized = true;
+
+        initialized = true;
     }
-    
+
     ImGui::Begin("Pantheon Test Generator", &showPantheonTest);
-    
+
     ImGui::Text("Configure Test Cell Properties:");
     ImGui::Separator();
-    
+
     // Cell configuration controls
     ImGui::DragFloat("Height", &testCell.height, 0.01f, -1.0f, 2.0f);
     ImGui::DragFloat("Temperature", &testCell.temp, 0.5f, -50.0f, 50.0f);
     ImGui::DragFloat("Precipitation", &testCell.percepitation, 1.0f, 0.0f, 200.0f);
     ImGui::DragFloat("Humidity", &testCell.humidity, 0.01f, 0.0f, 1.0f);
-    
+
     ImGui::Separator();
     ImGui::Text("Geographical Features:");
-    ImGui::Checkbox("Ocean", &testCell.oceanBool);
-    ImGui::SameLine();
-    ImGui::Checkbox("Coast", &testCell.coastBool);
-    ImGui::SameLine();
+    ImGui::Checkbox("Ocean", &testCell.oceanBool); ImGui::SameLine();
+    ImGui::Checkbox("Coast", &testCell.coastBool); ImGui::SameLine();
     ImGui::Checkbox("River", &testCell.riverBool);
     ImGui::Checkbox("Volcanic Activity", &testCell.volcanicActivity);
     ImGui::DragInt("Distance to Ocean", &testCell.distToOcean, 1.0f, 0, 100);
-    
+
     ImGui::Separator();
     ImGui::Text("Climate Variance:");
     ImGui::DragFloat("Temp Variance", &testCell.tempVariance, 0.1f, 0.0f, 30.0f);
     ImGui::DragFloat("Wind Strength", &testCell.windStr, 0.01f, 0.0f, 1.0f);
     ImGui::DragFloat("Wind Direction", &testCell.windDir, 1.0f, 0.0f, 360.0f);
-    
+
     ImGui::Separator();
-    
-    // Religion type selection
-    static int religionTypeIdx = 2; // Default to Polytheistic
-    const char* religionTypes[] = { "Animistic", "Philosophical", "Mystical", "Monotheistic", "Polytheistic", "Humanistic", "Atheistic" };
-    ImGui::Combo("Religion Type", &religionTypeIdx, religionTypes, IM_ARRAYSIZE(religionTypes));
-    
-    // Generate button
-    if (ImGui::Button("Generate Pantheon", ImVec2(200, 40))) {
-        // Create test religion
-        ReligionCreateInfo info;
-        info.name = "Test Religion";
-        info.religion_type = static_cast<ReligionType>(religionTypeIdx);
-        info.origin_cell_id = 0;
-        info.founding_date = 0;
-        
-        testReligion = religionManager.CreateReligion(info);
-        religionManager.GenerateProtoPantheon(testReligion, testCell);
-        religionGenerated = true;
-    }
-    
-    ImGui::End();
-    
-    // Show graph if religion has been generated
-    if (religionGenerated && religionManager.IsValid(testReligion)) {
-        static PantheonGraphView graphView(&religionManager);
+
+    // Note: Removed the Religion Type ImGui Combo because your new create_proto_religion() 
+    // automatically weights and assigns the type using determine_proto_type().
+
+    // Static graph viewer initialized with our test world
+    static PantheonGraphView graphView(&testWorld);
+
+    // === Generation Controls ===
+    if (ImGui::Button("Generate Proto-Religion", ImVec2(200, 40))) {
+        // Reset state
+        testHistory.clear();
+        currentTick = 0;
+
+        // Clean up previous test religion if it exists to keep the ECS graph clean
+        if (testReligion.is_alive()) {
+            testReligion.destruct();
+        }
+
+        // Generate!
+        religionManager.create_proto_religion(testWorld, testHistory, testCell);
+
+        // Find the newly generated religion in the ECS world
+        testWorld.query_builder<Religion>()
+            .without<Extinct>()
+            .build()
+            .each([&](flecs::entity rel, const Religion& r) {
+            testReligion = rel;
+                });
+
+        // Bind and initialize graph
         graphView.SetReligion(testReligion);
+    }
+
+    // === Step Controls ===
+    if (testReligion.is_alive()) {
+        ImGui::SameLine();
+        if (ImGui::Button("Step Myth Phase (1 Tick)", ImVec2(200, 40))) {
+            currentTick++;
+            religionManager.myth_phase_evolution(testWorld, testHistory, testReligion, currentTick, dummyMap);
+
+            // Re-initialize graph to catch newly created/destroyed deities
+            graphView.InitializeGraph();
+        }
+    }
+
+    ImGui::End();
+
+    // === Render Graph and History Log ===
+    if (testReligion.is_alive()) {
+        // Draw the visual node graph
         graphView.Draw();
+
+        // Draw the History Log
+        ImGui::Begin("Chronicle of History");
+        if (ImGui::Button("Clear History")) testHistory.clear();
+        ImGui::Separator();
+
+        ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+        for (const auto& ev : testHistory.events) {
+
+            // Color code the events based on type
+            ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // White default
+            if (ev.type == EventType::DeityCreation) color = ImVec4(0.5f, 1.0f, 0.5f, 1.0f); // Green
+            if (ev.type == EventType::DeityInteraction) color = ImVec4(0.5f, 0.8f, 1.0f, 1.0f); // Light blue
+            // Note: Add DivineConflict, Schism, etc., here once you update the enum!
+
+            ImGui::PushStyleColor(ImGuiCol_Text, color);
+
+            std::string causal_link = ev.caused_by_event_id ? " [Caused by Event #" + std::to_string(*ev.caused_by_event_id) + "]" : "";
+
+            ImGui::TextWrapped("[Tick %d] Event #%llu: %s %s %s. (Reason: %s)%s",
+                ev.tick,
+                ev.event_id,
+                ev.snapshot.subject_name.c_str(),
+                ev.snapshot.location_name.c_str(),
+                ev.snapshot.object_name.c_str(),
+                ev.snapshot.reason.c_str(),
+                causal_link.c_str());
+
+            ImGui::PopStyleColor();
+        }
+
+        // Auto-scroll logic
+        if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+            ImGui::SetScrollHereY(1.0f);
+
+        ImGui::EndChild();
+        ImGui::End();
     }
 }

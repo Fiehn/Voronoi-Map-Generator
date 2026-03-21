@@ -1,0 +1,937 @@
+{
+    "war": {
+        "semantic_vector": {
+            "thermai": 0.6,
+            "baric": 0.4,
+            "lumic": -0.2,
+            "vital": -0.45,
+            "entropic": 0.7,
+            "valence": -0.956,
+            "arousal": 0.784,
+            "dominance": 0.454
+        },
+        "domain_tags": [
+            "conflict",
+            "artificial",
+            "power"
+        ]
+    },
+    "fertility": {
+        "semantic_vector": {
+            "thermai": 0.35,
+            "baric": 0.1,
+            "lumic": 0.5,
+            "vital": 0.8,
+            "entropic": -0.4,
+            "valence": 0.77,
+            "arousal": 0.058,
+            "dominance": 0.452
+        },
+        "domain_tags": [
+            "natural",
+            "growth",
+            "life"
+        ]
+    },
+    "Wisdom": {
+        "semantic_vector": {
+            "thermai": -0.1,
+            "baric": -0.3,
+            "lumic": 0.7,
+            "vital": 0.2,
+            "entropic": -0.6,
+            "valence": 0.86,
+            "arousal": -0.396,
+            "dominance": 0.742
+        },
+        "domain_tags": [
+            "knowledge",
+            "artificial",
+            "natural"
+        ]
+    },
+    "love": {
+        "semantic_vector": {
+            "thermai": 0.45,
+            "baric": 0.2,
+            "lumic": 0.6,
+            "vital": 0.7,
+            "entropic": -0.3,
+            "valence": 1.0,
+            "arousal": 0.038,
+            "dominance": 0.346
+        },
+        "domain_tags": [
+            "emotion",
+            "natural",
+            "life"
+        ]
+    },
+    "sea": {
+        "semantic_vector": {
+            "thermai": -0.2,
+            "baric": 0.3,
+            "lumic": -0.1,
+            "vital": 0.4,
+            "entropic": 0.4,
+            "valence": 0.666,
+            "arousal": -0.294,
+            "dominance": 0.178
+        },
+        "domain_tags": [
+            "nature",
+            "chaos",
+            "life"
+        ]
+    },
+    "sky": {
+        "semantic_vector": {
+            "thermai": -0.3,
+            "baric": -0.6,
+            "lumic": 0.8,
+            "vital": 0.3,
+            "entropic": -0.3,
+            "valence": 0.916,
+            "arousal": -0.532,
+            "dominance": -0.198
+        },
+        "domain_tags": [
+            "nature",
+            "freedom",
+            "life"
+        ]
+    },
+    "forest": {
+        "semantic_vector": {
+            "thermai": 0.1,
+            "baric": 0.2,
+            "lumic": 0.4,
+            "vital": 0.6,
+            "entropic": -0.2,
+            "valence": 0.458,
+            "arousal": -0.46,
+            "dominance": -0.13
+        },
+        "domain_tags": [
+            "nature",
+            "growth",
+            "life"
+        ]
+    },
+    "underworld": {
+        "semantic_vector": {
+            "thermai": -0.5,
+            "baric": 0.5,
+            "lumic": -0.6,
+            "vital": -0.7,
+            "entropic": 0.8,
+            "valence": -0.646,
+            "arousal": 0.352,
+            "dominance": 0.226
+        },
+        "domain_tags": [
+            "death",
+            "chaos",
+            "power"
+        ]
+    },
+    "horses": {
+        "semantic_vector": {
+            "thermai": 0.3,
+            "baric": 0.4,
+            "lumic": 0.2,
+            "vital": 0.5,
+            "entropic": -0.1,
+            "valence": 0.27,
+            "arousal": 0.02,
+            "dominance": 0.058
+        },
+        "domain_tags": [
+            "nature",
+            "freedom",
+            "life"
+        ]
+    },
+    "metal": {
+        "semantic_vector": {
+            "thermai": 0.2,
+            "baric": 0.5,
+            "lumic": -0.3,
+            "vital": -0.2,
+            "entropic": 0.6,
+            "valence": 0.102,
+            "arousal": -0.142,
+            "dominance": 0.094
+        },
+        "domain_tags": [
+            "artificial",
+            "power",
+            "strength"
+        ]
+    },
+    "storms": {
+        "semantic_vector": {
+            "thermai": -0.4,
+            "baric": -0.6,
+            "lumic": -0.5,
+            "vital": -0.3,
+            "entropic": 0.7,
+            "valence": -0.624,
+            "arousal": 0.88,
+            "dominance": 0.086
+        },
+        "domain_tags": [
+            "nature",
+            "chaos",
+            "power"
+        ]
+    },
+    "music": {
+        "semantic_vector": {
+            "thermai": 0.4,
+            "baric": 0.0,
+            "lumic": 0.5,
+            "vital": 0.4,
+            "entropic": -0.2,
+            "valence": 0.666,
+            "arousal": 0.126,
+            "dominance": 0.21
+        },
+        "domain_tags": [
+            "artificial",
+            "emotion",
+            "life"
+        ]
+    },
+    "trade": {
+        "semantic_vector": {
+            "thermai": 0.1,
+            "baric": 0.3,
+            "lumic": 0.0,
+            "vital": 0.2,
+            "entropic": 0.1,
+            "valence": 0.122,
+            "arousal": 0.088,
+            "dominance": 0.38
+        },
+        "domain_tags": [
+            "artificial",
+            "community",
+            "power"
+        ]
+    },
+    "wind": {
+        "semantic_vector": {
+            "thermai": -0.2,
+            "baric": -0.8,
+            "lumic": 0.3,
+            "vital": 0.2,
+            "entropic": 0.5,
+            "valence": 0.062,
+            "arousal": -0.192,
+            "dominance": 0.156
+        },
+        "domain_tags": [
+            "nature",
+            "freedom",
+            "life"
+        ]
+    },
+    "fire": {
+        "semantic_vector": {
+            "thermai": 0.9,
+            "baric": 0.1,
+            "lumic": 0.7,
+            "vital": 0.3,
+            "entropic": 0.6,
+            "valence": -0.24,
+            "arousal": 0.608,
+            "dominance": 0.27
+        },
+        "domain_tags": [
+            "nature",
+            "chaos",
+            "power"
+        ]
+    },
+    "death": {
+        "semantic_vector": {
+            "thermai": -0.7,
+            "baric": 0.6,
+            "lumic": -0.8,
+            "vital": -0.99,
+            "entropic": 0.9,
+            "valence": -0.938,
+            "arousal": 0.44,
+            "dominance": -0.056
+        },
+        "domain_tags": [
+            "death",
+            "natural",
+            "power"
+        ]
+    },
+    "darkness": {
+        "semantic_vector": {
+            "thermai": -0.6,
+            "baric": 0.4,
+            "lumic": -0.9,
+            "vital": -0.5,
+            "entropic": 0.8,
+            "valence": -0.796,
+            "arousal": 0.204,
+            "dominance": -0.164
+        },
+        "domain_tags": [
+            "chaos",
+            "death",
+            "power"
+        ]
+    },
+    "sun": {
+        "semantic_vector": {
+            "thermai": 1.0,
+            "baric": -0.2,
+            "lumic": 1.0,
+            "vital": 0.9,
+            "entropic": -0.5,
+            "valence": 0.754,
+            "arousal": -0.2,
+            "dominance": 0.362
+        },
+        "domain_tags": [
+            "nature",
+            "life",
+            "growth"
+        ]
+    },
+    "travel": {
+        "semantic_vector": {
+            "thermai": 0.2,
+            "baric": -0.1,
+            "lumic": 0.3,
+            "vital": 0.4,
+            "entropic": 0.2,
+            "valence": 0.862,
+            "arousal": 0.378,
+            "dominance": 0.07
+        },
+        "domain_tags": [
+            "freedom",
+            "community",
+            "life"
+        ]
+    },
+    "moon": {
+        "semantic_vector": {
+            "thermai": -0.4,
+            "baric": -0.3,
+            "lumic": 0.6,
+            "vital": 0.2,
+            "entropic": -0.4,
+            "valence": 0.346,
+            "arousal": -0.534,
+            "dominance": 0.094
+        },
+        "domain_tags": [
+            "nature",
+            "knowledge",
+            "life"
+        ]
+    },
+    "order": {
+        "semantic_vector": {
+            "thermai": 0.0,
+            "baric": 0.2,
+            "lumic": 0.4,
+            "vital": 0.1,
+            "entropic": -0.5,
+            "valence": 0.56,
+            "arousal": -0.41,
+            "dominance": 0.628
+        },
+        "domain_tags": [
+            "artificial",
+            "community",
+            "power"
+        ]
+    },
+    "chaos": {
+        "semantic_vector": {
+            "thermai": -0.5,
+            "baric": 0.5,
+            "lumic": -0.4,
+            "vital": -0.2,
+            "entropic": 0.9,
+            "valence": -0.968,
+            "arousal": 0.846,
+            "dominance": -0.254
+        },
+        "domain_tags": [
+            "chaos",
+            "nature",
+            "power"
+        ]
+    },
+    "mountains": {
+        "semantic_vector": {
+            "thermai": -0.1,
+            "baric": 0.4,
+            "lumic": 0.2,
+            "vital": 0.3,
+            "entropic": 0.3,
+            "valence": 0.532,
+            "arousal": -0.134,
+            "dominance": 0.138
+        },
+        "domain_tags": [
+            "nature",
+            "strength",
+            "life"
+        ]
+    },
+    "winter": {
+        "semantic_vector": {
+            "thermai": -0.8,
+            "baric": 0.3,
+            "lumic": -0.2,
+            "vital": -0.4,
+            "entropic": 0.6,
+            "valence": 0.326,
+            "arousal": -0.29,
+            "dominance": 0.0
+        },
+        "domain_tags": [
+            "nature",
+            "death",
+            "chaos"
+        ]
+    },
+    "water": {
+        "semantic_vector": {
+            "thermai": -0.1,
+            "baric": 0.2,
+            "lumic": 0.1,
+            "vital": 0.5,
+            "entropic": 0.2,
+            "valence": 0.624,
+            "arousal": -0.754,
+            "dominance": -0.142
+        },
+        "domain_tags": [
+            "nature",
+            "life",
+            "growth"
+        ]
+    },
+    "ice": {
+        "semantic_vector": {
+            "thermai": -0.9,
+            "baric": 0.4,
+            "lumic": -0.3,
+            "vital": -0.5,
+            "entropic": 0.7,
+            "valence": -0.12,
+            "arousal": -0.47,
+            "dominance": -0.562
+        },
+        "domain_tags": [
+            "nature",
+            "death",
+            "chaos"
+        ]
+    },
+    "law": {
+        "semantic_vector": {
+            "thermai": 0.0,
+            "baric": 0.3,
+            "lumic": 0.5,
+            "vital": 0.1,
+            "entropic": -0.6,
+            "valence": 0.48,
+            "arousal": 0.18,
+            "dominance": 0.63
+        },
+        "domain_tags": [
+            "artificial",
+            "community",
+            "order"
+        ]
+    },
+    "wine": {
+        "semantic_vector": {
+            "thermai": 0.5,
+            "baric": 0.1,
+            "lumic": 0.4,
+            "vital": 0.6,
+            "entropic": -0.2,
+            "valence": 0.584,
+            "arousal": -0.166,
+            "dominance": -0.086
+        },
+        "domain_tags": [
+            "artificial",
+            "emotion",
+            "community"
+        ]
+    },
+    "speech": {
+        "semantic_vector": {
+            "thermai": 0.1,
+            "baric": 0.0,
+            "lumic": 0.3,
+            "vital": 0.2,
+            "entropic": -0.1,
+            "valence": 0.312,
+            "arousal": -0.06,
+            "dominance": 0.376
+        },
+        "domain_tags": [
+            "artificial",
+            "community",
+            "knowledge"
+        ]
+    },
+    "writing": {
+        "semantic_vector": {
+            "thermai": 0.0,
+            "baric": -0.1,
+            "lumic": 0.4,
+            "vital": 0.2,
+            "entropic": -0.3,
+            "valence": 0.388,
+            "arousal": -0.05,
+            "dominance": 0.29
+        },
+        "domain_tags": [
+            "artificial",
+            "knowledge",
+            "community"
+        ]
+    },
+    "knowledge": {
+        "semantic_vector": {
+            "thermai": -0.1,
+            "baric": -0.2,
+            "lumic": 0.6,
+            "vital": 0.3,
+            "entropic": -0.5,
+            "valence": 0.694,
+            "arousal": -0.14,
+            "dominance": 0.792
+        },
+        "domain_tags": [
+            "artificial",
+            "knowledge",
+            "life"
+        ]
+    },
+    "secrets": {
+        "semantic_vector": {
+            "thermai": -0.3,
+            "baric": 0.2,
+            "lumic": -0.1,
+            "vital": -0.2,
+            "entropic": 0.4,
+            "valence": -0.042,
+            "arousal": 0.16,
+            "dominance": 0.018
+        },
+        "domain_tags": [
+            "knowledge",
+            "chaos",
+            "power"
+        ]
+    },
+    "earth": {
+        "semantic_vector": {
+            "thermai": 0.2,
+            "baric": 0.3,
+            "lumic": 0.1,
+            "vital": 0.5,
+            "entropic": 0.2,
+            "valence": 0.5,
+            "arousal": -0.55,
+            "dominance": 0.228
+        },
+        "domain_tags": [
+            "nature",
+            "life",
+            "growth"
+        ]
+    },
+    "magma": {
+        "semantic_vector": {
+            "thermai": 0.8,
+            "baric": 0.2,
+            "lumic": 0.5,
+            "vital": 0.1,
+            "entropic": 0.7,
+            "valence": -0.354,
+            "arousal": 0.246,
+            "dominance": 0.218
+        },
+        "domain_tags": [
+            "nature",
+            "chaos",
+            "power"
+        ]
+    },
+    "healing": {
+        "semantic_vector": {
+            "thermai": 0.3,
+            "baric": 0.1,
+            "lumic": 0.6,
+            "vital": 0.9,
+            "entropic": -0.4,
+            "valence": 0.5,
+            "arousal": -0.096,
+            "dominance": 0.17
+        },
+        "domain_tags": [
+            "life",
+            "growth",
+            "natural"
+        ]
+    },
+    "craftsmanship": {
+        "semantic_vector": {
+            "thermai": 0.2,
+            "baric": 0.3,
+            "lumic": 0.4,
+            "vital": 0.2,
+            "entropic": -0.2,
+            "valence": 0.646,
+            "arousal": -0.254,
+            "dominance": 0.142
+        },
+        "domain_tags": [
+            "artificial",
+            "community",
+            "knowledge"
+        ]
+    },
+    "protection": {
+        "semantic_vector": {
+            "thermai": 0.3,
+            "baric": 0.4,
+            "lumic": 0.5,
+            "vital": 0.3,
+            "entropic": -0.3,
+            "valence": 0.726,
+            "arousal": 0.06,
+            "dominance": 0.328
+        },
+        "domain_tags": [
+            "community",
+            "power",
+            "order"
+        ]
+    },
+    "agriculture": {
+        "semantic_vector": {
+            "thermai": 0.4,
+            "baric": 0.2,
+            "lumic": 0.5,
+            "vital": 0.8,
+            "entropic": -0.3,
+            "valence": 0.28,
+            "arousal": -0.286,
+            "dominance": -0.07
+        },
+        "domain_tags": [
+            "growth",
+            "life",
+            "natural"
+        ]
+    },
+    "justice": {
+        "semantic_vector": {
+            "thermai": 0.0,
+            "baric": 0.3,
+            "lumic": 0.5,
+            "vital": 0.1,
+            "entropic": -0.5,
+            "valence": 0.52,
+            "arousal": 0.076,
+            "dominance": 0.574
+        },
+        "domain_tags": [
+            "artificial",
+            "community",
+            "order"
+        ]
+    },
+    "friendship": {
+        "semantic_vector": {
+            "thermai": 0.4,
+            "baric": 0.1,
+            "lumic": 0.5,
+            "vital": 0.6,
+            "entropic": -0.2,
+            "valence": 0.916,
+            "arousal": -0.314,
+            "dominance": 0.388
+        },
+        "domain_tags": [
+            "community",
+            "emotion",
+            "life"
+        ]
+    },
+    "honor": {
+        "semantic_vector": {
+            "thermai": 0.2,
+            "baric": 0.2,
+            "lumic": 0.4,
+            "vital": 0.3,
+            "entropic": -0.3,
+            "valence": 0.792,
+            "arousal": 0.174,
+            "dominance": 0.714
+        },
+        "domain_tags": [
+            "artificial",
+            "community",
+            "power"
+        ]
+    },
+    "courage": {
+        "semantic_vector": {
+            "thermai": 0.3,
+            "baric": 0.3,
+            "lumic": 0.5,
+            "vital": 0.4,
+            "entropic": -0.2,
+            "valence": 0.66,
+            "arousal": 0.456,
+            "dominance": 0.698
+        },
+        "domain_tags": [
+            "power",
+            "community",
+            "life"
+        ]
+    },
+    "loyalty": {
+        "semantic_vector": {
+            "thermai": 0.2,
+            "baric": 0.2,
+            "lumic": 0.4,
+            "vital": 0.3,
+            "entropic": -0.3,
+            "valence": 0.77,
+            "arousal": -0.188,
+            "dominance": 0.586
+        },
+        "domain_tags": [
+            "community",
+            "artificial",
+            "power"
+        ]
+    },
+    "patience": {
+        "semantic_vector": {
+            "thermai": 0.0,
+            "baric": 0.1,
+            "lumic": 0.3,
+            "vital": 0.2,
+            "entropic": -0.4,
+            "valence": 0.542,
+            "arousal": -0.75,
+            "dominance": -0.226
+        },
+        "domain_tags": [
+            "artificial",
+            "community",
+            "knowledge"
+        ]
+    },
+    "mercy": {
+        "semantic_vector": {
+            "thermai": 0.2,
+            "baric": 0.1,
+            "lumic": 0.4,
+            "vital": 0.5,
+            "entropic": -0.3,
+            "valence": 0.438,
+            "arousal": -0.542,
+            "dominance": 0.0
+        },
+        "domain_tags": [
+            "community",
+            "emotion",
+            "life"
+        ]
+    },
+    "strength": {
+        "semantic_vector": {
+            "thermai": 0.5,
+            "baric": 0.4,
+            "lumic": 0.3,
+            "vital": 0.4,
+            "entropic": -0.1,
+            "valence": 0.604,
+            "arousal": 0.364,
+            "dominance": 0.716
+        },
+        "domain_tags": [
+            "power",
+            "artificial",
+            "community"
+        ]
+    },
+    "charity": {
+        "semantic_vector": {
+            "thermai": 0.2,
+            "baric": 0.1,
+            "lumic": 0.4,
+            "vital": 0.5,
+            "entropic": -0.3,
+            "valence": 0.84,
+            "arousal": -0.432,
+            "dominance": 0.102
+        },
+        "domain_tags": [
+            "community",
+            "emotion",
+            "life"
+        ]
+    },
+    "swords": {
+        "semantic_vector": {
+            "thermai": 0.6,
+            "baric": 0.4,
+            "lumic": -0.2,
+            "vital": -0.45,
+            "entropic": 0.7,
+            "valence": -0.124,
+            "arousal": 0.306,
+            "dominance": 0.426
+        },
+        "domain_tags": [
+            "conflict",
+            "artificial",
+            "power"
+        ]
+    },
+    "horseshoes": {
+        "semantic_vector": {
+            "thermai": 0.3,
+            "baric": 0.4,
+            "lumic": 0.2,
+            "vital": 0.5,
+            "entropic": -0.1,
+            "valence": 0.346,
+            "arousal": -0.3,
+            "dominance": -0.188
+        },
+        "domain_tags": [
+            "nature",
+            "freedom",
+            "life"
+        ]
+    },
+    "chariots": {
+        "semantic_vector": {
+            "thermai": 0.5,
+            "baric": 0.3,
+            "lumic": 0.1,
+            "vital": 0.4,
+            "entropic": 0.2,
+            "valence": 0.368,
+            "arousal": 0.1,
+            "dominance": -0.018
+        },
+        "domain_tags": [
+            "artificial",
+            "power",
+            "community"
+        ]
+    },
+    "songs": {
+        "semantic_vector": {
+            "thermai": 0.4,
+            "baric": 0.0,
+            "lumic": 0.5,
+            "vital": 0.4,
+            "entropic": -0.2,
+            "valence": 0.708,
+            "arousal": -0.174,
+            "dominance": 0.0
+        },
+        "domain_tags": [
+            "artificial",
+            "emotion",
+            "life"
+        ]
+    },
+    "flowers": {
+        "semantic_vector": {
+            "thermai": 0.3,
+            "baric": 0.2,
+            "lumic": 0.5,
+            "vital": 0.7,
+            "entropic": -0.2,
+            "valence": 0.75,
+            "arousal": -0.352,
+            "dominance": -0.34
+        },
+        "domain_tags": [
+            "nature",
+            "growth",
+            "life"
+        ]
+    },
+    "fruits": {
+        "semantic_vector": {
+            "thermai": 0.4,
+            "baric": 0.2,
+            "lumic": 0.5,
+            "vital": 0.8,
+            "entropic": -0.3,
+            "valence": 0.73,
+            "arousal": -0.286,
+            "dominance": -0.482
+        },
+        "domain_tags": [
+            "nature",
+            "growth",
+            "life"
+        ]
+    },
+    "bread": {
+        "semantic_vector": {
+            "thermai": 0.3,
+            "baric": 0.2,
+            "lumic": 0.4,
+            "vital": 0.7,
+            "entropic": -0.2,
+            "valence": 0.32,
+            "arousal": -0.372,
+            "dominance": -0.316
+        },
+        "domain_tags": [
+            "artificial",
+            "community",
+            "life"
+        ]
+    },
+    "ale": {
+        "semantic_vector": {
+            "thermai": 0.5,
+            "baric": 0.1,
+            "lumic": 0.4,
+            "vital": 0.6,
+            "entropic": -0.2,
+            "valence": 0.06,
+            "arousal": -0.1,
+            "dominance": -0.284
+        },
+        "domain_tags": [
+            "artificial",
+            "emotion",
+            "community"
+        ]
+    }
+}

@@ -1,0 +1,89 @@
+{
+    "archetypes": [
+        {
+            "name": "The Sovereign",
+            "id": 0,
+            "behavoirTree": "ruler_behavior.json"
+        },
+        {
+            "name": "The Creator",
+            "id": 1,
+            "behavoirTree": "creator_behavior.json"
+        },
+        {
+            "name": "The Sage",
+            "id": 2,
+            "behavoirTree": "sage_behavior.json"
+        },
+        {
+            "name": "The Innocent",
+            "id": 3,
+            "behavoirTree": "innocent_behavior.json"
+        },
+        {
+            "name": "The Explorer",
+            "id": 4,
+            "behavoirTree": "explorer_behavior.json"
+        },
+        {
+            "name": "The Trickster",
+            "id": 5,
+            "behavoirTree": "trickster_behavior.json"
+        },
+        {
+            "name": "The Hero",
+            "id": 6,
+            "behavoirTree": "hero_behavior.json"
+        },
+        {
+            "name": "The Lover",
+            "id": 7,
+            "behavoirTree": "lover_behavior.json"
+        },
+        {
+            "name": "The Mother",
+            "id": 8,
+            "behavoirTree": "mother_behavior.json"
+        },
+        {
+            "name": "The Destroyer",
+            "id": 9,
+            "behavoirTree": "destroyer_behavior.json"
+        },
+        {
+            "name": "The Magician",
+            "id": 10,
+            "behavoirTree": "magician_behavior.json"
+        },
+        {
+            "name": "The Everyman",
+            "id": 11,
+            "behavoirTree": "everyman_behavior.json"
+        },
+        {
+            "name": "The Shadow",
+            "id": 12,
+            "behavoirTree": "shadow_behavior.json"
+        },
+        {
+            "name": "The Guide",
+            "id": 13,
+            "behavoirTree": "guide_behavior.json"
+        },
+        {
+            "name": "The Wild One",
+            "id": 14,
+            "behavoirTree": "wildone_behavior.json"
+        },
+        {
+            "name": "The Jester",
+            "id": 15,
+            "behavoirTree": "jester_behavior.json"
+        },
+        {
+            "name": "The Rebel",
+            "id": 16,
+            "behavoirTree": "rebel_behavior.json"
+        }
+    ]
+}
