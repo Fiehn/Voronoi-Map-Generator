@@ -12,10 +12,10 @@ using json = nlohmann::json;
 
 void ReligionManager::load_domain_data(flecs::world& world)
 {
-	// Load domain data to ECS world from the JSON file: "Assets/Religion/domains.json"
+	// Load domain data to ECS world from the JSON file: "Assets/Religions/domains.json"
 	// Use nlohmann::json to parse the file and create entities with Domain tag and properties
-	
-	std::ifstream file("Assets/Religion/domains.json");
+
+	std::ifstream file("Assets/Religions/domains.json");
 	if (!file.is_open())
 	{
 		LOG_ERROR(Religion, "Failed to open domains.json file, check assets.");
@@ -51,7 +51,7 @@ void ReligionManager::load_domain_data(flecs::world& world)
 
 			domain_entity.set(axes);
 		}
-		else { LOG_WARNING(Religion, "Failed to find semantic axes for domain: ", domain_name); }
+		else { LOG_WARNING(Religion, "Failed to find semantic axes for domain: ", domain_name.c_str()); }
 
 		// Add domain tags if present in JSON
 		if (domain_data.contains("domain_tags"))
@@ -63,16 +63,16 @@ void ReligionManager::load_domain_data(flecs::world& world)
 				domain_entity.add<HasTag>(tag_entity);
 			}
 		}
-		else { LOG_WARNING(Religion, "No domain tags present for domain: ", domain_name); }
+		else { LOG_WARNING(Religion, "No domain tags present for domain: ", domain_name.c_str()); }
 	}
-	LOG_INFO(Religion, "Loaded domain data from Assets/religion/domains.json into the world.");
+	LOG_INFO(Religion, "Loaded domain data from Assets/Religions/domains.json into the world.");
 }
 
 void ReligionManager::load_archetype_data(flecs::world& world)
 {
 	// Load archetype data from JSON file: "Assets/Religions/archetypes.json"
 
-	std::ifstream file("Assets/Religion/archetypes.json");
+	std::ifstream file("Assets/Religions/archetypes.json");
 	if (!file.is_open())
 	{
 		LOG_ERROR(Religion, "Failed to open archetypes.json file, check assets.");
@@ -84,7 +84,7 @@ void ReligionManager::load_archetype_data(flecs::world& world)
 	file.close();
 
 	// Access the array
-	if (!data.is_array())
+	if (!data.contains("archetypes") || !data["archetypes"].is_array())
 	{
 		LOG_ERROR(Religion, "Archetypes JSON is not an array.");
 		return;
@@ -161,10 +161,10 @@ void ReligionManager::create_proto_religion(flecs::world& world, History& histor
 	if (has_gods)
 	{
 		int nr_proto_gods = RandomBetweenInt(3, 6);
-		generate_proto_pantheon(world, history, cell, nr_proto_gods);
+		generate_proto_pantheon(world, history, cell, religion_entity, nr_proto_gods);
 	}
 
-	LOG_INFO(Religion, "Created Proto Religion ", name, "has gods: ", has_gods);
+	LOG_INFO(Religion, "Created Proto Religion ", name.c_str(), "has gods: ", has_gods);
 }
 
 std::string ReligionManager::get_proto_religion_name()
@@ -257,7 +257,7 @@ void ReligionManager::add_proto_axioms(flecs::world& world, flecs::entity religi
 		{
 			rule.description = tag_a_name + " harmonizes with " + tag_b_name;
 		}
-		LOG_INFO(Religion, "Religion has axiom: ", religion_entity.name().c_str(), rule.description);
+		LOG_INFO(Religion, "Religion has axiom: ", religion_entity.name().c_str(), " ", rule.description.c_str());
 		axioms.rules.push_back(rule);
 	}
 	religion_entity.set(axioms);
@@ -296,7 +296,7 @@ void ReligionManager::determine_proto_stats(flecs::world& world, flecs::entity r
 	religion_entity.set(stats);
 }
 
-void ReligionManager::generate_proto_pantheon(flecs::world& world, History& history, Cell& cell, int nr_proto_gods)
+void ReligionManager::generate_proto_pantheon(flecs::world& world, History& history, Cell& cell, flecs::entity religion_entity, int nr_proto_gods)
 {
 	auto query_archetype = world.query<Archetype>();
 	std::vector<flecs::entity> archetypes;
@@ -311,7 +311,8 @@ void ReligionManager::generate_proto_pantheon(flecs::world& world, History& hist
 		// Create deity entity
 		std::string deity_name = get_proto_religion_name(); // Reusing name generator for deity names
 		auto deity_entity = world.entity(deity_name.c_str())
-			.add<Deity>();
+			.add<Deity>()
+			.add<WorshippedBy>(religion_entity);
 
 		// Assign random domains to deity
 		auto query = world.query<Domain>();
@@ -324,12 +325,18 @@ void ReligionManager::generate_proto_pantheon(flecs::world& world, History& hist
 		{
 			int idx = RandomBetweenInt(0, (int)domains.size() - 1);
 			deity_entity.add<GodOf>(domains[idx]);
-			LOG_INFO(Religion, "Deity ", deity_name, " assigned domain: ", domains[idx].name().c_str());
+			LOG_INFO(Religion, "Deity ", deity_name.c_str(), " assigned domain: ", domains[idx].name().c_str());
 		}
 		// Assign archetypes
-		int archetype_index = chooseIndex(archetype_weights);
-		deity_entity.add<Archetype>(archetypes[archetype_index]);
-		archetype_weights[archetype_index] *= 0.0f;
+		if (!archetypes.empty())
+		{
+			int archetype_index = chooseIndex(archetype_weights);
+			if (archetype_index >= 0 && archetype_index < archetypes.size())
+			{
+				deity_entity.add<Archetype>(archetypes[archetype_index]);
+				archetype_weights[archetype_index] *= 0.0f;
+			}
+		}
 
 		history.log(0, EventType::DeityCreation,
 			HistoricalActor(static_cast<size_t>(cell.id)),
@@ -429,7 +436,7 @@ void ReligionManager::myth_phase_evolution(flecs::world& world,
 		int idx = RandomBetweenInt(0, static_cast<int>(contradictions.size()) - 1);
 
 		// Note: Update your `solve` signature to take `current_tick`
-		bool solved = contradictions[idx].solve(world, history);
+		bool solved = contradictions[idx].solve(world, history, ticks_in_phase);
 
 		if (solved) {
 			LOG_INFO(Religion, "Resolved a contradiction for ", religion_entity.name().c_str());

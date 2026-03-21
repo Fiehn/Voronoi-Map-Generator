@@ -1378,7 +1378,7 @@ void planetaryParamsViewer(GlobalWorldObjects& globals, bool& showPlanetaryParam
             else if (dir >= 202.5f && dir < 247.5f) dirName = "SW";
             else if (dir >= 247.5f && dir < 292.5f) dirName = "W";
             else dirName = "NW";
-            ImGui::Text("%s (%.0f°)", dirName.c_str(), dir);
+            ImGui::Text("%s (%.0f deg)", dirName.c_str(), dir);
 
             ImGui::TableSetColumnIndex(3);
             ImGui::Text("%.2f", globals.windStrength[i]);
@@ -2177,7 +2177,7 @@ void continentViewer(GlobalWorldObjects& globals, bool& showContinentViewer)
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Base Density");
         ImGui::TableSetColumnIndex(1);
-        ImGui::Text("%.2f g/cm³", continent.baseDensity);
+        ImGui::Text("%.2f g/cm^3", continent.baseDensity);
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);

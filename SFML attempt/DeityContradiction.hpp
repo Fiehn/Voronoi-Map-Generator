@@ -30,5 +30,5 @@ struct DeityContradiction {
 	{
 	}
 
-	bool solve(flecs::world& world, History& history);
+	bool solve(flecs::world& world, History& history, uint32_t current_tick);
 };

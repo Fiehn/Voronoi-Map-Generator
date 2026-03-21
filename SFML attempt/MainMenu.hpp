@@ -188,7 +188,7 @@ static void pantheonTestWindow(bool& showPantheonTest) {
     static flecs::world testWorld;
     static ReligionManager religionManager;
     static History testHistory;
-    static flecs::entity testReligion = flecs::entity::null();
+    static flecs::entity testReligion;
     static uint32_t currentTick = 0;
     static vor::Voronoi dummyMap; // Dummy map for the myth phase rule weights
 
@@ -199,6 +199,8 @@ static void pantheonTestWindow(bool& showPantheonTest) {
     if (!initialized) {
         // Load domains, archetypes, and religion types into testWorld
         religionManager.initialize(testWorld);
+        
+        testReligion = testWorld.entity(0);
 
         // Cell setup
         testCell.height = 0.5f;
@@ -258,7 +260,7 @@ static void pantheonTestWindow(bool& showPantheonTest) {
         currentTick = 0;
 
         // Clean up previous test religion if it exists to keep the ECS graph clean
-        if (testReligion.is_alive()) {
+        if (testReligion.id() != 0 && testReligion.is_alive()) {
             testReligion.destruct();
         }
 
@@ -278,7 +280,7 @@ static void pantheonTestWindow(bool& showPantheonTest) {
     }
 
     // === Step Controls ===
-    if (testReligion.is_alive()) {
+    if (testReligion.id() != 0 && testReligion.is_alive()) {
         ImGui::SameLine();
         if (ImGui::Button("Step Myth Phase (1 Tick)", ImVec2(200, 40))) {
             currentTick++;
@@ -292,7 +294,7 @@ static void pantheonTestWindow(bool& showPantheonTest) {
     ImGui::End();
 
     // === Render Graph and History Log ===
-    if (testReligion.is_alive()) {
+    if (testReligion.id() != 0 && testReligion.is_alive()) {
         // Draw the visual node graph
         graphView.Draw();
 

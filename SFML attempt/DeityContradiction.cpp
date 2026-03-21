@@ -1,9 +1,8 @@
 #include "DeityContradiction.hpp"
 
-bool DeityContradiction::solve(flecs::world& world, History& history)
+bool DeityContradiction::solve(flecs::world& world, History& history, uint32_t current_tick)
 {
-	// TODO: tick should be passed
-	uint32_t tick = 0;
+	uint32_t tick = current_tick;
 
 	switch (type)
 	{
@@ -19,7 +18,7 @@ bool DeityContradiction::solve(flecs::world& world, History& history)
 
 		if (!shared_domain)
 		{
-			LOG_ERROR(Religion, "Failed to solve DuplicateDomain contradiction: no shared domain found between ", deity_object.name(), " and ", deity_subject.name());
+			LOG_ERROR(Religion, "Failed to solve DuplicateDomain contradiction: no shared domain found between ", deity_object.name().c_str(), " and ", deity_subject.name().c_str());
 			return false; // This should not happen, but just in case
 		}
 		// PATH 1: Divine War
@@ -157,7 +156,7 @@ bool DeityContradiction::solve(flecs::world& world, History& history)
 			});
 		if (!dom_a || !dom_b)
 		{
-			LOG_ERROR(Religion, "Failed to solve OpposingDomains contradiction: no opposing domains found for ", deity_object.name());
+			LOG_ERROR(Religion, "Failed to solve OpposingDomains contradiction: no opposing domains found for ", deity_object.name().c_str());
 			return false; // This should not happen, but just in case
 		}
 
@@ -265,7 +264,7 @@ bool DeityContradiction::solve(flecs::world& world, History& history)
 		return true;
 	}
 	default:
-		LOG_ERROR(Religion, "Unknown contradiction type for ", deity_object.name());
+		LOG_ERROR(Religion, "Unknown contradiction type for ", deity_object.name().c_str());
 		return false;
 	}
 

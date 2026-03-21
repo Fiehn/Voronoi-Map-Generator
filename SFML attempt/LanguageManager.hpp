@@ -110,7 +110,7 @@ struct IPADatabase {
 class LanguageManager
 {
 public:
-	LanguageManager();
+	LanguageManager() = default;
 
 	void initialize(flecs::world& world);
 

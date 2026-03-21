@@ -10,7 +10,7 @@
 class ReligionManager
 {
 public:
-	ReligionManager();
+	ReligionManager() = default;
 
 	void initialize(flecs::world& world);
 
@@ -40,7 +40,7 @@ private:
 	void determine_proto_type(flecs::world& world, flecs::entity religion_entity);
 	void add_proto_axioms(flecs::world& world, flecs::entity religion_entity, Cell& cell, int nr_axioms);
 	void determine_proto_stats(flecs::world& world, flecs::entity religion_entity, Cell& cell);
-	void generate_proto_pantheon(flecs::world& world, History& history, Cell& cell, int nr_gods);
+	void generate_proto_pantheon(flecs::world& world, History& history, Cell& cell, flecs::entity religion_entity, int nr_gods);
 	
 	// === Evolution Helpers ===
 	std::vector<DeityContradiction> count_contradictions(flecs::world& world, flecs::entity religion_entity);

@@ -151,7 +151,9 @@
     <ClCompile Include="Cells.cpp" />
     <ClCompile Include="CrashHandler.cpp" />
     <ClCompile Include="CultureManager.hpp" />
-    <ClCompile Include="CultureManager_old.cpp" />
+    <ClCompile Include="CultureManager_old.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="DeityContradiction.cpp" />
     <ClCompile Include="extractiveResources.cpp" />
     <ClCompile Include="flecs.c" />
@@ -166,7 +168,9 @@
     <ClCompile Include="Include\ImPlot\implot.cpp" />
     <ClCompile Include="Include\ImPlot\implot_items.cpp" />
     <ClCompile Include="Include\SFML ImGUI\imgui-SFML.cpp" />
-    <ClCompile Include="LanguageManager_old.cpp" />
+    <ClCompile Include="LanguageManager_old.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="main.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
@@ -180,7 +184,9 @@
     <ClCompile Include="POP_Manager.cpp" />
     <ClCompile Include="POP_Manager.hpp" />
     <ClCompile Include="ReligionManager.cpp" />
-    <ClCompile Include="ReligionManager_old.cpp" />
+    <ClCompile Include="ReligionManager_old.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="SeasonalCalculator.hpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="Voronoi.cpp" />
@@ -190,8 +196,12 @@
     <ClInclude Include="AbstractWorld.hpp" />
     <ClInclude Include="cell.hpp" />
     <ClInclude Include="clustering.hpp" />
-    <ClInclude Include="CultureData_old.hpp" />
-    <ClInclude Include="CultureManager_old.hpp" />
+    <ClInclude Include="CultureData_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="CultureManager_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="DeityContradiction.hpp" />
     <ClInclude Include="EventMachine.hpp" />
     <ClInclude Include="extractiveResources.hpp" />
@@ -205,8 +215,12 @@
     <ClInclude Include="Include\ImPlot\implot_internal.h" />
     <ClInclude Include="Include\nlohmann\json.hpp" />
     <ClInclude Include="LanguageManager.hpp" />
-    <ClInclude Include="LanguageManager_old.hpp" />
-    <ClInclude Include="LanguageData_old.hpp" />
+    <ClInclude Include="LanguageManager_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="LanguageData_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="LogCommon.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="MainMenu.hpp" />
@@ -220,10 +234,16 @@
     <ClInclude Include="POP_generator.hpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="Religion.hpp" />
-    <ClInclude Include="ReligionData_old.hpp" />
+    <ClInclude Include="Religion.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="ReligionData_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="ReligionManager.hpp" />
-    <ClInclude Include="ReligionManager_old.hpp" />
+    <ClInclude Include="ReligionManager_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="resource.h" />
     <ClInclude Include="tickerSimulation.hpp" />
     <ClInclude Include="vertex.hpp" />

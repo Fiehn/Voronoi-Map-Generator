@@ -6,7 +6,7 @@
 class CultureManager
 {
 public:
-	CultureManager();
+	CultureManager() = default;
 	void initialize(flecs::world& world);
 	void create_proto_culture(flecs::world& world, Cell& cell);
 	void derive_culture(flecs::world& world, flecs::entity parent_culture_entity, Cell& cell);

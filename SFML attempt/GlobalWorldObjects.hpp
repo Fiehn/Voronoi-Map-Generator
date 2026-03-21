@@ -5,9 +5,7 @@ class GlobalWorldObjects; // Forward declaration
 #include <SFML/Graphics.hpp>
 #include "CellObjects.hpp"
 #include "PlanetaryObjects.hpp"
-#include "LanguageManager.hpp"
-#include "CultureManager.hpp"
-#include "ReligionManager.hpp"
+#include "AbstractWorld.hpp"
 
 class GlobalWorldObjects
 {
@@ -38,9 +36,7 @@ public:
 	PlanetaryParameters planetaryParams; // Planetary parameters
 
 	// === SocioCultural Managers ===
-	LanguageManager languageManager; // Language manager
-	CultureManager cultureManager; // Culture manager
-	ReligionManager religionManager; // Religion manager
+	AbstractWorld abstractWorld; // The abstract world that contains the ECS world and managers for religion, language, and culture
 
 	GlobalWorldObjects();
 	void clearGlobals();

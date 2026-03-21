@@ -12,7 +12,7 @@ struct GraphNode {
     ImVec2 position;
     ImVec2 velocity;
     float radius = 30.0f;
-    flecs::entity deity; // Replaced DeityHandle
+    flecs::entity deity;
     bool isDragging = false;
 };
 
@@ -71,7 +71,9 @@ private:
     }
 
 public:
-    PantheonGraphView(flecs::world* w) : world(w) {}
+    PantheonGraphView(flecs::world* w)
+        : world(w), currentReligion(w->entity(0)), hoveredDeity(w->entity(0)), selectedDeity(w->entity(0)) {
+    }
 
     void SetReligion(flecs::entity rel) {
         if (currentReligion != rel) {
@@ -82,17 +84,19 @@ public:
 
     void InitializeGraph() {
         nodes.clear();
-        selectedDeity = flecs::entity::null();
-        hoveredDeity = flecs::entity::null();
+        selectedDeity = world->entity(0);
+        hoveredDeity = world->entity(0);
 
-        if (!currentReligion.is_alive()) return;
+        if (!currentReligion || !currentReligion.is_alive()) return;
 
         std::vector<flecs::entity> deities;
-        world->query_builder<Deity>()
+
+        world->query_builder<>()
+            .with<Deity>()
             .with<WorshippedBy>(currentReligion)
             .without<Extinct>()
             .build()
-            .each([&](flecs::entity d, const Deity& deity) { deities.push_back(d); });
+            .each([&](flecs::entity d) { deities.push_back(d); });
 
         const float radius = 200.0f;
         for (size_t i = 0; i < deities.size(); i++) {
@@ -132,11 +136,12 @@ public:
                     }
                     };
 
-                // Apply spring forces for relationships
+                // Apply spring forces for typed relationships
                 node1.deity.each<SpouseOf>(apply_attraction);
                 node1.deity.each<SiblingOf>(apply_attraction);
                 node1.deity.each<ParentOf>(apply_attraction);
                 node1.deity.each<EnemyOf>(apply_attraction);
+                node1.deity.each<SplitFromDeity>(apply_attraction);
 
                 // Centering force
                 force.x -= node1.position.x * centeringForce;
@@ -167,14 +172,17 @@ public:
             ImGui::SliderInt("Iterations", &layoutIterationsPerFrame, 1, 20);
         }
         ImGui::SliderFloat("Zoom", &graphScale, 0.1f, 3.0f);
-        if (ImGui::Button("Refresh Nodes")) InitializeGraph(); // Helpful if nodes are added/removed in step
+        if (ImGui::Button("Refresh Nodes")) InitializeGraph();
 
         ImGui::Separator();
 
         ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
         ImVec2 canvas_size = ImGui::GetContentRegionAvail();
-        if (canvas_size.x < 50.0f) canvas_size.x = 800.0f;
-        if (canvas_size.y < 50.0f) canvas_size.y = 600.0f;
+        if (canvas_size.x < 400.0f) canvas_size.x = 800.0f;
+        if (canvas_size.y < 300.0f) canvas_size.y = 600.0f;
+
+        // Reserve place in the layout
+        ImGui::InvisibleButton("canvas", canvas_size);
 
         graphCenter = ImVec2(canvas_pos.x + canvas_size.x * 0.5f, canvas_pos.y + canvas_size.y * 0.5f);
 
@@ -189,31 +197,30 @@ public:
 
         ImGui::End();
 
-        if (selectedDeity.is_alive()) {
+        if (selectedDeity && selectedDeity.is_alive()) {
             DrawDeityDetails();
         }
     }
 
     void DrawRelationships(ImDrawList* draw_list) {
-        auto draw_rels = [&](flecs::entity source, flecs::entity rel_type) {
-            source.each(rel_type, [&](flecs::entity target) {
-                auto it_source = nodes.find(source.id());
-                auto it_target = nodes.find(target.id());
-                if (it_source != nodes.end() && it_target != nodes.end()) {
-                    ImVec2 p1 = WorldToScreen(it_source->second.position);
-                    ImVec2 p2 = WorldToScreen(it_target->second.position);
-                    ImU32 col = GetRelationshipColor(rel_type.name().c_str());
-                    DrawArrow(draw_list, p1, p2, it_target->second.radius * graphScale, col);
-                }
-                });
+        auto draw_edge = [&](flecs::entity source, flecs::entity target, const char* rel_name) {
+            auto it_source = nodes.find(source.id());
+            auto it_target = nodes.find(target.id());
+            if (it_source != nodes.end() && it_target != nodes.end()) {
+                ImVec2 p1 = WorldToScreen(it_source->second.position);
+                ImVec2 p2 = WorldToScreen(it_target->second.position);
+                ImU32 col = GetRelationshipColor(rel_name);
+                DrawArrow(draw_list, p1, p2, it_target->second.radius * graphScale, col);
+            }
             };
 
+        // Explicitly typed iterators to satisfy the compiler
         for (auto& [id, node] : nodes) {
-            draw_rels(node.deity, world->lookup("SpouseOf"));
-            draw_rels(node.deity, world->lookup("SiblingOf"));
-            draw_rels(node.deity, world->lookup("EnemyOf"));
-            draw_rels(node.deity, world->lookup("ParentOf"));
-            draw_rels(node.deity, world->lookup("SplitFromDeity"));
+            node.deity.each<SpouseOf>([&](flecs::entity target) { draw_edge(node.deity, target, "SpouseOf"); });
+            node.deity.each<SiblingOf>([&](flecs::entity target) { draw_edge(node.deity, target, "SiblingOf"); });
+            node.deity.each<EnemyOf>([&](flecs::entity target) { draw_edge(node.deity, target, "EnemyOf"); });
+            node.deity.each<ParentOf>([&](flecs::entity target) { draw_edge(node.deity, target, "ParentOf"); });
+            node.deity.each<SplitFromDeity>([&](flecs::entity target) { draw_edge(node.deity, target, "SplitFromDeity"); });
         }
     }
 
@@ -240,7 +247,7 @@ public:
 
     void HandleInput(ImVec2 canvas_pos, ImVec2 canvas_size) {
         ImGuiIO& io = ImGui::GetIO();
-        hoveredDeity = flecs::entity::null();
+        hoveredDeity = world->entity(0);
         ImVec2 mouse_pos = io.MousePos;
 
         if (mouse_pos.x >= canvas_pos.x && mouse_pos.x <= canvas_pos.x + canvas_size.x &&
@@ -280,34 +287,32 @@ public:
         ImGui::Begin("Deity Details", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::Text("Name: %s", selectedDeity.name().c_str());
 
-        // Archetype
-        if (selectedDeity.has<Archetype>()) {
-            selectedDeity.each<Archetype>([&](flecs::entity arch) {
-                ImGui::Text("Archetype: %s", arch.name().c_str());
-                });
-        }
+        selectedDeity.each<Archetype>([&](flecs::entity arch) {
+            ImGui::Text("Archetype: %s", arch.name().c_str());
+            });
 
         ImGui::Separator();
         ImGui::Text("Domains:");
+
         selectedDeity.each<GodOf>([&](flecs::entity domain) {
             ImGui::BulletText("%s", domain.name().c_str());
             });
 
         ImGui::Separator();
         ImGui::Text("Relationships:");
-        auto print_rel = [&](const char* label, flecs::entity rel_type) {
-            selectedDeity.each(rel_type, [&](flecs::entity target) {
-                ImGui::PushStyleColor(ImGuiCol_Text, GetRelationshipColor(rel_type.name().c_str()));
-                ImGui::BulletText("%s of %s", label, target.name().c_str());
-                ImGui::PopStyleColor();
-                });
+
+        auto print_rel = [&](flecs::entity target, const char* label, const char* rel_name) {
+            ImGui::PushStyleColor(ImGuiCol_Text, GetRelationshipColor(rel_name));
+            ImGui::BulletText("%s of %s", label, target.name().c_str());
+            ImGui::PopStyleColor();
             };
 
-        print_rel("Spouse", world->lookup("SpouseOf"));
-        print_rel("Sibling", world->lookup("SiblingOf"));
-        print_rel("Enemy", world->lookup("EnemyOf"));
-        print_rel("Parent", world->lookup("ParentOf"));
-        print_rel("Split From", world->lookup("SplitFromDeity"));
+        // Explicitly typed iterators replace the dynamic lookups
+        selectedDeity.each<SpouseOf>([&](flecs::entity target) { print_rel(target, "Spouse", "SpouseOf"); });
+        selectedDeity.each<SiblingOf>([&](flecs::entity target) { print_rel(target, "Sibling", "SiblingOf"); });
+        selectedDeity.each<EnemyOf>([&](flecs::entity target) { print_rel(target, "Enemy", "EnemyOf"); });
+        selectedDeity.each<ParentOf>([&](flecs::entity target) { print_rel(target, "Parent", "ParentOf"); });
+        selectedDeity.each<SplitFromDeity>([&](flecs::entity target) { print_rel(target, "Split From", "SplitFromDeity"); });
 
         ImGui::End();
     }
@@ -317,33 +322,36 @@ public:
     }
 };
 
-
 void DrawReligionControls(flecs::world& world, ReligionManager& relManager, History& history, Cell& testCell, vor::Voronoi& map) {
-    static flecs::entity activeReligion = flecs::entity::null();
+    static flecs::entity activeReligion = world.entity(0);
     static PantheonGraphView graphView(&world);
     static uint32_t currentTick = 0;
 
     ImGui::Begin("Myth Generator");
 
     if (ImGui::Button("Generate Proto-Religion", ImVec2(200, 40))) {
-        // Clear previous history if you want a clean slate
-        // history.clear(); 
         currentTick = 0;
+
+        // Clean up previous test religion safely
+        if (activeReligion && activeReligion.is_alive()) {
+            activeReligion.destruct();
+        }
 
         // Generate religion
         relManager.create_proto_religion(world, history, testCell);
 
-        // Find the newest active religion (assuming 1 for testing)
-        world.query_builder<Religion>()
+        // Reverted to query_builder<Religion> 
+        world.query_builder<>()
+            .with<Religion>()
             .without<Extinct>()
             .build()
-            .each([&](flecs::entity rel, const Religion& r) { activeReligion = rel; });
+            .each([&](flecs::entity rel) { activeReligion = rel; });
 
         // Bind it to the viewer
         graphView.SetReligion(activeReligion);
     }
 
-    if (activeReligion.is_alive()) {
+    if (activeReligion && activeReligion.is_alive()) {
         ImGui::SameLine();
         if (ImGui::Button("Step Myth Phase (1 Tick)", ImVec2(200, 40))) {
             currentTick++;
@@ -357,7 +365,7 @@ void DrawReligionControls(flecs::world& world, ReligionManager& relManager, Hist
     ImGui::End();
 
     // Draw the Graph Viewer
-    if (activeReligion.is_alive()) {
+    if (activeReligion && activeReligion.is_alive()) {
         graphView.Draw();
     }
 
@@ -368,11 +376,9 @@ void DrawReligionControls(flecs::world& world, ReligionManager& relManager, Hist
 
     ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
     for (const auto& ev : history.events) {
-        // Simple color coding by event type
         ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // Default white
         if (ev.type == EventType::DeityCreation) color = ImVec4(0.5f, 1.0f, 0.5f, 1.0f);
         if (ev.type == EventType::DeityInteraction) color = ImVec4(0.5f, 0.8f, 1.0f, 1.0f);
-        // Add more colors for Schism, DivineConflict, etc.
 
         ImGui::PushStyleColor(ImGuiCol_Text, color);
 
@@ -382,7 +388,7 @@ void DrawReligionControls(flecs::world& world, ReligionManager& relManager, Hist
             ev.tick,
             ev.event_id,
             ev.snapshot.subject_name.c_str(),
-            ev.snapshot.location_name.c_str(), // e.g., "Married to" or "Fought"
+            ev.snapshot.location_name.c_str(),
             ev.snapshot.object_name.c_str(),
             ev.snapshot.reason.c_str(),
             causal_link.c_str());
@@ -390,7 +396,6 @@ void DrawReligionControls(flecs::world& world, ReligionManager& relManager, Hist
         ImGui::PopStyleColor();
     }
 
-    // Auto-scroll to bottom if new events were added
     if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
         ImGui::SetScrollHereY(1.0f);
 
