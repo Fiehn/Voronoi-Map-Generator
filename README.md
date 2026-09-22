@@ -24,7 +24,6 @@ All used under the MIT lisence.
 * CPU and GPU vertex generation and switching
 * Prototype: Population simulation mechanics including culture generation and religion generator with graph grammar rules for deity generation.
 <img width="2497" height="1500" alt="image" src="https://github.com/user-attachments/assets/4aa88d6d-64f9-478b-8312-1f3bf505f5e7" />
-<img width="2485" height="1495" alt="image" src="https://github.com/user-attachments/assets/8bff3212-cdee-4c1e-a2e1-4e17f8d312d2" />
 <img width="2488" height="1492" alt="image" src="https://github.com/user-attachments/assets/8ae7512b-548f-44af-a014-065252cefb82" />
 
 ## Generation
