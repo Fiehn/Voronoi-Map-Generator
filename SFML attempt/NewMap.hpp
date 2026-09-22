@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include "Logger.h"
 
 // Struct to wrap the generation steps
 struct GenStepWrapper {
@@ -16,9 +17,11 @@ struct GenStepWrapper {
         float maxWidth,
         float maxHeight
     ) {// Execute the function and time it
+		LOG_INFO(Generations, "Starting step: %s", description.c_str());
         auto start = std::chrono::high_resolution_clock::now();
         func();
         auto end = std::chrono::high_resolution_clock::now();
+		LOG_INFO(Generations, "Completed step: %s", description.c_str());
 
         // Update progress
         currentStep++;
@@ -58,13 +61,14 @@ static void genWorld(vor::Voronoi& map,
     GlobalWorldObjects& globals,
     sf::RenderWindow& window,
     VertexMap& vertexMap,
-    sf::VertexArray& windArrows,
     sf::VertexArray& lines,
+	SeasonalCalculator& seasonCalc,
     const unsigned int MAXWIDTH,
     const unsigned int MAXHEIGHT,
     const sf::Font& font,
     MapConfig& config,
-    unsigned int seed
+    unsigned int seed,
+	PopManager& popManager
 ) {
     // Seed
     if (seed == 0) { seed = time(NULL); }
@@ -110,7 +114,7 @@ static void genWorld(vor::Voronoi& map,
 	}
 
     // Total processing steps 
-    const int totalSteps = 17;
+    const int totalSteps = 22;
     int currentStep = 0;
 
     // Initial draw
@@ -124,10 +128,12 @@ static void genWorld(vor::Voronoi& map,
         globals.clearGlobals();
         globals.setSeaLevel(config.sealevel); // RandomBetween(0.4f, 0.6f)
         globals.setGlobalTemp(config.global_temp_avg);
-        globals.generateConvergenceLines(config.n_convergence_lines, config.windstr_alpha, config.windstr_beta);
+		globals.generatePlanet(config.earthLike);
+        globals.generateConvergenceLines();
+		int numLines = globals.convergenceLines.size();
         lines.clear();
-        lines.resize(2 * config.n_convergence_lines);
-        for (int i = 0; i < config.n_convergence_lines * 2; i++)
+        lines.resize(2 * numLines);
+        for (int i = 0; i < numLines * 2; i++)
         {
             if (i % 2 == 0)
             {
@@ -196,11 +202,7 @@ static void genWorld(vor::Voronoi& map,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcPercepitation(map.cells, map.points, globals, config.percepitation_repeats); }, "Calculating Percepetation", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
-
-    GenStepWrapper::RunStep([&]() {
-		smoothPercepitation(map.cells, config.percepitation_smooth_repeats); }, "Smoothing Percepetation", currentStep, 
+		calcPercepitation(map.cells, map.points, globals, config.percepitation_repeats, config.max_percipitation,config.ocean_evaporation_factor,config.land_evapotranspiration_factor, config.moisture_loss_rate, config.orographic_factor, config.moisture_loss_rate); }, "Calculating Percepetation", currentStep, 
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
@@ -208,13 +210,18 @@ static void genWorld(vor::Voronoi& map,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
+        calcClimateVariance(map.cells, map.points, globals, (float)MAXHEIGHT); }, "Calculating Climate Variance", currentStep,
+        totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+
+    GenStepWrapper::RunStep([&]() {
 		calcBiome(map.cells, globals, config.kmeans_max_iter, config.biome_method); }, "Calculating Biomes", currentStep, 
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		windArrows.clear();
-		windArrows = vor::windArrows(map); }, "Drawing Wind Arrows", currentStep, 
+		ResourceGen::generateMapResources(map.cells, globals); }, "Generating Resources", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+
+    // POP AND culture
 
     GenStepWrapper::RunStep([&]() {
 		vertexMap.clear();

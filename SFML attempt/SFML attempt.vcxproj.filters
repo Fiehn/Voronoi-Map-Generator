@@ -13,27 +13,48 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="Header Files\Debugger">
+      <UniqueIdentifier>{bd6de381-9e0b-4e43-adf3-b9b3d09c69fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Debugger">
+      <UniqueIdentifier>{77896b58-0973-425d-b8c7-983abf70f22e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\POPs">
+      <UniqueIdentifier>{70ef5f64-e5de-41e8-a18d-f7b8c766bcb8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\ImGui">
+      <UniqueIdentifier>{63675876-1b91-435b-bb93-1c301def24ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\POPs\Data">
+      <UniqueIdentifier>{20e3f213-7ffc-4ada-b382-8b772c83b16d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\POPs\Managers">
+      <UniqueIdentifier>{16fc5cae-8c11-40ea-ac0a-e7ad018d077a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ImGui">
+      <UniqueIdentifier>{b788a07d-ef5c-4cad-97ab-a95889c66f57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Pops">
+      <UniqueIdentifier>{ec24bc21-df6c-4ff6-bcae-341b9f6e37e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\flecs">
+      <UniqueIdentifier>{38a1d7d7-43f1-4374-a847-03b192987cb2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\flecs">
+      <UniqueIdentifier>{9273da59-1e45-41f8-ae0e-fd6c5c476ad3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\POPs\Redundant">
+      <UniqueIdentifier>{c869355f-a28c-4aa1-a5d1-5cff8fbfd001}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Pops\Redundant">
+      <UniqueIdentifier>{d3a4f8a4-166e-4fb4-aa86-4f6c7a39497f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Pops\Data">
+      <UniqueIdentifier>{816fe529-5e92-4620-993d-8e7b7e606d08}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Include\Dear ImGUI\imgui.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\Dear ImGUI\imgui_draw.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\Dear ImGUI\imgui_tables.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\Dear ImGUI\imgui_widgets.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\SFML ImGUI\imgui-SFML.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Include\Dear ImGUI\imgui_demo.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="GlobalWorldObjects.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -46,17 +67,89 @@
     <ClCompile Include="CellObjects.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="Include\ImGuiFD-main\ImGuiFD.cpp">
+    <ClCompile Include="extractiveResources.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="windArrows.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Voronoi.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="PlanetaryObjects.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="SeasonalCalculator.hpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrashHandler.cpp">
+      <Filter>src\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="Logger.cpp">
+      <Filter>src\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\Dear ImGUI\imgui.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\Dear ImGUI\imgui_demo.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\Dear ImGUI\imgui_draw.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\Dear ImGUI\imgui_tables.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\Dear ImGUI\imgui_widgets.cpp">
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\ImGuiFD-main\ImGuiFD.cpp">
+      <Filter>src\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\ImGuiFD-main\ImGuiFDNative.cpp">
-      <Filter>src</Filter>
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Include\SFML ImGUI\imgui-SFML.cpp">
+      <Filter>src\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\ImPlot\implot.cpp">
-      <Filter>src</Filter>
+      <Filter>src\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\ImPlot\implot_items.cpp">
-      <Filter>src</Filter>
+      <Filter>src\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="POP_generator.cpp">
+      <Filter>src\Pops</Filter>
+    </ClCompile>
+    <ClCompile Include="POP_Manager.cpp">
+      <Filter>src\Pops</Filter>
+    </ClCompile>
+    <ClCompile Include="flecs.c">
+      <Filter>src\flecs</Filter>
+    </ClCompile>
+    <ClCompile Include="ReligionManager_old.cpp">
+      <Filter>src\Pops\Redundant</Filter>
+    </ClCompile>
+    <ClCompile Include="CultureManager_old.cpp">
+      <Filter>src\Pops\Redundant</Filter>
+    </ClCompile>
+    <ClCompile Include="LanguageManager_old.cpp">
+      <Filter>src\Pops\Redundant</Filter>
+    </ClCompile>
+    <ClCompile Include="CultureManager.hpp">
+      <Filter>Header Files\POPs\Managers</Filter>
+    </ClCompile>
+    <ClCompile Include="POP_Manager.hpp">
+      <Filter>Header Files\POPs\Managers</Filter>
+    </ClCompile>
+    <ClCompile Include="ReligionManager.cpp">
+      <Filter>src\Pops</Filter>
+    </ClCompile>
+    <ClCompile Include="MythicRules.cpp">
+      <Filter>src\Pops</Filter>
+    </ClCompile>
+    <ClCompile Include="DeityContradiction.cpp">
+      <Filter>src\Pops\Data</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -67,9 +160,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CellObjects.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Deprecated.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="util.hpp">
@@ -84,16 +174,10 @@
     <ClInclude Include="vertex.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Dear ImGUI\imgui.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Map.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\nlohmann\json.hpp">
@@ -105,22 +189,103 @@
     <ClInclude Include="EventMachine.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\ImPlot\implot.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\ImPlot\implot_internal.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="NewMap.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MainMenu.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="tickerSimulation.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="extractiveResources.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="windArrows.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PlanetaryObjects.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LogCommon.h">
+      <Filter>Header Files\Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="Logger.h">
+      <Filter>Header Files\Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Dear ImGUI\imgui.h">
+      <Filter>Header Files\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h">
+      <Filter>Header Files\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ImPlot\implot.h">
+      <Filter>Header Files\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ImPlot\implot_internal.h">
+      <Filter>Header Files\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="PantheonGraphView.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="flecs.h">
+      <Filter>Header Files\flecs</Filter>
+    </ClInclude>
+    <ClInclude Include="CultureManager_old.hpp">
+      <Filter>Header Files\POPs\Redundant</Filter>
+    </ClInclude>
+    <ClInclude Include="LanguageManager_old.hpp">
+      <Filter>Header Files\POPs\Redundant</Filter>
+    </ClInclude>
+    <ClInclude Include="ReligionManager_old.hpp">
+      <Filter>Header Files\POPs\Redundant</Filter>
+    </ClInclude>
+    <ClInclude Include="ReligionData_old.hpp">
+      <Filter>Header Files\POPs\Redundant</Filter>
+    </ClInclude>
+    <ClInclude Include="LanguageData_old.hpp">
+      <Filter>Header Files\POPs\Redundant</Filter>
+    </ClInclude>
+    <ClInclude Include="CultureData_old.hpp">
+      <Filter>Header Files\POPs\Redundant</Filter>
+    </ClInclude>
+    <ClInclude Include="POP_data.hpp">
+      <Filter>Header Files\POPs\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="AbstractWorld.hpp">
+      <Filter>Header Files\POPs\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="LanguageManager.hpp">
+      <Filter>Header Files\POPs\Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="ReligionManager.hpp">
+      <Filter>Header Files\POPs\Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="Religion.hpp">
+      <Filter>Header Files\POPs\Redundant</Filter>
+    </ClInclude>
+    <ClInclude Include="flecs_schema.h">
+      <Filter>Header Files\POPs\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="HistoryData.hpp">
+      <Filter>Header Files\POPs\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="MythicRules.hpp">
+      <Filter>Header Files\POPs\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="DeityContradiction.hpp">
+      <Filter>Header Files\POPs\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="POP_generator.hpp">
+      <Filter>Header Files\POPs\Redundant</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SFML attempt.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="AbstractWorldSchema.md" />
   </ItemGroup>
 </Project>

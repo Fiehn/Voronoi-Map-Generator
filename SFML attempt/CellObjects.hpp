@@ -5,6 +5,7 @@
 #include <vector>
 #include "cell.hpp"
 #include <iostream>
+#include "util.hpp"
 
 class Biome {
 public:
@@ -146,11 +147,45 @@ private:
 	
 };
 
+enum class PlateType {
+    Oceanic,
+    Continental,
+    Mixed
+};
+
+enum class BoundaryType {
+    None, 
+	ContinentalCollision, // Both continental -> himmalaya
+	Subduction, // Oceanic under continental -> andes
+	OceanicRift, // Both oceanic -> mid atlantic ridge
+	ContinentalRift, // Both continental pulling apart -> east african rift
+	Transform // Sliding past each other -> san andreas
+};
+
 class Continent {
 public:
     int id;
     Continent(int id);
+    std::vector<std::size_t> cells;
 	
+	PlateType plateType = PlateType::Continental;
+    float age = 3.0f;
+	float crustThickness = 35.0f; // in km
+	float baseDensity = 2.7f; // g/cm^3
+
+    float getIsostaticHeight() {
+		float isostaticFactor = (crustThickness / 35.0f) * (3.0f / baseDensity);
+        if (plateType == PlateType::Oceanic) {
+			return - 0.2f + (isostaticFactor - 1.0f) * 0.3f; // Oceanic crust is thinner and denser
+		}
+        else if (plateType == PlateType::Continental) {
+            return 0.4f + (isostaticFactor - 1.0f) * 0.5f; // Continental crust is thicker and less dense
+        }
+        else { // Mixed
+            return - 0.05f + (isostaticFactor - 1.0f) * 0.35f;
+		}
+    }
+
 	void setHeight(double height) { this->height = height; };
     void setDirection(sf::Vector2f direction) { this->direction = direction; };
     void setAge(float age) { this->age = age; }
@@ -175,13 +210,11 @@ public:
     void finishContinent(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map);
 
 private:
-    std::vector<std::size_t> cells;
-    std::vector<sf::Vector2f> boundLines; 
     std::vector<std::size_t> boundCells;
+    std::vector<sf::Vector2f> boundLines; 
 	sf::Vector2f center;
     sf::Vector2f direction;
     double height = 0.5;
-	float age = 0.0f; // Epochs since the continent was created (will be between 0.5 and 1) 
 
 	void calcCenter(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map);
 

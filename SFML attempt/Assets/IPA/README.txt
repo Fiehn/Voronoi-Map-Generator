@@ -1,0 +1,1 @@
+The file is derived from the IPA chart, specifically the representation on (https://www.ipachart.com/).

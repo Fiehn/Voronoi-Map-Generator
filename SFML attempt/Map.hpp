@@ -79,11 +79,8 @@ void smooth_height(std::vector<Cell>& map, float rise_threshold = 0.1, int repea
                     count_values++;
                 }
 
-                if (height_sum > 0.005) {
+                if (count_values > 0) {
                     map[index].height = height_sum / static_cast<float>(count_values);
-                }
-                else if (map[index].height > 0.5) {
-                    map[index].height = 0.1;
                 }
             }
             // calculate the new rise for next smoothing
@@ -92,124 +89,432 @@ void smooth_height(std::vector<Cell>& map, float rise_threshold = 0.1, int repea
     }
 }
 
-void continent_generation(std::vector<Cell>& map, GlobalWorldObjects& globals, MapConfig& config, const std::vector<sf::Vector2f>& voronoi_points)
+//////////
+// Continet Generation
+//////////
+void assignPlateTypes(std::vector<Continent>& continents, const MapConfig& config)
 {
-    // Generate continents
-	globals.continents.reserve(config.npeaks);
-	for (int i = 0; i < config.npeaks; i++)
-	{
-		globals.continents.emplace_back(Continent(i));
-	}
-    // 
-    std::vector<std::vector<std::size_t>> active;
-    active.reserve(config.npeaks);
-    std::vector<bool> assigned(map.size(), false); 
-    std::size_t size = map.size(); 
-    std::size_t assigned_cells = 0; 
+	// Determine amount of oceanic and continental plates
+	int numOceanicPlates = static_cast<int>(continents.size() * config.oceanic_plate_ratio);
+    int numMixedPlates = static_cast<int>(continents.size() * 0.15f);
+	int numContinentalPlates = static_cast<int>(continents.size()) - numOceanicPlates - numMixedPlates;
 
-    std::size_t index = 0;
-    // Assign the first cells to the continents
-    for (int i = 0; i < config.npeaks; i++)
+	// Randomly assign plate types
+	std::vector<int> plateIndices(continents.size());
+	std::iota(plateIndices.begin(), plateIndices.end(), 0);
+	std::shuffle(plateIndices.begin(), plateIndices.end(), std::default_random_engine(static_cast<unsigned int>(time(0))));
+
+    int assignedCount = 0;
+
+    for (int i = 0; i < numOceanicPlates; i++)
     {
-        // Check if the index is already assigned
-        while (assigned[index]) {
-            index = rand_long() % map.size(); // Pick a new random index
-        }
-        active.push_back(std::vector<std::size_t>()); // Add a new queue for the continent
-        
-        globals.continents[i].addCell(index);
-        map[index].continent = i;
-
-        assigned[index] = true; 
-        assigned_cells++; 
-        for (int j = 0; j < map[index].neighbors.size(); j++)
-        {
-            if (assigned[map[index].neighbors[j]] == false)
-            {
-                active[i].push_back(map[index].neighbors[j]); 
-                assigned[map[index].neighbors[j]] = true;
-                assigned_cells++;
-            }
-        }
+		continents[plateIndices[assignedCount]].plateType = PlateType::Oceanic;
+        continents[plateIndices[assignedCount]].crustThickness = RandomBetween(
+            config.oceanic_crust_thickness * 0.8f,
+            config.oceanic_crust_thickness * 1.2f
+        );
+		assignedCount++;
     }
-    // Assign the rest of the cells to the continents
-    while (assigned_cells < size) 
+    for (int i = 0; i < numMixedPlates; i++)
     {
-        std::size_t i = rand_long() % config.npeaks; 
-        if (active[i].empty()) { continue; } 
-        std::size_t index = 0; 
-        index = pop_random_i(active[i]);
-
-        globals.continents[i].addCell(index);
-        map[index].continent = i;
-
-        for (int j = 0; j < map[index].neighbors.size(); j++) 
-        {
-            if (assigned[map[index].neighbors[j]] == false) 
-            { 
-                active[i].push_back(map[index].neighbors[j]); 
-                assigned[map[index].neighbors[j]] = true; 
-                assigned_cells++; 
-            }
-        }
+		continents[plateIndices[assignedCount]].plateType = PlateType::Mixed;
+        continents[plateIndices[assignedCount]].crustThickness = RandomBetween(
+            (config.oceanic_crust_thickness + config.continental_crust_thickness) / 2.0f * 0.8f,
+            (config.oceanic_crust_thickness + config.continental_crust_thickness) / 2.0f * 1.2f
+		);
+		assignedCount++;
     }
-
-    // Direction for continental drift
-    for (int i = 0; i < config.npeaks; i++)
+    for (int i = 0; i < numContinentalPlates; i++)
     {
-        globals.continents[i].setDirection(sf::Vector2f(RandomBetween(-1.0, 1.0), RandomBetween(-1.0, 1.0)));
-        globals.continents[i].setAge(RandomBetween(0.5f, 1.0f));
-        globals.continents[i].finishContinent(voronoi_points, map);
+        continents[plateIndices[assignedCount]].plateType = PlateType::Continental;
+        continents[plateIndices[assignedCount]].crustThickness = RandomBetween(
+            config.continental_crust_thickness * 0.8f,
+            config.continental_crust_thickness * 1.2f
+        );
+        assignedCount++;
     }
-
-	// Assign any straglers to the nearest continent
-	for (std::size_t i = 0; i < map.size(); i++)
-	{
-		if (map[i].continent == -1)
-		{
-			float min_dist = std::numeric_limits<float>::max();
-			int min_index = -1;
-			for (int j = 0; j < config.npeaks; j++)
-			{
-				float dist = distance(voronoi_points[i], globals.continents[j].getCenter());
-				if (dist < min_dist)
-				{
-					min_dist = dist;
-					min_index = j;
-				}
-			}
-			map[i].continent = min_index;
-			globals.continents[min_index].addCell(i);
-		}
-	}
-
-	// Calculate the height of the continents
-	for (int i = 0; i < config.npeaks; i++) 
-	{
-		float height = RandomBetween(0.1, 0.9); 
-		globals.continents[i].setHeight(height); 
-	}
-
-    // ensure that at least 1/3 of the continents are above 0.5
-    int count = 0;
-    for (int i = 0; i < config.npeaks; i++) 
-    {
-        if (globals.continents[i].getHeight() > 0.5) { count++; }
-    }
-    if (count < config.npeaks / 4)
-    {
-        for (int i = 0; i < static_cast<int>(config.npeaks / 4); i++)
-        {
-            if (globals.continents[i].getHeight() < 0.5) { globals.continents[i].setHeight(normalDistPDF(0.5f,0.2f)); }
-        }
-    }
-
 }
 
-void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals, int mapGenMode = 3)
+void setBaseElevations(std::vector<Cell>& map, GlobalWorldObjects& globals)
 {
-    /// TODO: There is a problem with directions not leading to correct height additions..
-	// Get the interactions between the continents
+	// Set for each cell based on its continent
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+		int continentId = map[i].continent;
+        if (continentId >= 0 && continentId < globals.continents.size())
+        {
+            Continent& continent = globals.continents[continentId];
+
+            float baseHeight = 0.0f;
+
+            switch (continent.plateType)
+            {
+            case PlateType::Oceanic:
+            {
+                // Ocean floor: normal distribution around -0.4 (deep ocean)
+                baseHeight = normalDistPDF(-0.4f, 0.15f);
+                baseHeight += continent.getIsostaticHeight();
+                // Don't clamp here - allow deep trenches!
+                break;
+            }
+
+            case PlateType::Continental:
+            {
+                // Continental: normal distribution around 0.5
+                baseHeight = normalDistPDF(0.5f, 0.2f);
+                baseHeight += continent.getIsostaticHeight();
+                // Don't clamp here - allow high plateaus!
+                break;
+            }
+
+            case PlateType::Mixed:
+            {
+                // Mixed plates: bimodal
+                if (RandomBetween(0.0f, 1.0f) < 0.6f) {
+                    baseHeight = normalDistPDF(-0.15f, 0.1f);
+                }
+                else {
+                    baseHeight = normalDistPDF(0.2f, 0.12f);
+                }
+                baseHeight += continent.getIsostaticHeight();
+                break;
+            }
+            }
+            float microVariation = normalDistPDF(0.0f, 0.02f);
+            map[i].height = baseHeight + microVariation;
+        }
+    }
+}
+
+BoundaryType determineBoundaryType(const Continent& continentA, 
+    const Continent& continentB, float dotProduct)
+{
+    bool converging = dotProduct < -0.2f;
+	bool diverging = dotProduct > 0.6f;
+	bool transform = std::abs(dotProduct + 0.7f) < 0.3f;
+    if (transform) {
+		return BoundaryType::Transform;
+    }
+    if (converging) {
+        // Both continental = Himalayan collision
+        if (continentA.plateType == PlateType::Continental &&
+            continentB.plateType == PlateType::Continental) {
+            return BoundaryType::ContinentalCollision;
+        }
+
+        // Mixed plate interactions
+        if (continentA.plateType == PlateType::Mixed ||
+            continentB.plateType == PlateType::Mixed) {
+            // Mixed plates generally subduct like oceanic due to higher density
+            return BoundaryType::Subduction;
+        }
+
+        // One oceanic, one continental (or at least one oceanic)
+        return BoundaryType::Subduction;
+    }
+
+    if (diverging) {
+        // Both oceanic = mid-ocean ridge
+        if (continentA.plateType == PlateType::Oceanic &&
+            continentB.plateType == PlateType::Oceanic) {
+            return BoundaryType::OceanicRift;
+        }
+
+        // Mixed plate rifting creates island chains
+        if (continentA.plateType == PlateType::Mixed ||
+            continentB.plateType == PlateType::Mixed) {
+            return BoundaryType::OceanicRift;
+        }
+
+        // Continental rifting
+        if (continentA.plateType == PlateType::Continental &&
+            continentB.plateType == PlateType::Continental) {
+            return BoundaryType::ContinentalRift;
+        }
+
+        // Default to oceanic rift for mixed cases
+        return BoundaryType::OceanicRift;
+    }
+
+    return BoundaryType::None;
+}
+float calculateBoundaryHeightModifier(BoundaryType boundaryType,
+    float dotProduct,
+    float continent1Age,
+    float continent2Age)
+{
+	float ageFactor = (continent1Age + continent2Age) / 2.0f;
+    switch (boundaryType)
+    {
+    case BoundaryType::ContinentalCollision:
+        return RandomBetween(0.3f, 0.6f) * ageFactor * std::abs(dotProduct);
+    case BoundaryType::Subduction:
+        return RandomBetween(0.2f, 0.4f) * ageFactor * std::abs(dotProduct);
+    case BoundaryType::OceanicRift:
+        return -RandomBetween(0.1f, 0.2f) * ageFactor;
+    case BoundaryType::ContinentalRift:
+        return -RandomBetween(0.05f, 0.15f) * ageFactor;
+    case BoundaryType::Transform:
+        return RandomBetween(-0.05f, 0.05f);
+    default:
+        return 0.0f;
+    }
+}
+
+void simulateErosion(std::vector<Cell>& map, GlobalWorldObjects& globals, const MapConfig& config)
+{
+    if (!config.enable_erosion) {
+        return;
+	}
+    for (int iteration = 0; iteration < config.erosion_iterations; iteration++)
+    {
+        std::vector<float> heightDeltas(map.size(), 0.0f);
+        for (std::size_t i = 0; i < map.size(); i++) {
+            float erosionRate = 0.0f;
+			// Apply erosion based on height above sea level (relative to seaLevel)
+            float heightAboveSeaLevel = map[i].height - globals.seaLevel;
+            if (heightAboveSeaLevel > 0.1f) {
+				erosionRate = heightAboveSeaLevel * config.erosion_strength;
+            }
+			// Apply erosion based on rise (steepness)
+            erosionRate += map[i].rise * config.erosion_strength * 0.5f;
+			// distribute erosion to neighbors
+			float totalHeightDiff = 0.0f;
+			std::vector<float> heightDiffs(map[i].neighbors.size());
+            for (std::size_t j = 0; j < map[i].neighbors.size(); j++)
+            {
+				int neighborIdx = map[i].neighbors[j];
+				float diff = map[i].height - map[neighborIdx].height;
+                if (diff > 0) {
+                    heightDiffs[j] = diff;
+                    totalHeightDiff += diff;
+                }
+            }
+			// remove from current cell and distribute
+            heightDeltas[i] -= erosionRate;
+            if (totalHeightDiff > 0.001f) {
+				float sediment = erosionRate * 0.7f; // 30% of eroded material is lost
+                for (std::size_t j = 0; j < map[i].neighbors.size(); j++)
+                {
+                    int neighborIdx = map[i].neighbors[j];
+                    float proportion = heightDiffs[j] / totalHeightDiff;
+                    heightDeltas[neighborIdx] += sediment * proportion;
+                }
+            }
+        }
+        // Apply height deltas (no floor - allow negative heights for deep trenches)
+        for (std::size_t i = 0; i < map.size(); i++) {
+            map[i].height += heightDeltas[i];
+        }
+
+		rise(map); // Recalculate rise after erosion
+    }
+}
+
+void continent_generation(std::vector<Cell>& map, GlobalWorldObjects& globals, MapConfig& config, const std::vector<sf::Vector2f>& voronoi_points)
+{
+	// reserve space for continents
+	globals.continents.reserve(config.npeaks);
+    for (int i = 0; i < config.npeaks; i++)
+    {
+        globals.continents.emplace_back(Continent(i));
+    }
+	// Prepare active queues for continent assignment
+	std::vector<std::vector<std::size_t>> active(config.npeaks);
+    std::vector<bool> assigned(map.size(), false);
+	std::size_t size = map.size();
+    std::size_t assigned_cells = 0;
+
+	// Assign seed cells to each continent
+    for (int i = 0; i < config.npeaks; i++)
+    {
+		std::size_t index = rand_long() % size;
+        while (assigned[index])
+        {
+            index = rand_long() % size;
+        }
+        assigned[index] = true;
+        assigned_cells++;
+        map[index].continent = i;
+        globals.continents[i].addCell(index);
+		active[i].push_back(index);
+
+		// add neighbors to active
+        for (int j = 0; j < map[index].neighbors.size(); j++)
+        {
+			std::size_t neighborIdx = map[index].neighbors[j];
+            if (!assigned[neighborIdx])
+            {
+                active[i].push_back(neighborIdx);
+			}
+        }
+	}
+
+	// Grow continents until all cells are assigned
+    while (assigned_cells < size)
+    {
+		std::size_t continetIdx = rand_long() % config.npeaks;
+        if (active[continetIdx].empty()) {
+            continue;
+        }
+		// Get next cell from the continent's active queue
+        std::size_t cellIdx = pop_random_i(active[continetIdx]);
+        if (assigned[cellIdx]) {
+            continue;
+        }
+        assigned[cellIdx] = true;
+        assigned_cells++;
+        map[cellIdx].continent = continetIdx;
+		globals.continents[continetIdx].addCell(cellIdx);
+        // add neighbors to active
+        for (int j = 0; j < map[cellIdx].neighbors.size(); j++)
+        {
+            std::size_t neighborIdx = map[cellIdx].neighbors[j];
+            if (!assigned[neighborIdx])
+            {
+                active[continetIdx].push_back(neighborIdx);
+            }
+        }
+    }
+	// clean up continents
+    if (assigned_cells != size)
+    {
+        for (std::size_t i = 0; i < map.size(); i++)
+        {
+            if (map[i].continent == -1)
+            {
+                // Find nearest continent by checking neighbors
+                for (std::size_t j = 0; j < map[i].neighbors.size(); j++)
+                {
+                    int neighborContinent = map[map[i].neighbors[j]].continent;
+                    if (neighborContinent != -1)
+                    {
+                        map[i].continent = neighborContinent;
+                        globals.continents[neighborContinent].addCell(i);
+                        break;
+                    }
+                }
+
+                // If still no continent, find closest by distance
+                if (map[i].continent == -1)
+                {
+                    float minDist = std::numeric_limits<float>::max();
+                    int closestContinent = 0;
+
+                    for (int j = 0; j < config.npeaks; j++)
+                    {
+                        float dist = distance(voronoi_points[i], globals.continents[j].getCenter());
+                        if (dist < minDist)
+                        {
+                            minDist = dist;
+                            closestContinent = j;
+                        }
+                    }
+
+                    map[i].continent = closestContinent;
+                    globals.continents[closestContinent].addCell(i);
+                }
+            }
+        }
+    }
+    // Create the plates
+    for (int i = 0; i < config.npeaks; i++)
+    {
+        globals.continents[i].setDirection(sf::Vector2f(
+            RandomBetween(-1.0f, 1.0f),
+            RandomBetween(-1.0f, 1.0f)
+		));
+		globals.continents[i].setAge(RandomBetween(0.5f, 1.0f)); // Age in billions of years
+		globals.continents[i].finishContinent(voronoi_points, map);
+
+		globals.continents[i].setHeight(RandomBetween(0.3f, 0.7f)); // Initial height (is replaced later)
+	}
+}
+
+
+void propagateTerrainFeatures(std::vector<Cell>& map,
+    GlobalWorldObjects& globals,
+    std::size_t startCellIndex,
+    float heightIncrease,
+    bool volcanicActivity,
+    BoundaryType boundaryType,
+    int propagation_depth)
+{
+    int continentId = map[startCellIndex].continent;
+    if (continentId < 0 || continentId >= globals.continents.size()) {
+        return;
+    }
+    // determined propagation depth based on boundary type and continent age
+    int propagationDepthAd = 0;
+    float propagationStrength = 0.0f;
+    switch (boundaryType)
+    {
+    case BoundaryType::ContinentalCollision:
+        propagationDepthAd = static_cast<int>(3 + 8 * globals.continents[continentId].getAge());
+        propagationStrength = 0.5f;
+        break;
+    case BoundaryType::Subduction:
+        propagationDepthAd = static_cast<int>(2 + 6 * globals.continents[continentId].getAge());
+        propagationStrength = 0.3f;
+        break;
+    case BoundaryType::OceanicRift:
+        propagationDepthAd = static_cast<int>(1 + 5 * globals.continents[continentId].getAge());
+        propagationStrength = 0.2f;
+        break;
+    case BoundaryType::ContinentalRift:
+        propagationDepthAd = static_cast<int>(1 + 5 * globals.continents[continentId].getAge());
+        propagationStrength = 0.1f;
+        break;
+    case BoundaryType::Transform:
+        propagationDepthAd = 1;
+        propagationStrength = 0.05f;
+        break;
+    default:
+        return;
+    }
+    int propagationDepth = propagation_depth * propagationDepthAd;
+
+    // BFS propagation
+    std::vector<std::size_t> visited(map.size(), false);
+    visited[startCellIndex] = true;
+
+    Queue<std::pair<std::size_t, int>> propagationQ;
+    propagationQ.push(std::make_pair(startCellIndex, 0));
+    while (!propagationQ.empty())
+    {
+        auto [currentCellIndex, depth] = propagationQ.pop_front();
+        if (depth >= propagationDepth) {
+            continue;
+        }
+        // calculate falloff with distance
+        float distanceFactor = 1.0f - (static_cast<float>(depth) / static_cast<float>(propagationDepth));
+        float propagationIncrease = heightIncrease * propagationStrength * distanceFactor;
+        // add to neighbors on the same continent
+        for (std::size_t neighborIdx : map[currentCellIndex].neighbors)
+        {
+            if (!visited[neighborIdx] && map[neighborIdx].continent == continentId)
+            {
+                visited[neighborIdx] = true;
+                map[neighborIdx].height += propagationIncrease;
+                if (volcanicActivity && RandomBetween(0.0f, 1.0f) < 0.3f * distanceFactor)
+                {
+                    map[neighborIdx].volcanicActivity = true;
+                    map[neighborIdx].height = map[neighborIdx].height + RandomBetween(0.05f, 0.1f) * distanceFactor;
+                }
+                propagationQ.push(std::make_pair(neighborIdx, depth + 1));
+            }
+        }
+    }
+}
+
+void continent_interaction(std::vector<Cell>& map, 
+    GlobalWorldObjects& globals,
+    const std::vector<sf::Vector2f>& cellPositions,
+    int mapGenMode = 3,
+    int propagation_depth = 1
+    )
+{
+    // Get the interactions between the continents
     /*
     1. Determine boundry cells
     2. Get direction similarity to neighbors and add height
@@ -219,6 +524,7 @@ void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals, 
     for (std::size_t cellIndex = 0; cellIndex < map.size(); cellIndex++)
     {
         Cell& cell = map[cellIndex];
+        int mainContinentId = cell.continent;
 
         bool isBoundry = false;
         std::vector<int> neighboringContinents;
@@ -228,7 +534,7 @@ void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals, 
             if (neighborIdx >= 0 && neighborIdx < map.size())
             {
                 int neighborContinent = map[neighborIdx].continent;
-                if (neighborContinent != cell.continent 
+                if (neighborContinent != cell.continent
                     && std::find(neighboringContinents.begin(), neighboringContinents.end(), neighborContinent) == neighboringContinents.end())
                 {
                     neighboringContinents.push_back(neighborContinent);
@@ -238,181 +544,172 @@ void continent_interaction(std::vector<Cell>& map, GlobalWorldObjects& globals, 
         }
         if (!isBoundry)
         {
-            if (mapGenMode == 3)
-            {
-                cell.height = globals.continents[cell.continent].getHeight();
-                continue; // If not a boundry
-            }            
+            continue;
         }
+        // add to the boundry list of the main continent
+        globals.continents[mainContinentId].addBoundryCell(cellIndex);
 
-        float heightIncrease = 0.0f;
-        bool volcanicActivity = false;
-        bool isRift = false;
-        bool isTransformBoundry = false;
-        if (isBoundry)
+        Continent& mainContinent = globals.continents[mainContinentId];
+        sf::Vector2f mainDirection = mainContinent.getDirection();
+
+        float totalHeightIncrease = 0.0f;
+        bool hasVolcanicActivity = false;
+        BoundaryType dominantBoundaryType = BoundaryType::None;
+
+        for (int neighborContinentId : neighboringContinents)
         {
-            // add to the boundry list of the continent
-            globals.continents[cell.continent].addBoundryCell(cellIndex);
+            Continent& neighborContinent = globals.continents[neighborContinentId];
+            sf::Vector2f neighborDirection = neighborContinent.getDirection();
 
-            sf::Vector2f mainDirection = globals.continents[cell.continent].getDirection();
-            float mainHeight = globals.continents[cell.continent].getHeight();
-            if (mapGenMode != 3) { mainHeight = map[cellIndex].height; } // Use the cell height instead of the continent height  }
+            // Calculate boundary normal
+            sf::Vector2f cellPos = cellPositions[cellIndex];
+            sf::Vector2f mainCenter = mainContinent.getCenter();
+            sf::Vector2f neighborCenter = neighborContinent.getCenter();
 
-            bool isMainOcean = mainHeight < globals.seaLevel;
+			// Boundary normal poins from main continent to neighbor continent
+			sf::Vector2f boundaryNormal = neighborCenter - mainCenter;
+			float normalMagnitude = std::sqrt(boundaryNormal.x * boundaryNormal.x + boundaryNormal.y * boundaryNormal.y);
+			if (normalMagnitude < 0.001f) { 
+                continue; 
+			}
+			boundaryNormal.x /= normalMagnitude;
+			boundaryNormal.y /= normalMagnitude;
 
-            for (int neighborContinent : neighboringContinents)
-            {
-                sf::Vector2f neighborDirection = globals.continents[neighborContinent].getDirection();
-                float neighborHeight = globals.continents[neighborContinent].getHeight();
-                if (mapGenMode != 3) { mainHeight = map[cellIndex].height; }
-                bool isNeighborOcean = neighborHeight < globals.seaLevel;
+			// Calculate relative motion vectors
+			sf::Vector2f relativeVelocity = mainDirection - neighborDirection;
 
-                // Calculate dotproduct for Direction similarity (also normalize)
-                float mainMagnitude = std::sqrt(mainDirection.x * mainDirection.x + mainDirection.y * mainDirection.y);  
-                float neighborMagnitude = std::sqrt(neighborDirection.x * neighborDirection.x + neighborDirection.y * neighborDirection.y);  
-                
-                if (mainMagnitude > 0.001f && neighborMagnitude > 0.001f) 
-                {
-                    sf::Vector2f mainNormalized(mainDirection.x / mainMagnitude, mainDirection.y / mainMagnitude); 
-                    sf::Vector2f neighborNormalized(neighborDirection.x / neighborMagnitude, neighborDirection.y / neighborMagnitude); 
+			// Project relative velocity onto boundary normal
+			// Positive = converging, Negative = diverging, Zero = transform
+			float convergenceRate = relativeVelocity.x * boundaryNormal.x + relativeVelocity.y * boundaryNormal.y;
+			float tangentialRate = std::abs(relativeVelocity.x * (-boundaryNormal.y) + relativeVelocity.y * boundaryNormal.x);
 
-                    // Calculate dot product
-                    float dotProduct = mainNormalized.x * neighborNormalized.x + mainNormalized.y * neighborNormalized.y; 
+            // Determine boundary type
+			BoundaryType boundaryType;
 
-                    // (-1,1) : -1 is directly diverging and 1 parralel and 0 means converging
-                    if (dotProduct < -0.7f)  // Transform fault boundaries (parallel but opposite directions)
-                    { 
-                        isTransformBoundry = true;
-                        heightIncrease += RandomBetween(-0.05f, 0.05f);
-                        if (RandomBetween(0.0f, 1.0f) < 0.1f) {
-                            volcanicActivity = true;
-                        }
-                    }
-                    else if (std::abs(dotProduct) > 0.25f) // Convergent or divergent boundries
-                    {
-
-                        bool isConverging = dotProduct < 0;  // Negative dot product suggests opposite directions
-                        
-                        float impactFactor = isConverging ? -dotProduct : dotProduct * 0.5;  // Less impact for diverging
-
-                        if (isMainOcean != isNeighborOcean)  // Ocean-continent boundary
-                        {
-                            float baseIncrease = 0.1f * impactFactor;
-
-                            // Oceanic plate subducts under terrestrial
-                            if (isMainOcean)
-                            {
-                                heightIncrease += baseIncrease * 0.5f;
-
-                                if (RandomBetween(0.0f, 1.0f) < 0.7f * std::abs(dotProduct))
-                                {
-                                    volcanicActivity = true;
-                                }
-                            }
-                            else
-                            {
-                                // Neighbor is oceanic and subducts
-                                heightIncrease += baseIncrease * 1.0f;
-                                if (RandomBetween(0.0f, 1.0f) < 0.85f * std::abs(dotProduct))
-                                {
-                                    volcanicActivity = true;
-                                }
-                            }
-                        }
-                        else if (!isMainOcean && !isNeighborOcean) // Continent continent
-                        {
-                            float plateHeightFactor = (mainHeight + neighborHeight) / 2.0f;
-                            heightIncrease += impactFactor * 0.2f * plateHeightFactor; // adjust here! the 0.4f
-                            // Some volcanic activity in continental collisions
-                            if (RandomBetween(0.0f, 1.0f) < 0.4f * std::abs(dotProduct)) {
-                                volcanicActivity = true;
-                            }
-                        }
-                        else // Ocean-ocean boundary
-                        {
-                            // Oceanic collision: island arcs, high volcanic activity
-                            heightIncrease += dotProduct * 0.25f; // Less dramatic height increase
-
-                            // Very high chance of volcanic activity
-                            if (RandomBetween(0.0f, 1.0f) < 0.9f * std::abs(dotProduct)) {
-                                volcanicActivity = true;
-                            }
-                        }                        
-                    }
-                    else {
-                        // Plates moving in approximately perpendicular directions
-                        // Minor deformation
-                        heightIncrease += RandomBetween(-0.02f, 0.02f);
-                    }
+			// Transform if tangentialRate is significantly higher than convergenceRate
+			if (tangentialRate > std::abs(convergenceRate) * 1.5f && tangentialRate > 0.2f) {
+				boundaryType = BoundaryType::Transform;
+			}
+            else if (convergenceRate > 0.2f) { // Converging
+                if (mainContinent.plateType == PlateType::Continental &&
+                    neighborContinent.plateType == PlateType::Continental) {
+                    boundaryType = BoundaryType::ContinentalCollision;
+                }
+                else {
+                    boundaryType = BoundaryType::Subduction;
                 }
             }
-        }
-        // Change based on age of continent
-        heightIncrease *= globals.continents[cell.continent].getAge();
-
-        // Height increase:
-		float baseHeight = globals.continents[cell.continent].getHeight();
-        if (mapGenMode != 3) { baseHeight = map[cellIndex].height; }
-        cell.height = std::min(1.0f, baseHeight + heightIncrease); 
-
-		if (volcanicActivity) {
-			cell.volcanicActivity = true;
-            cell.height = std::min(1.0f, cell.height + RandomBetween(0.1f, 0.2f));
-		}
-
-        // Propagation!
-        const int propagationDepth = std::floorf(2 + 5 * globals.continents[cell.continent].getAge()); // How far to spread the mountain effect
-        std::vector<bool> visited(map.size(), false);
-        visited[cellIndex] = true;
-
-        Queue<std::pair<int, int>> propagationQ;
-        propagationQ.push({ cellIndex, 0 });
-
-        while (!propagationQ.empty())
-        {
-            auto [currentIndex, distance] = propagationQ.pop_front();
-
-            if (distance >= propagationDepth)
-            {
-                continue;
-            }
-            
-            float distanceFactor = 1.0f - static_cast<float>(distance) / propagationDepth;
-            float propagationIncrease = 0.0f;
-
-            if (isRift)
-            {
-                propagationIncrease = heightIncrease * distanceFactor * 0.4f;
-            }
-            else if (isTransformBoundry)
-            {
-                propagationIncrease = heightIncrease * distanceFactor * 0.3f;
+            else if (convergenceRate < -0.2f) { // Diverging
+                if (mainContinent.plateType == PlateType::Oceanic &&
+                    neighborContinent.plateType == PlateType::Oceanic) {
+                    boundaryType = BoundaryType::OceanicRift;
+                }
+                else if (mainContinent.plateType == PlateType::Continental &&
+                    neighborContinent.plateType == PlateType::Continental) {
+                    boundaryType = BoundaryType::ContinentalRift;
+                }
+                else {
+                    boundaryType = BoundaryType::OceanicRift;
+                }
             }
             else {
-				propagationIncrease = heightIncrease * distanceFactor * 0.6f;
-            }
-
-            // Add neighbors
-            for (std::size_t neighborIdx : map[currentIndex].neighbors)
-            {
-                if (!visited[neighborIdx] && neighborIdx >= 0 
-                    && neighborIdx < map.size() 
-                    && map[neighborIdx].continent == cell.continent)
-                {
-					visited[neighborIdx] = true;
-					map[neighborIdx].height = std::min(1.0f, map[neighborIdx].height + propagationIncrease);
-
-                    // Propagate Volcanic activity
-                    if (volcanicActivity && RandomBetween(0.0f, 1.0f) < 0.2f * distanceFactor)
-                    {
-						map[neighborIdx].volcanicActivity = true;
-                        map[neighborIdx].height = std::min(1.0f, map[neighborIdx].height + RandomBetween(0.05f, 0.1f) * distanceFactor);
-                    }
-
-					propagationQ.push({ neighborIdx, distance + 1 });
-				}
+                boundaryType = BoundaryType::None;
 			}
+
+            if (dominantBoundaryType == BoundaryType::None)
+            {
+                dominantBoundaryType = boundaryType;
+            }
+            // Calculate height modifier based on boundary type
+            float collisionIntensity = std::min(std::abs(convergenceRate) - 0.2f, 1.0f);
+            float heightModifier = calculateBoundaryHeightModifier(boundaryType, convergenceRate,
+                mainContinent.getAge(), neighborContinent.getAge());
+
+            heightModifier *= (0.25f * collisionIntensity);
+
+            switch (boundaryType)
+            {
+            case BoundaryType::ContinentalCollision:
+            {
+                // Himmalaya style
+                heightModifier += RandomBetween(0.05f, 0.15f) * collisionIntensity;
+                // Higher chance of volcanic activity in younger continents
+                if (mainContinent.getAge() < 0.7f && RandomBetween(0.0f, 1.0f) < 0.3f * collisionIntensity)
+                {
+                    hasVolcanicActivity = true;
+                }
+                break;
+            }
+            case BoundaryType::Subduction:
+            {
+                // Subduction zones like Andes
+                bool isMainOceanic = mainContinent.plateType == PlateType::Oceanic;
+                if (!isMainOceanic)
+                {
+                    // Continent side gets volcanic mountains
+                    heightModifier += RandomBetween(0.08f, 0.18f);
+
+                    // Higher chance of volcanic activity
+                    if (RandomBetween(0.0f, 1.0f) < 0.6f)
+                    {
+                        hasVolcanicActivity = true;
+                    }
+                }
+                else
+                {
+                    // Oceanic side gets deep trenches
+                    heightModifier -= RandomBetween(0.05f, 0.12f);
+                }
+                break;
+            }
+            case BoundaryType::OceanicRift:
+            {
+                // Mid-ocean ridges
+                heightModifier += RandomBetween(0.02f, 0.08f);
+                // moderate volcanic activity
+                if (RandomBetween(0.0f, 1.0f) < 0.3f)
+                {
+                    hasVolcanicActivity = true;
+                }
+                break;
+            }
+            case BoundaryType::ContinentalRift:
+            {
+                // continental rifts valley formation
+                heightModifier -= RandomBetween(0.05f, 0.12f);
+
+                // minor volcanic activity
+                if (RandomBetween(0.0f, 1.0f) < 0.15f)
+                {
+                    hasVolcanicActivity = true;
+                }
+                break;
+            }
+            case BoundaryType::Transform:
+            {
+                // Minor height changes
+                heightModifier += RandomBetween(-0.02f, 0.02f);
+                // slight chance of volcanic activity
+                if (RandomBetween(0.0f, 1.0f) < 0.05f)
+                {
+                    hasVolcanicActivity = true;
+                }
+                break;
+            }
+            default:
+                break;
+            }
+            totalHeightIncrease += heightModifier;
         }
+        // Apply total height increase to the cell - no clamping
+        cell.height += totalHeightIncrease;
+        if (hasVolcanicActivity) {
+            cell.volcanicActivity = true;
+            cell.height += RandomBetween(0.08f, 0.2f); // Allow tall volcanic peaks
+        }
+
+        // Propagation of mountain building effects
+        propagateTerrainFeatures(map, globals, cellIndex, totalHeightIncrease, hasVolcanicActivity,dominantBoundaryType, propagation_depth);
     }
 }
 
@@ -460,29 +757,55 @@ void simplex_noise_continent(std::vector<Cell>& map,
         // convert noise to [0,1]
         noiseValue = (noiseValue + 1.0f) * 0.5f;
 
-        // Apply noise with strength factor and preserve existing height features
-        float originalHeight = map[i].height;
-        // Different noise application based on terrain type
-        if (originalHeight < 0.45f) {
-            // Ocean floor - gentle noise
-            map[i].height += noiseValue * noiseStrength * 0.5f - (noiseStrength * 0.25f);
-        }
-        else if (originalHeight > 0.7f) {
-            // Mountains - stronger noise to create peaks and valleys
-            map[i].height += noiseValue * noiseStrength * 1.2f - (noiseStrength * 0.6f);
-        }
-        else {
-            // Regular terrain - normal noise
-            map[i].height += noiseValue * noiseStrength - (noiseStrength * 0.5f);
-        }
-        // Clamp height to valid range
-        map[i].height = std::max(0.0f, std::min(1.0f, map[i].height));
+        // Keep noise centered around 0 for natural variation
+        noiseValue = noiseValue * 0.5f; // Range: [-0.5, 0.5]
+
+        // Apply noise - no clamping, let heights be natural
+        map[i].height += noiseValue * noiseStrength;
     }
 
 }
 
+void cleanUpContinents(std::vector<Cell>& map, GlobalWorldObjects& globals)
+{
+    // Remove empty continents and reassign continent IDs
+    std::vector<Continent> validContinents;
+    validContinents.reserve(globals.continents.size());
+    for (const auto& continent : globals.continents)
+    {
+        if (!continent.cells.empty())
+        {
+            validContinents.push_back(continent);
+        }
+    }
+    // Reassign continent IDs in cells
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+        int oldContinentId = map[i].continent;
+        if (oldContinentId >= 0 && oldContinentId < globals.continents.size())
+        {
+            const Continent& oldContinent = globals.continents[oldContinentId];
+            auto it = std::find_if(validContinents.begin(), validContinents.end(),
+                [&oldContinent](const Continent& c) { return c.id == oldContinent.id; });
+            if (it != validContinents.end())
+            {
+                map[i].continent = static_cast<int>(std::distance(validContinents.begin(), it));
+            }
+            else
+            {
+                map[i].continent = -1; // No valid continent
+            }
+        }
+        else
+        {
+            map[i].continent = -1; // No valid continent
+        }
+    }
+    globals.continents = std::move(validContinents);
+}
+
 // MEthod should be enum or something
-// 1 = k-peaks, 2 = k-peaks continet, 3 = Continental
+// 1 = k-peaks, 2 = k-peaks continet, 3 = Continental, 4 = Continental 2
 // k-point smooth height generator
 // there is a max of RAND_MAX_LONG (about a million cells)
 void random_height_gen(std::vector<Cell>& map,
@@ -506,18 +829,67 @@ void random_height_gen(std::vector<Cell>& map,
         // Active cells that have not been assigned a height yet, should be a queue of some sort
         std::vector<std::size_t> active;
         active.reserve(map.size() - 1);
+		int numOceanContinents = static_cast<int>(config.npeaks * config.oceanic_plate_ratio);
 
         for (int i = 0; i < config.npeaks; i++)
         {
             std::size_t index = rand_long() % map.size();
-            map[index].height = RandomBetween(0.8, 1.0);
+
+            
+			// Select if the peak should be oceanic or continental
+            if (RandomBetween(0.0f, 1.0f) < 0.1f)
+            {
+                globals.continents.emplace_back(Continent(i));
+                globals.continents[i].plateType = PlateType::Mixed;
+				map[index].height = normalDistPDF(0.5, 0.2);
+				numOceanContinents--;
+            }
+            if (numOceanContinents > 0)
+            {
+                globals.continents.emplace_back(Continent(i));
+                globals.continents[i].plateType = PlateType::Oceanic;
+                map[index].height = normalDistPDF(0.3, 0.1);
+				numOceanContinents--;
+            }
+            else
+            {
+                globals.continents.emplace_back(Continent(i));
+                globals.continents[i].plateType = PlateType::Continental;
+                map[index].height = normalDistPDF(0.7, 0.2);
+			}
+
             active.insert(std::end(active), std::begin(map[index].neighbors), std::end(map[index].neighbors));
 
             // Continents
-            globals.continents.emplace_back(Continent(i));
             globals.continents[i].addCell(index);
             map[index].continent = i;
 			globals.continents[i].setCenter(points[index]); // Set the center of the continent to the first cell added
+
+			globals.continents[i].setAge(RandomBetween(0.5, 0.9));
+			globals.continents[i].setDirection(sf::Vector2f(RandomBetween(-1.0, 1.0), RandomBetween(-1.0, 1.0)));
+			globals.continents[i].setHeight(map[index].height);
+            if (globals.continents[i].plateType == PlateType::Oceanic)
+            {
+                globals.continents[i].crustThickness = RandomBetween(
+                    config.oceanic_crust_thickness * 0.8f,
+					config.oceanic_crust_thickness * 1.2f
+                    );
+                globals.continents[i].baseDensity = RandomBetween(
+					0.8f,
+					1.2f
+                    );
+            }
+            else
+            {
+                globals.continents[i].crustThickness = RandomBetween(
+                    config.continental_crust_thickness * 0.8f,
+                    config.continental_crust_thickness * 1.2f
+                );
+                globals.continents[i].baseDensity = RandomBetween(
+                    0.8f,
+                    1.2f
+				);
+            }
 
             // add the actually inserted neighbors into continent
             for (std::size_t neighbor = 0; neighbor < map[index].neighbors.size(); neighbor++)
@@ -533,24 +905,28 @@ void random_height_gen(std::vector<Cell>& map,
 
             float height_sum = 0.0;
             int count_values = 0;
+
+			Cell& cell = map[index];
             for (std::size_t j = 0; j < map[index].neighbors.size(); j++)
             {
+				size_t neighborIdx = map[index].neighbors[j];
                 // small probability of random height increase, THIS is heavily up to tuning for interesting maps
                 // Also should be reconsidered
                 if (RandomBetween(0.0, 1.0) < config.prob_of_island && height_sum < config.dist_from_mainland && count_values > 1)
                 {
-                    map[map[index].neighbors[j]].height = RandomBetween(0.6, 0.9);
-                    active.insert(std::begin(active), std::begin(map[map[index].neighbors[j]].neighbors), std::end(map[map[index].neighbors[j]].neighbors));
+                    map[neighborIdx].height = normalDistPDF(0.7, 0.3);
+                    active.insert(std::begin(active), std::begin(map[neighborIdx].neighbors), std::end(map[neighborIdx].neighbors));
 					
-					for (std::size_t k = 0; k < map[map[index].neighbors[j]].neighbors.size(); k++)
+					for (std::size_t k = 0; k < map[neighborIdx].neighbors.size(); k++)
 					{
-                        globals.continents[map[index].continent].addCell(map[map[index].neighbors[j]].neighbors[k]);
-                        map[map[map[index].neighbors[j]].neighbors[k]].continent = map[index].continent;
+                        globals.continents[map[index].continent].addCell(map[neighborIdx].neighbors[k]);
+                        map[map[neighborIdx].neighbors[k]].continent = map[index].continent;
                     }
                 }
-                if (map[map[index].neighbors[j]].height != 0.f)
+				// check if neighbor has height
+                if (map[neighborIdx].height != 0.f)
                 {
-                    height_sum = height_sum + map[map[index].neighbors[j]].height;
+                    height_sum = height_sum + map[neighborIdx].height;
                     count_values++;
                 }
                 else
@@ -562,13 +938,13 @@ void random_height_gen(std::vector<Cell>& map,
                         active.push_back(map[index].neighbors[j]);
                         // Add the neighbors to the continent as well
                         globals.continents[map[index].continent].addCell(map[index].neighbors[j]);
-						map[map[index].neighbors[j]].continent = map[index].continent;
+						map[neighborIdx].continent = map[index].continent;
                     }
                 }
             }
             if (count_values == 0) { active.push_back(map[index].id); }
             else {
-                map[index].height = clamp((height_sum / count_values) + RandomBetween(-config.delta_max_neg, config.delta_max_pos), 1.0, 0.0);
+                map[index].height = (height_sum / count_values) + RandomBetween(-config.delta_max_neg, config.delta_max_pos);
             }
         }
         // Fill out missing continent values 
@@ -587,30 +963,23 @@ void random_height_gen(std::vector<Cell>& map,
 				}
             }
 		}
-        for (std::size_t i = 0; i < globals.continents.size(); i++)
-        {
-            std::vector<std::size_t> cells = globals.continents[i].getCells();
-            double sum_height = 0;
-            for (auto cell : cells)
-			{
-				if (cell > map.size()) { throw std::out_of_range("Cell index out of range"); }
-
-                sum_height += map[cell].height;
-            }
-			globals.continents[i].setHeight(sum_height / static_cast<double>(cells.size()));
-
-            globals.continents[i].setAge(RandomBetween(0.5, 0.9));
-			globals.continents[i].setDirection(sf::Vector2f(RandomBetween(-1.0, 1.0), RandomBetween(-1.0, 1.0)));
-        }
 
 		if (config.height_method == 2)
 		{
-            continent_interaction(map, globals, config.height_method);
+            continent_interaction(map, globals, points, config.height_method);
         }
+		cleanUpContinents(map, globals);
+        
+        // Simplex noise overlay
         
         rise(map); // calculate the rise of the map with the new height values
+
+		simulateErosion(map, globals, config); // simulate erosion on the height values
+        simplex_noise_continent(map, globals, config, points);
+        rise(map); // calculate the rise of the map with the new height values
+
     }
-    else
+	else if (config.height_method == 3)
     {
         // Method 3 is a continental generation method
         /*
@@ -628,7 +997,7 @@ void random_height_gen(std::vector<Cell>& map,
         continent_generation(map, globals, config, voronoi_points);
 
         // Calculate the interactions between the continents
-        continent_interaction(map, globals);
+        continent_interaction(map, globals, points);
 
         rise(map); // calculate the rise of the map with the new height values 
 
@@ -642,6 +1011,19 @@ void random_height_gen(std::vector<Cell>& map,
             globals.continents[i].generateBoundryLine(map, voronoi_points);
         }
 		
+		rise(map); // calculate the rise of the map with the new height values
+    }
+    else if (config.height_method == 4)
+    {
+		// Method 4 is an improved continental generation method
+		continent_generation(map, globals, config, voronoi_points);
+		assignPlateTypes(globals.continents, config);
+		setBaseElevations(map, globals);
+		continent_interaction(map, globals, points);
+		simulateErosion(map, globals, config);
+		simplex_noise_continent(map, globals, config, points);
+		rise(map); // calculate the rise of the map with the new height values
+		smooth_height(map, config.rise_threshold, 1, config.smooth_method); // smooth the height values
 		rise(map); // calculate the rise of the map with the new height values
     }
     
@@ -675,34 +1057,98 @@ void noise_height(std::vector<Cell>& map,
     }
 }
 
-void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float delta) // sea level, coast, treeline and snow line
+void generateOceans(std::vector<Cell>& map, GlobalWorldObjects& globals)
 {
+    // Alogrithm:
+	// 1. Initialize ocean cells on each Oceanic plate where the cell is below sea level
+	// 2. Use BFS (starting on border cells) to propagate ocean cells to neighboring cells below sea level
+	// 3. Mark cells as ocean and add to global ocean cell list
+
+	std::vector<bool> visited(map.size(), false);
+	Queue<std::size_t> oceanQ;
+	// Step 1: Initialize ocean cells on Oceanic plates
+    for (std::size_t i = 0; i < globals.continents.size(); i++)
+    {
+        if (globals.continents[i].plateType == PlateType::Oceanic)
+        {
+            for (std::size_t cellIdx : globals.continents[i].cells)
+            {
+                if (map[cellIdx].height <= globals.seaLevel && !visited[cellIdx])
+                {
+                    visited[cellIdx] = true;
+                    map[cellIdx].oceanBool = true;
+                    globals.oceanCells.push_back(cellIdx);
+					oceanQ.push(cellIdx);
+				}
+            }
+        }
+    }
+	// Step 2: BFS to propagate ocean cells
+    while (!oceanQ.empty())
+    {
+		std::size_t currentIdx = oceanQ.pop_front();
+        for (std::size_t neighborIdx : map[currentIdx].neighbors)
+        {
+			// Add neighbor if below sea level and not visited
+            if (!visited[neighborIdx] && map[neighborIdx].height <= globals.seaLevel)
+            {
+                visited[neighborIdx] = true;
+                map[neighborIdx].oceanBool = true;
+                globals.oceanCells.push_back(neighborIdx);
+                oceanQ.push(neighborIdx);
+            }
+            // Mark coast cells (neighbors above sea level)
+            else if (!visited[neighborIdx] && map[neighborIdx].height > globals.seaLevel)
+            {
+                visited[neighborIdx] = true;
+                map[neighborIdx].oceanBool = false;
+                map[neighborIdx].coastBool = true;
+                globals.coastCells.push_back(neighborIdx);
+            }
+        }
+    }
+}
+void generateSnowline(std::vector<Cell>& map, GlobalWorldObjects& globals)
+{
+	// Generate snowline cells
+    // If above snowline heigh
+	// and temperature is below 5C
+	// mark as snowline
     for (size_t i = 0; i < map.size(); i++)
     {
-        map[i].height = clamp(map[i].height, 1.0, 0.0);
-
-        if (map[i].height <= globals.seaLevel)
-        {
-            map[i].oceanBool = true;
-            globals.oceanCells.push_back(i);
-        }
-        else { map[i].oceanBool = false; }
-        if (map[i].height <= globals.seaLevel + delta && map[i].height >= globals.seaLevel - delta)
-        {
-            map[i].coastBool = true;
-            globals.coastCells.push_back(i);
-        }
-        if (map[i].height >= globals.globalSnowline)
+        if (map[i].height >= globals.globalSnowline && map[i].temp <= 5.0f)
         {
             map[i].snowBool = true;
             globals.snowCells.push_back(i);
         }
-        if (map[i].height >= globals.globalTreeline)
-        {
-            map[i].treeBool = false;
-            globals.treeCells.push_back(i);
-        }
-    }
+	}
+}
+void generateTreeline(std::vector<Cell>& map, GlobalWorldObjects& globals)
+{
+    // Generate treeline cells
+	// Should be temperature and height based 
+    for (size_t i = 0; i < map.size(); i++)
+    {
+        map[i].treeBool = true;
+        globals.treeCells.push_back(i);
+	}
+}
+
+void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float deltaCoastLine) // sea level, coast, treeline and snow line
+{
+	// USE DELTA COASTLINE TO ADJUST coast lines later
+    
+    //map[i].height = clamp(map[i].height, 1.0, 0.0);
+
+    // Generate oceans and coasts
+	generateOceans(map, globals);
+
+    // Snowline
+	generateSnowline(map, globals);
+        
+	// Treeline
+	generateTreeline(map, globals);
+    
 }
 
 void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::vector<std::size_t>& stack, std::size_t start, std::size_t river_id)
@@ -918,32 +1364,80 @@ void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals, const s
 
 void calcTemp(std::vector<Cell>& map, GlobalWorldObjects& globals, const std::vector<sf::Vector2f>& points, const int MAXHEIGHT)
 {
-    for (int i = 0; i < map.size(); i++)
-    {   // Take distance to equator and get the distance 
-        // Add an altitute modifier
-        // Ocean Currents (needs implementation)
+    // Find actual equator
+	float equatorY = MAXHEIGHT / 2;
+    if (!globals.convergenceLines.empty())
+    {
+		int middleIndex = globals.convergenceLines.size() / 2;
+		equatorY = globals.convergenceLines[middleIndex] * MAXHEIGHT;
+    }
+    // Planetary temperature modifiers
+	float baseTemp = globals.globalTempAvg;
+	float equatorToPoleGradient = globals.planetaryParams.equatorToPoleTemp;
+	float greenhouseBoost = globals.planetaryParams.greenhouseEffectFactor;
+	float axisTilt = globals.planetaryParams.axialTilt;
 
+    float atmosphericRetention = std::sqrt(globals.planetaryParams.atmosphere.totalPressure);
+
+    for (int i = 0; i < map.size(); i++)
+    {
         float temp = 0.f;
 
-        // Latitute
-        float dist = std::abs(points[i].y - MAXHEIGHT / 2);
-        float c = 0.0015;
-        float b = 5;
-        float a = 5;
-        temp += 1.5 * globals.globalTempAvg - globals.globalTempAvg * (a * expf(-b * expf(-c * dist))); // Gompertz function
-        // Altitute
+        // 1. Latitute based on equator
+        float distFromEquator = std::abs(points[i].y - equatorY);
+        float maxDistFromEquator = MAXHEIGHT * 0.5f; // Maximum distance (pole)
+        float normalizedLatitude = std::min(distFromEquator / maxDistFromEquator, 1.0f);
+
+        // Temperature decrease from equator to pole on planetary gradient
+        float latTemp = baseTemp - (equatorToPoleGradient * std::pow(normalizedLatitude, 1.3f));
+        temp += latTemp;
+
+        // 2. Altitude modifier
+        // Temp decreases with altitude (standard lapse rate ~6.5°C per km, scaled by atmospheric retention)
+        // ocean depth increases temp slightly
         if (map[i].height >= globals.seaLevel)
         {
-            temp += map[i].height * (-50);
+			// Land: standard lapse rate scaled by atmospheric retention
+			float lapseRate = 6.5f / atmosphericRetention; // °C per km
+			float elevationKm = (map[i].height - globals.seaLevel) * 10.0f; // in km
+            temp -= clamp(lapseRate * elevationKm,70.0f,-50.0f);
         }
         else
-        {
-            temp += (1 - map[i].height) * (-50);
+		{
+			// Ocean: slight increase in temp with depth
+			float lapseRate = 6.5f / (atmosphericRetention * 5.0f); // Reduced lapse rate for ocean depth
+			float depth = (globals.seaLevel - map[i].height) * 5.0f; // in km
+            temp -= lapseRate * depth;
         }
-        // Distance from sea (needs to be tuned)
-        temp += map[i].distToOcean * 0.5;
 
-        map[i].temp = temp;
+        // 3. Distance from ocean (continental effect)
+		// land far away from ocean is more extreme
+		// stronger on less atmosphere circulation
+		float continentalityFactor = 1.0f - std::abs(normalizedLatitude - 0.5f) * 2.0f; // Strongest at mid-latitudes
+        float oceanProximityEffect = map[i].distToOcean * 0.3f * continentalityFactor;
+
+		// Effect depends on latitude and atmospheric retention
+		float latitudeFactor = 1.0f - std::abs(normalizedLatitude - 0.5f) * 2.0f; // Strongest at mid-latitudes
+        temp += oceanProximityEffect * latitudeFactor;
+
+        // 4. Axial tilt
+		// higher tilt = more seasonal variation
+		// for now we just add a small modifier based on latitude
+		float tiltEffect = (axisTilt / 23.5f) * normalizedLatitude * 3.0f;
+		temp += RandomBetween(-tiltEffect, tiltEffect);
+
+        // 5. Atmospheric Composition
+		// Greenhouse effect
+        temp += greenhouseBoost * (1.0f - normalizedLatitude * 0.3f);
+
+        // Preassure effects heat retention
+        if (globals.planetaryParams.atmosphere.totalPressure < 0.5f)
+        {
+            // Thin atmosphere: extreme day/night temperature swings (add randomness
+			temp += RandomBetween(-10.0f, 10.0f) * (0.5f - globals.planetaryParams.atmosphere.totalPressure);
+        }
+
+		map[i].temp = temp;
     }
 }
 
@@ -963,127 +1457,306 @@ void smoothTemps(std::vector<Cell>& map, int smoothTimes)
     }
 }
 
-void calcPercepitation(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, GlobalWorldObjects& globals, int runs = 1)
+void calcPercepitation(std::vector<Cell>& map, 
+    const std::vector<sf::Vector2f>& points, 
+    GlobalWorldObjects& globals, 
+    int runs = 3,
+    float max_percipitation = 500.0f,
+	float ocean_evaporation_factor = 1.0f,
+	float land_evapotranspiration_factor = 0.3f,
+    float moisture_loss_rate = 0.08f,
+	float orographic_factor = 2.5f,
+	float condensation_rate = 0.12f
+)
 {
-    // Algorithm:
-    // 1. Start by assigning a baseline for all cells with ocean cells having larger percepitation
-    // 2. Create a queue of ocean cells and set them as visited
-    // 3. While the queue is not empty, pop the front cell and add a percepitation increase to all neighbors
-    // 4. The percepitation increase is based on the wind direction, wind strength, height, distance to ocean and the percepitation of the current cell
-    // 5. Add the neighbors to the queue if they are not visited
-    // 6. Repeat until the queue is empty
-
-    for (int j = 0; j < runs; j++)
+	// Alogrithm Overview:
+	// 1. For each cell, calculate initial moisture based on evaporation (higher over oceans, modulated by temperature and vegetation)
+	// 2. For a number of advection steps:
+	//    a. For each cell, determine the best neighbor aligned with wind direction
+	//    b. Move moisture to that neighbor based on wind strength
+	//    c. Calculate precipitation based on moisture, temperature, and terrain features (orographic lift)
+	//   d. Reduce moisture by precipitation and natural loss
+	// 3. Repeat for multiple runs to simulate seasonal variations
+	// 4. Average the precipitation over all runs for final value
+	// 5. Clamp and smooth the final precipitation values
+	
+    for (int run = 0; run < runs; run++)
     {
-        if (j == 0)
-        {
-            for (std::size_t i = 0; i < map.size(); i++)
-            {
-                map[i].percepitation = 1 * static_cast<float>(map[i].oceanBool) * ((700 * clamp((map[i].temp), 1000.f, 0.f)) / 50 + 125) / (80 - clamp((map[i].temp), 1000.f, 0.f)) + 1 - std::exp(-0.25 * static_cast<float>(map[i].distToOcean));
-            }
-        }
-        std::vector<bool> visited(map.size(), false);
-        Queue<std::size_t> queue;
+        std::vector<float> moisture(map.size(), 0.0f);
+        std::vector<float> newPrecipitation(map.size(), 0.0f);
+
+        // Step 1: Generate initial moisture from evaporation
+        #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < map.size(); i++)
         {
-            if (map[i].oceanBool == true)
+            float evaporation = 0.0f;
+
+            if (map[i].oceanBool)
             {
-                queue.push(i);
-                visited[i] = true;
+                float tempFactor = clamp((map[i].temp + 20.0f) / 50.0f, 1.0f, 0.1f);
+                evaporation = ocean_evaporation_factor * tempFactor * 100.0f;
             }
+            else
+            {
+                float tempFactor = clamp((map[i].temp + 10.0f) / 40.0f, 1.0f, 0.1f);
+                float vegetationFactor = map[i].treeBool ? 1.2f : 0.7f;
+                evaporation = land_evapotranspiration_factor * tempFactor * vegetationFactor * 25.0f;
+            }
+            moisture[i] = evaporation;
         }
 
-        while (!queue.empty())
+        // Step 2: Moisture advection with precipitation
+        const int advectionSteps = 50;
+
+        // Vary the processing order to avoid bias
+		std::vector<std::size_t> cellOrder(map.size());
+        for (std::size_t i = 0; i < map.size(); i++) {
+            cellOrder[i] = i;
+        }
+        if (run > 0) {
+			std::shuffle(cellOrder.begin(), cellOrder.end(), std::default_random_engine(rand()));
+        }
+        
+		// Precompute wind direction and strength for each cell to optimize performance
+        struct WindData {
+            float windDir;
+			float windStr;
+			int bestNeighbor;
+			float bestAlignment;
+        };
+		std::vector<WindData> windCache(map.size());
+
+        #pragma omp parallel for schedule(static)
+        for (std::size_t idx = 0; idx < map.size(); idx++)
         {
-            // Base truths:
-            // 1. You cannot have more percepitation than your neighbors, unless you are an ocean cell
-            // 2. You cannot receive percepitation from a cell where the wind is blowing away from you
-            // 3. You will increase percepitation when reaching steap inclines but not decrease when close to level ground
-            std::size_t i = queue.pop_front();
+            float windDir = radians(map[idx].windDir);
+			float windVariance = std::sin(run * 2.0f) * 20.f; // +/- 20 degrees
+			windDir += radians(windVariance);
 
-            std::vector<int> neighbors = map[i].neighbors;
-            float windDir = map[i].windDir;
-            float windStr = map[i].windStr;
-            float height = map[i].height;
-            float percepitation = map[i].percepitation;
-
-            // Asserting percepitation maximum transfer. See (1)
-            float maxPercepitation = 0;
-            if (map[i].oceanBool == false)
+			int bestNeighbor = -1;
+			float bestAlignment = -1.0f;
+            for (int neighborIdx : map[idx].neighbors)
             {
-                for (int k = 0; k < neighbors.size(); k++)
+                if (neighborIdx < 0 || neighborIdx >= map.size()) continue;
+                float dx = points[neighborIdx].x - points[idx].x;
+                float dy = points[neighborIdx].y - points[idx].y;
+                float neighborDir = std::atan2(dy, dx);
+                float angleDiff = std::abs(neighborDir - windDir);
+                if (angleDiff > PI) angleDiff = 2.0f * PI - angleDiff;
+                float alignment = std::cos(angleDiff);
+                if (alignment > bestAlignment)
                 {
-                    if (map[neighbors[k]].percepitation > maxPercepitation)
+                    bestAlignment = alignment;
+                    bestNeighbor = neighborIdx;
+                }
+			}
+			windCache[idx] = { windDir, map[idx].windStr, bestNeighbor, bestAlignment };
+        }
+
+
+        for (int step = 0; step < advectionSteps; step++)
+        {
+            std::vector<float> newMoisture(map.size(), 0.0f);
+            
+            for (std::size_t idx = 0; idx < cellOrder.size(); idx++)
+            {
+				std::size_t i = cellOrder[idx];
+
+                if (moisture[i] < 0.01f) continue;
+
+                float cellMoisture = moisture[i];
+				const WindData& windData = windCache[i];
+
+                // Calculate precipitation
+                float precipitationAmount = 0.0f;
+
+                // 1. Baseline natural condensation (happens everywhere with sufficient moisture)
+                if (cellMoisture > 10.0f)  // Only if there's enough moisture
+                {
+                    float moistureFactor = std::min(cellMoisture / 100.0f, 1.0f);
+                    float baseCondensation = condensation_rate * moistureFactor * 12.0f;
+
+					// Vary ocndensation rate per run to simulate seasonal changes
+					float seasonalFactor = 0.8f + 0.4f * (run / static_cast<float>(runs));
+
+                    precipitationAmount += baseCondensation * seasonalFactor;
+                }
+
+                // 2. Temperature-driven condensation (colder air holds less moisture)
+                if (map[i].temp < 20.0f && cellMoisture > 20.0f)
+                {
+                    float coldFactor = clamp((20.0f - map[i].temp) / 30.0f, 1.0f, 0.0f);  // Stronger at colder temps
+                    precipitationAmount += cellMoisture * 0.08f * coldFactor;
+                }
+
+                // 3. Orographic precipitation (mountains force uplift)
+                if (windData.bestNeighbor >= 0 && !map[i].oceanBool)  // Only over land
+                {
+                    float heightDiff = map[windData.bestNeighbor].height - map[i].height;
+                    if (heightDiff > 0.015f)  // Lower threshold for gentler slopes
                     {
-                        maxPercepitation = map[neighbors[k]].percepitation;
+                        float liftFactor = std::tanh(orographic_factor * heightDiff);
+                        precipitationAmount += cellMoisture * liftFactor * 0.35f;
                     }
                 }
-            }
-            else { maxPercepitation = 1000; }
-            percepitation = std::min(percepitation, maxPercepitation);
 
-            // Convert wind direction to [0, 2PI]
-            windDir = radians(windDir);
-
-            for (int k = 0; k < neighbors.size(); k++)
-            {
-                // Calculates the direction similarity of wind and the neighbor. See (2).
-                float atan2Direction = atan2(points[neighbors[k]].y - points[i].y, points[neighbors[k]].x - points[i].x);
-                float direction = fmod(atan2Direction + 2 * PI, 2 * PI);
-                float simDir = std::abs(direction - windDir);
-                if (simDir > PI) { simDir = 2 * PI - simDir; } // Wrapping the smallest angle to [0, PI]
-                simDir = (std::cos(simDir) + 1) / 2; // [0, 1]
-
-                // Taking the height of neighbor. See (3).
-                // Therefore when this is 0 (flat) the steepness should not affect the percepitation added (=1)
-                // When steepness high lower the percepitation added
-                float steepness = std::exp(-100 * std::abs(map[neighbors[k]].height - height)); // [0,1]
-
-                // 0.3 is a magic number? 
-                // Adding the distance to the ocean factored by the wind strenght to further increase truth 1.
-                float neighbor_percepitation = 0.3 * (steepness + simDir) * (percepitation) * (1 - map[neighbors[k]].oceanBool) * std::exp(-0.01 * static_cast<float>(map[i].distToOcean) * (1 - windStr));
-                map[neighbors[k]].percepitation += neighbor_percepitation;
-
-                if (visited[neighbors[k]] == false)
+                // 4. Oceanic storm precipitation (based on moisture and wind)
+                if (map[i].oceanBool && cellMoisture > 50.0f && windData.windStr > 0.6f)
                 {
-                    queue.push(neighbors[k]);
+                    float stormFactor = (windData.windStr - 0.6f) * 2.5f;  // Stronger winds = more storms
+                    precipitationAmount += cellMoisture * 0.06f * stormFactor;
                 }
-                visited[neighbors[k]] = true;
+
+                // Cap precipitation to avoid depleting all moisture
+                precipitationAmount = std::min(precipitationAmount, cellMoisture * 0.65f);
+
+                // Add precipitation
+                newPrecipitation[i] += precipitationAmount;
+
+                // Remaining moisture after precipitation
+                float remainingMoisture = cellMoisture - precipitationAmount;
+
+                // Transfer moisture to downwind neighbor
+                if (windData.bestNeighbor >= 0 && windData.bestAlignment > 0.0f)
+                {
+                    // Transfer efficiency based on wind and alignment
+					// Vary transfer factor per run to simulate seasonal wind strength changes
+                    float runVariation = 0.85 + 0.1f * std::cos(run * 1.5f);
+                    float transferFactor = windData.windStr * std::pow(std::max(0.0f, windData.bestAlignment), 0.4f) * runVariation;
+                    float transferredMoisture = remainingMoisture * transferFactor;
+
+                    // Rain shadow effect (descending terrain)
+                    if (!map[i].oceanBool)  // Only apply to land
+                    {
+                        float heightDiff = map[windData.bestNeighbor].height - map[i].height;
+                        if (heightDiff < -0.02f)
+                        {
+                            transferredMoisture *= 0.70f;  // Rain shadow dries air
+                        }
+                    }
+
+                    // Natural moisture loss during transport
+                    transferredMoisture *= (1.0f - moisture_loss_rate);
+
+                    newMoisture[windData.bestNeighbor] += transferredMoisture;
+                    newMoisture[i] += remainingMoisture * (1.0f - transferFactor);
+                }
+                else
+                {
+                    // No good neighbor - moisture either precipitates or dissipates
+                    newPrecipitation[i] += remainingMoisture * 0.25f;
+                    newMoisture[i] += remainingMoisture * 0.75f;
+                }
             }
+            
+			moisture = std::move(newMoisture);
         }
 
+        // Step 3: Accumulate precipitation across runs
+        #pragma omp parallel for schedule(static)
+        for (std::size_t i = 0; i < map.size(); i++)
+        {
+            if (run == 0)
+            {
+                map[i].percepitation = newPrecipitation[i];
+            }
+            else
+            {
+                // Weight each run equally
+                map[i].percepitation = (map[i].percepitation * run + newPrecipitation[i]) / (run + 1.0f);
+            }
+        }
+    }
+	// Step 4: Add tiny simplex noise for variability (needs a look)
+	SimplexNoise simplexNoise = SimplexNoise(rand());
+    #pragma omp parallel for schedule(static)
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+		float noise = simplexNoise.noise(points[i].x * 0.02f, points[i].y * 0.02f) * 2.0f; // small variation
+        map[i].percepitation = std::max(0.0f, map[i].percepitation + noise); // ensure non-negative
+	}
+
+
+	// Step 5: Cap the precipitation values
+    #pragma omp parallel for schedule(static)
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+        map[i].percepitation = std::min(map[i].percepitation, max_percipitation);
+	}
+
+    // Step 6: Smooth precipitation for gradual transitions
+    std::vector<float> smoothedPrecip(map.size());
+    #pragma omp parallel for schedule(static)
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+        float sum = map[i].percepitation * 2.5f;  // Weight center
+        int count = 2.5f;
+
+        for (int neighborIdx : map[i].neighbors)
+        {
+            sum += map[neighborIdx].percepitation;
+            count += 1;
+        }
+
+        smoothedPrecip[i] = sum / static_cast<float>(count);
     }
 
-}
-
-void smoothPercepitation(std::vector<Cell>& map, int smoothTimes)
-{
-    for (int j = 0; j < smoothTimes; j++)
+    #pragma omp parallel for schedule(static)
+    for (std::size_t i = 0; i < map.size(); i++)
     {
-        for (int i = 0; i < map.size(); i++)
-        {
-            float percepitation = 0;
-            for (int j = 0; j < map[i].neighbors.size(); j++)
-            {
-                percepitation += map[map[i].neighbors[j]].percepitation;
-            }
-            map[i].percepitation = percepitation / map[i].neighbors.size();
-        }
+        map[i].percepitation = smoothedPrecip[i];
     }
 }
 
 void calcHumid(std::vector<Cell>& map)
 {
+    // Humidity should depend on:
+    // 1. Temperature (warmer air holds more moisture)
+    // 2. Precipitation (more rain = more moisture available)
+    // 3. Proximity to water bodies
+    // 4. Evapotranspiration from vegetation
     for (int i = 0; i < map.size(); i++)
     {
-        // smooth function to get the humidity from the percepitation, temperature // Needs work and wind.
-        float humid = 1 + exp(-0.2 * (std::logf(map[i].percepitation) + std::logf(std::abs(map[i].temp))));
-        if (humid == 0.f || isinf(humid) || isnan(humid))
-        {
-            humid = 0.5;
-        }
+        float humidity = 0.0f;
 
-        map[i].humidity = 1 / humid;
+        if (map[i].oceanBool)
+        {
+			// Ocean cells: very high humidity
+            // Warmer water = more evaporation
+			float tempFactor = clamp((map[i].temp + 10.0f) / 40.0f, 1.0f, 0.1f);
+			humidity = 0.8 + 0.2f * tempFactor;
+        }
+        else
+        {
+            // Base humidity from precipitation and temperature
+            // Logarithmic realtionship: more precip = higher humidity, but with diminishing returns
+			float precipFactor = std::log(map[i].percepitation + 1.0f) / std::log(500.0f + 1.0f); // assuming 500mm/year max
+			precipFactor = clamp(precipFactor, 1.0f, 0.0f);
+            
+            // Temperature effect on stauration capacity
+			// warmer air holds more moisture, but also increases evapotranspiration
+			float tempFactor = 1.0f / (1.0f + std::exp(-0.1f * (map[i].temp - 15.0f))); // sigmoid centered at 15C
+
+			// Distance to ocean effect, coastal areas are more humid
+			float oceanProximityFactor = std::exp(-0.03f * map[i].distToOcean); // decays with distance
+
+            // Vegetation/surface moisture effect (simplified, should link to biome later)
+			float surfaceMoisture = map[i].treeBool ? 0.1f : 0.0f; // more vegetation = more evapotranspiration
+
+			// Combine factors
+            humidity = precipFactor * 0.5f // 50% for precipitation
+                     + tempFactor * 0.3f      // 30% for temperature
+                     + oceanProximityFactor * 0.15f // 15% for ocean proximity
+				+ surfaceMoisture * 0.05f; // 5% for surface moisture
+
+			// Height adjustment: higher altitudes tend to be less humid
+            if (map[i].height > 0.7f)
+            {
+				humidity *= (1.0f - (map[i].height - 0.7f) * 0.5f); // reduce humidity at high altitudes
+            }
+			humidity = clamp(humidity, 1.0f, 0.0f);
+        }
+		map[i].humidity = humidity;
     }
 }
 
@@ -1241,50 +1914,133 @@ void calcLakes(std::vector<Cell>& map)
 
 void calcWind(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, const int MAXHEIGHT, GlobalWorldObjects& globals)
 {
-    std::vector<float> wind = scalarMultiplication(globals.convergenceLines, (float)MAXHEIGHT);
+	// Wind is using simplex noise to generate variation along the convergence lines
 
-    for (int i = 0; i < map.size(); i++)
+    // Generate noise for wind variation
+    int windSpeed = rand();
+	SimplexNoise noiseWind(windSpeed);
+
+	// Find map bounds for normalization
+	float minX = std::numeric_limits<float>::max();
+	float maxX = std::numeric_limits<float>::min();
+	float minY = std::numeric_limits<float>::max();
+	float maxY = std::numeric_limits<float>::min();
+
+    for (const auto& pos : points)
     {
+        minX = std::min(minX, pos.x);
+        maxX = std::max(maxX, pos.x);
+        minY = std::min(minY, pos.y);
+        maxY = std::max(maxY, pos.y);
+	}
+    // Wind parameters
+	const float noiseScale = 0.15f;      // Scale of the noise (smaller = larger features)
+	const float noiseAmplitude = 45.0f;  // Amplitude of the noise in degrees
+	const int octaves = 2;               // detail levels
+	const float persistence = 0.6f;      // amplitude decrease per octave
+
+    // Calculate base wind patterns from latitude zones
+	std::vector<float> convergenceY = scalarMultiplication(globals.convergenceLines, (float)MAXHEIGHT);
+
+    for (size_t i = 0; i < map.size(); i++)
+    {
+		float normalizedX = (points[map[i].id].x - minX) / (maxX - minX);
+		float normalizedY = (points[map[i].id].y - minY) / (maxY - minY);
+
+		// Find closest convergence line
         int closestLine = 0;
         float min_dist = 1000000.f;
-        for (int j = 0; j < wind.size(); j++)
+        for (int j = 0; j < convergenceY.size(); j++)
         {
-            float dist = points[map[i].id].y - wind[j];
+            float dist = points[map[i].id].y - convergenceY[j];
             if (abs(dist) < min_dist)
             {
-                if (dist < 0)
-                {
-                    min_dist = abs(dist);
-                    closestLine = j - 1;
-                }
-                else
-                {
-                    min_dist = abs(dist);
-                    closestLine = j;
-                }
+                min_dist = abs(dist);
+                closestLine = j;
             }
-        }
+		}
 
-        map[i].windDir = normalizeAngle(globals.windDirection[closestLine] + 360.f * RandomBetween(-0.3, 0.3));
-        map[i].windStr = clamp((globals.windStrength[closestLine] + RandomBetween(-0.5, 0.5)) * (1 - clamp(map[i].height, 0.6f, 0.4f)) * 2, 1.f, 0.f);
-    }
-    // get averages of neighbors direction and strength
-    for (int i = 0; i < map.size(); i++)
-    {
-        float sumX = 0.0;
-        float sumY = 0.0;
-        float sumStr = 0.0;
-        for (int j = 0; j < map[i].neighbors.size(); j++)
+        // Base wind from zone
+		float baseDir = globals.windDirection[closestLine];
+		float baseStr = globals.windStrength[closestLine];
+
+		// Distance from convergence line affects strength
+		float distFromLine = min_dist / (MAXHEIGHT / (float)globals.convergenceLines.size());
+		distFromLine = clamp(distFromLine, 1.f, 0.f);
+
+        // strength varies with from zone center
+		float strengthModifier = 0.8f + 0.2f * (1.0f - distFromLine);
+
+        // Generate noise variation for direction
+        float noiseValue = noiseWind.octaveNoise(
+            normalizedX / noiseScale,
+            normalizedY / noiseScale,
+            octaves,
+            persistence
+        );
+
+		// Apply noise to create natural wind variation
+		float windDir = noiseValue * noiseAmplitude;
+
+        // Coriolis-like effect: wind curves near poles
+		float latitudeFactor = std::abs(normalizedY - 0.5f) * 2.0f; // 0 at equator, 1 at poles
+        float coriolisDeflection = latitudeFactor * 15.0f * (normalizedY > 0.5f ? 1.0f : -1.0f);
+
+        // Combining direction components
+		float finalDir = normalizeAngle(baseDir + windDir + coriolisDeflection);
+
+		// Terrain effects on wind strength (mountains block wind) (can be improved)
+        float terrainFactor = 1.0f;
+        if (map[i].height > 0.75f)
         {
-            float radian = radians(map[map[i].neighbors[j]].windDir);
-            sumX += std::cos(radian);
-            sumY += std::sin(radian);
+            terrainFactor = 1.0f - (map[i].height -0.6f) * 0.7f; // reduce strength in high terrain
+			terrainFactor = std::max(terrainFactor, 0.3f);
+		}
+		// Ocean vs land: ocean has stronger more consistent winds
+		float surfaceFactor = map[i].oceanBool ? 1.05f : 0.95f;
 
-            sumStr += map[map[i].neighbors[j]].windStr;
+		// Calculate final wind strength
+		float finalStr = baseStr * strengthModifier * terrainFactor * surfaceFactor;
+        finalStr = clamp(finalStr + RandomBetween(-0.1f, 0.1f), 1.f, 0.05f);
+
+		map[i].windDir = finalDir;
+		map[i].windStr = finalStr;
+    }
+
+	// Smoothing winds to create coherent patterns
+	// Average with neighbors
+	std::vector<float> smoothedDirs(map.size(), 0.f);
+	std::vector<float> smoothedStrs(map.size(), 0.f);
+
+    for (size_t i = 0; i < map.size(); i++)
+    {
+		float sumX = 0.f;
+		float sumY = 0.f;
+        float sumStr = 0.f;
+		int count = 0;
+
+		float selfRad = radians(map[i].windDir);
+		sumX += std::cos(selfRad) * 2.0f;
+        sumY += std::sin(selfRad) * 2.0f;
+        sumStr += map[i].windStr * 2.0f;
+		count += 2;
+        for (int neighborIdx : map[i].neighbors)
+        {
+			float neighborRad = radians(map[neighborIdx].windDir);
+            sumX += std::cos(neighborRad);
+            sumY += std::sin(neighborRad);
+			sumStr += map[neighborIdx].windStr;
+            count++;
         }
-        float averageRadians = std::atan2f(sumY, sumX);
-        map[i].windDir = normalizeAngle(averageRadians * 180.0 / PI);
-        map[i].windStr = sumStr / map[i].neighbors.size();
+		float avgRad = std::atan2f(sumY / count, sumX / count);
+		smoothedDirs[i] = normalizeAngle(avgRad * 180.0f / PI);
+		smoothedStrs[i] = sumStr / count;
+    }
+	// Apply smoothed values
+    for (size_t i = 0; i < map.size(); i++)
+    {
+        map[i].windDir = smoothedDirs[i];
+        map[i].windStr = smoothedStrs[i];
     }
 }
 
@@ -1343,7 +2099,108 @@ void closeOceanCell(std::vector<Cell>& map, const GlobalWorldObjects& globals)
             }
         }
     }
+}
 
+void calcClimateVariance(std::vector<Cell>& map, const std::vector<sf::Vector2f>& points, GlobalWorldObjects& globals, float maxHeight)
+{
+    // Calculate Climate variance for each cell
+    // 1. Ocean vs land
+    // 2. coastal proximity
+	// 3. latitude
+	// 4. altitude
+	// 5. atmospheric pressure
 
+	float equatorY = maxHeight / 2;
+    if (!globals.convergenceLines.empty())
+    {
+		int middleIndex = globals.convergenceLines.size() / 2;
+		equatorY = globals.convergenceLines[middleIndex] * maxHeight;
+    }
+	float pressureFactor = 1.0f / std::sqrt(globals.planetaryParams.atmosphere.totalPressure + 0.1f);
+
+    for (std::size_t i = 0; i < map.size(); i++)
+    {
+        Cell& cell = map[i];
+
+        float distFromEquator = std::abs(points[i].y - equatorY);
+        float maxDist = maxHeight * 0.5f;
+        float normalizedLatitude = std::min(distFromEquator / maxDist, 1.0f);
+
+        // == Temperature variance ==
+        float baseTempVar = 5.0f;
+
+        // Ocean vs land
+        if (cell.oceanBool)
+        {
+            baseTempVar *= 0.3f; // oceans have lower temp variance
+        }
+        else if (cell.coastBool)
+        {
+            baseTempVar *= 0.6f; // coastal areas have moderate temp variance
+        }
+        else
+        {
+            float continentalFactor = 1.0f + std::min(cell.distToOcean * 0.05f, 0.5f);
+            baseTempVar *= continentalFactor;
+        }
+        // Latitude effect
+        float latitudeVarFactor = 1.0f + normalizedLatitude * 0.8f;
+        baseTempVar *= latitudeVarFactor;
+        // Altitude effect
+        if (cell.height > globals.seaLevel)
+        {
+            float altitudeFactor = 1.0f + (cell.height - globals.seaLevel) * 0.5f;
+            baseTempVar *= altitudeFactor;
+        }
+        // Atmospheric pressure effect
+        baseTempVar *= pressureFactor;
+        cell.tempVariance = baseTempVar;
+
+        // == Wind Variance ==
+        float baseWindVar = 0.1f;
+        // coastal effect
+        if (cell.coastBool)
+        {
+            baseWindVar *= 1.5f;
+        }
+        // mid-latitudes tend to have more variable winds
+        float midLatitudeFactor = 1.0f + (1.0f - std::abs(normalizedLatitude - 0.5f) * 2.0f) * 0.4f;
+        baseWindVar *= midLatitudeFactor;
+
+        cell.windStrVariance = baseWindVar;
+
+        cell.windDirVariance = 15.0f + baseWindVar * 30.0f;
+
+        // == Humidity Variance ==
+        float baseHumidVar = 0.1f;
+        // Dry areas have less humidity variance
+        baseHumidVar *= (1.0f - cell.humidity) + 0.5f;
+        // Coastal areas have less humidity variance
+        if (cell.coastBool || cell.oceanBool)
+        {
+            baseHumidVar *= 0.7f;
+        }
+        cell.humidityVariance = baseHumidVar;
+
+        // == Precipitation Variance ==
+        // I set precip varinace to be a percentage of mean precip
+        float basePrecipVar = 0.4f;
+        // Tropical areas have higher precip variance
+        if (normalizedLatitude < 0.3f)
+        {
+            basePrecipVar *= 1.5f;
+        }
+        // arid areas have higher precip variance
+        if (cell.percepitation < 15.0f && cell.percepitation > 0.1f)
+        {
+            basePrecipVar *= 1.5f;
+        }
+        // Stable oceanic climate has lower precip variance
+        if (cell.oceanBool)
+        {
+            basePrecipVar *= 0.6f;
+        }
+        cell.percepitationVariance = basePrecipVar;
+    }
 }
 

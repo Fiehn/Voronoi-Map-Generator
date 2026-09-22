@@ -3,24 +3,31 @@ class Cell; // Forward declaration
 #pragma once
 #include <vector>
 #include <SFML/System/Vector2.hpp>
+#include "extractiveResources.hpp"
 
 
 class Cell 
 {  
 public:
     unsigned int id; // Unique Id coming from the points vector
-    Cell(int i) : id(i) { vertex.reserve(10); neighbors.reserve(10); }; // Constructor, am I doing this right?
+    Cell(int i) : id(i) { vertex.reserve(10); neighbors.reserve(10); };
     std::vector<int> vertex; // Id's of vertecies that corespond to the cell and are stored in voronoi_points this should be pointers?
     std::vector<int> neighbors; // Id's of the neighbors
     unsigned int vertex_offset = 0U; // Offset for the vertex buffer
 
-    float height = 0.f; // Height of the cell, 1 = 8km above sealevel 
-    float rise = 0.f; // Difference in height between the highest and the lowest neighbor cell (0 to 1)
+    float height = 0.f; // Height of the cell (uncapped, sealevel is typically around 0.5)
+    float rise = 0.f; // Difference in height between the highest and the lowest neighbor cell
     float temp = 0.f; // Temperature of the cell (Celsius)
     float windDir = 0.f; // Wind direction (0 to 360 degrees)
     float windStr = 0.f; // Wind strength (0 to 1)
     float humidity = 1.f; // Humidity of the cell (0 to 1)
     float percepitation = 0.f; // Percepitation of the cell ( > 0 )
+
+	float tempVariance = 5.0f; // Temperature variance for the cell
+	float windStrVariance = 0.2f; // Wind strength variance for the cell
+	float windDirVariance = 15.f; // Wind direction variance for the cell
+	float humidityVariance = 0.1f; // Humidity variance for the cell
+	float percepitationVariance = 0.2f; // Percepitation variance for the cell
 
 	int continent = -1; // Continent of the cell
 	bool volcanicActivity = false; // Has volcanic activity
@@ -44,6 +51,10 @@ public:
     bool treeBool = true; // Has trees
     
     bool iceBool = false; // Is Ice cap
+
+    int culture = -1; // Will be tied to POP calculations later
+
+	ExtractiveResource resources; // Extractive resources in the cell (std::map<ResourceType, float>)
 
     void sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points);
     

@@ -27,6 +27,14 @@ sf::Color colorByName(std::string name) {
 	return colorTable.getColor(name);
 }
 
+sf::Color closeRandomColorChange(sf::Color color)
+{
+	color.r += RandomBetween(-10, 10);
+	color.b += RandomBetween(-10, 10);
+	color.g += RandomBetween(-10, 10);
+	return color;
+}
+
 
 void insert_unique(std::vector<int>& vec, const int& key) {
 	if (std::find(vec.begin(), vec.end(), key) == vec.end()) {

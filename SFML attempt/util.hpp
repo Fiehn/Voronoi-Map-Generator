@@ -1,4 +1,3 @@
-
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
@@ -28,6 +27,10 @@ inline long rand_long() // Should only be used in the case that there is a need 
 
 inline float clamp(float x, float max, float min) 
 {
+	// Check if min is greater than max
+    if (min > max) {
+        std::swap(min, max);
+    }
     if (x < min) { return min; }
     if (x > max) { return max; }
     return x;
@@ -59,6 +62,18 @@ inline float RandomBetween(float smallNumber, float bigNumber)
 {
     float diff = bigNumber - smallNumber;
     return (((float)rand() / RAND_MAX) * diff) + smallNumber;
+}
+
+inline int RandomBetweenInt(int smallNumber, int bigNumber)
+{
+    if (smallNumber > bigNumber) {
+        std::swap(smallNumber, bigNumber);
+    }
+    int diff = bigNumber - smallNumber + 1;
+    if (diff <= 0) {
+        return smallNumber; // Edge case: return the only valid value
+    }
+    return (rand() % diff) + smallNumber;
 }
 
 sf::Vector2f randomGradient();
@@ -546,6 +561,7 @@ std::string closestColorName(sf::Color color);
 
 sf::Color colorByName(std::string name);
 
+sf::Color closeRandomColorChange(sf::Color color);
 
 // Based on Stefan Gustavson's implementation
 class SimplexNoise {
@@ -682,6 +698,14 @@ inline float distance(sf::Vector2f a, sf::Vector2f b)
 }
 
 
+static float magnitude(const sf::Vector2f& vec) {
+    return std::sqrt(vec.x * vec.x + vec.y * vec.y);
+}
+static sf::Vector2f normalize(const sf::Vector2f& vec) {
+    float mag = magnitude(vec);
+    if (mag < 0.001f) return sf::Vector2f(0.0f, 0.0f);
+    return sf::Vector2f(vec.x / mag, vec.y / mag);
+}
 
 
 

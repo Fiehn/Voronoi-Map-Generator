@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -29,26 +29,28 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <VCToolsVersion>
+    </VCToolsVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -147,6 +149,14 @@
   <ItemGroup>
     <ClCompile Include="CellObjects.cpp" />
     <ClCompile Include="Cells.cpp" />
+    <ClCompile Include="CrashHandler.cpp" />
+    <ClCompile Include="CultureManager.hpp" />
+    <ClCompile Include="CultureManager_old.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DeityContradiction.cpp" />
+    <ClCompile Include="extractiveResources.cpp" />
+    <ClCompile Include="flecs.c" />
     <ClCompile Include="GlobalWorldObjects.cpp" />
     <ClCompile Include="Include\Dear ImGUI\imgui.cpp" />
     <ClCompile Include="Include\Dear ImGUI\imgui_demo.cpp" />
@@ -158,35 +168,95 @@
     <ClCompile Include="Include\ImPlot\implot.cpp" />
     <ClCompile Include="Include\ImPlot\implot_items.cpp" />
     <ClCompile Include="Include\SFML ImGUI\imgui-SFML.cpp" />
+    <ClCompile Include="LanguageManager_old.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Logger.cpp" />
     <ClCompile Include="main.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="MythicRules.cpp" />
+    <ClCompile Include="PlanetaryObjects.cpp" />
+    <ClCompile Include="POP_generator.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="POP_Manager.cpp" />
+    <ClCompile Include="POP_Manager.hpp" />
+    <ClCompile Include="ReligionManager.cpp" />
+    <ClCompile Include="ReligionManager_old.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="SeasonalCalculator.hpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="Voronoi.cpp" />
+    <ClCompile Include="windArrows.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AbstractWorld.hpp" />
     <ClInclude Include="cell.hpp" />
     <ClInclude Include="clustering.hpp" />
+    <ClInclude Include="CultureData_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="CultureManager_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="DeityContradiction.hpp" />
     <ClInclude Include="EventMachine.hpp" />
+    <ClInclude Include="extractiveResources.hpp" />
+    <ClInclude Include="flecs.h" />
+    <ClInclude Include="flecs_schema.h" />
     <ClInclude Include="GlobalWorldObjects.hpp" />
+    <ClInclude Include="HistoryData.hpp" />
     <ClInclude Include="Include\Dear ImGUI\imgui.h" />
     <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h" />
     <ClInclude Include="Include\ImPlot\implot.h" />
     <ClInclude Include="Include\ImPlot\implot_internal.h" />
     <ClInclude Include="Include\nlohmann\json.hpp" />
+    <ClInclude Include="LanguageManager.hpp" />
+    <ClInclude Include="LanguageManager_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="LanguageData_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="LogCommon.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="MainMenu.hpp" />
     <ClInclude Include="Map.hpp" />
     <ClInclude Include="mapconfig.hpp" />
+    <ClInclude Include="MythicRules.hpp" />
     <ClInclude Include="NewMap.hpp" />
+    <ClInclude Include="PantheonGraphView.hpp" />
+    <ClInclude Include="PlanetaryObjects.hpp" />
+    <ClInclude Include="POP_data.hpp" />
+    <ClInclude Include="POP_generator.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Religion.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="ReligionData_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="ReligionManager.hpp" />
+    <ClInclude Include="ReligionManager_old.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="resource.h" />
+    <ClInclude Include="tickerSimulation.hpp" />
     <ClInclude Include="vertex.hpp" />
     <ClInclude Include="Voronoi.hpp" />
     <ClInclude Include="CellObjects.hpp" />
-    <ClInclude Include="Deprecated.h" />
     <ClInclude Include="util.hpp" />
+    <ClInclude Include="windArrows.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SFML attempt.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="AbstractWorldSchema.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

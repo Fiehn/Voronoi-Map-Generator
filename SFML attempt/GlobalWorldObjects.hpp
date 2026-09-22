@@ -4,12 +4,13 @@ class GlobalWorldObjects; // Forward declaration
 #include <vector>
 #include <SFML/Graphics.hpp>
 #include "CellObjects.hpp"
-
+#include "PlanetaryObjects.hpp"
+#include "AbstractWorld.hpp"
 
 class GlobalWorldObjects
 {
 public:
-	float seaLevel = 0.5f; // The sea level of the world (0 to 1) (1 being the top of the map)
+	float seaLevel = 0.5f; // The sea level threshold for determining ocean/land cells
 	float globalTempAvg = 15.f; // Average temperature of the world, more an abstract value than a real one
 	float globalSnowline = 0.8f; // The line where snow starts to appear on the map (0 to 1) (1 being the top of the map)
 	float globalTreeline = 0.8f; // The line where trees stop appearing on the map (0 to 1) (1 being the top of the map)
@@ -32,19 +33,25 @@ public:
 
 	std::vector<Continent> continents; // List of continents
 
+	PlanetaryParameters planetaryParams; // Planetary parameters
+
+	// === SocioCultural Managers ===
+	AbstractWorld abstractWorld; // The abstract world that contains the ECS world and managers for religion, language, and culture
+
 	GlobalWorldObjects();
 	void clearGlobals();
 
 	void generateBiomes();
 	void addBiome(std::string name, sf::Color color);
 	void setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength);
-	void generateConvergenceLines(int nrLines, float windstr_alpha, float windstr_beta);
+	void generateConvergenceLines();
 	std::vector<float> getConvergenceLines() const;
 	void setGlobalTemp(float temp);
 	void setSeaLevel(float level);
 	void setGlobalSnowline(float snowline);
 	void setGlobalTreeline(float treeline);
-
+	
+	void generatePlanet(bool earthlike);
 };
 
 
