@@ -39,7 +39,10 @@ int main()
     unsigned int windowWidth = 2500;
     unsigned int windowHeight = 1500;
 
-    sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML");
+    // MSAA so the smoothed boundaries and outlines don't stair-step
+    sf::ContextSettings contextSettings;
+    contextSettings.antialiasingLevel = 4;
+    sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML", sf::Style::Default, contextSettings);
     window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
     ImGui::SFML::Init(window);
 	ImPlot::CreateContext();
@@ -78,6 +81,11 @@ int main()
     // Create the vertex map
     VertexMap vertexMap;
     std::cout << "Vertex Buffer Available? " << vertexMap.useVertexBuffer << std::endl;
+
+    // Render settings (boundary smoothing and outlines), kept apart from the map config
+    RenderSettings renderSettings;
+    renderSettings.load_json(RENDER_SETTINGS_FILE);
+    vertexMap.renderSettings = &renderSettings;
 
 	// Create the POP Manager
 	PopManager popManager;
@@ -199,6 +207,7 @@ int main()
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
 			mapTypeOld = mapType;
+            vertexMap.mapMode = mapType;
             // Reset seasonal view when changing map types (except for temperature, precipitation, humidity)
             if (mapType != 1 && mapType != 3 && mapType != 4) {
                 useSeasonalView = false;
@@ -343,6 +352,9 @@ int main()
 
         if (ImGui::Button("Save Config", { 200,50 })) { showSaveConfig = !showSaveConfig; }
         else if (ImGui::Button("Load Config", { 200, 50 })) { showLoadConfig = !showLoadConfig; };
+
+        // Rebuilds from the current colours in map.vertices, so the map does not need to be redrawn
+        if (boundarySettingsUI(renderSettings, mapType)) { vertexMap.update(map); }
 
         ImGui::End();
 

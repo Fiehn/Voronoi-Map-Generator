@@ -76,6 +76,9 @@
     <ClCompile Include="Voronoi.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="BoundaryRender.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="PlanetaryObjects.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -172,6 +175,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="vertex.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BoundaryRender.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
