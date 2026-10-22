@@ -10,7 +10,7 @@
 #include <SFML/System/Vector2.hpp>
 #include "cell.hpp"
 #include "GlobalWorldObjects.hpp"
-#include "clustering.hpp"
+#include "BiomeGen.hpp"
 #include <SFML/System/Vector2.hpp>
 #include "util.hpp"
 
@@ -1414,7 +1414,8 @@ void calcTemp(std::vector<Cell>& map, GlobalWorldObjects& globals, const std::ve
 		// land far away from ocean is more extreme
 		// stronger on less atmosphere circulation
 		float continentalityFactor = 1.0f - std::abs(normalizedLatitude - 0.5f) * 2.0f; // Strongest at mid-latitudes
-        float oceanProximityEffect = map[i].distToOcean * 0.3f * continentalityFactor;
+        // Ocean cells use distToOcean for their distance to land, the continental effect is only for land
+        float oceanProximityEffect = map[i].oceanBool ? 0.f : map[i].distToOcean * 0.3f * continentalityFactor;
 
 		// Effect depends on latitude and atmospheric retention
 		float latitudeFactor = 1.0f - std::abs(normalizedLatitude - 0.5f) * 2.0f; // Strongest at mid-latitudes
@@ -1760,153 +1761,6 @@ void calcHumid(std::vector<Cell>& map)
     }
 }
 
-void removeBiome(int id, GlobalWorldObjects& globals, std::vector<Cell>& map)
-{
-    // if the biome is used in any cell, the cell is set to the default biome
-    // all other biomes have their index updated to match the new list and the id of all cells is updated
-    // the biome is removed from the list
-
-    for (int i = 0; i < map.size(); i++)
-    {
-        if (map[i].biome == id)
-        {
-            map[i].biome = 0;
-        }
-        else if (map[i].biome > id)
-        {
-            map[i].biome = (map[i].biome - 1);
-        }
-    }
-    globals.biomes.erase(globals.biomes.begin() + id);
-    for (int i = 0; i < globals.biomes.size(); i++)
-    {
-        globals.biomes[i].setId(i);
-    }
-}
-
-void calcBiome(std::vector<Cell>& map, GlobalWorldObjects& globals, int kmeans_max_iter = 5, int method = 1, float prob_smoothing = 0.5f) {
-    if (globals.biomes.size() == 0) {
-        globals.generateBiomes();
-    }
-
-    // Variable names for the clusters and biomes
-    std::vector<std::string> names = { "Ocean", "Temperature", "Percepitation", "Humidity", "Height", "Wind Strength", "Dist to Ocean" };
-
-    // get vectors of the variables for the biomes
-    std::vector<std::vector<float>> temporary;
-    temporary.resize(map.size());
-
-    for (int i = 0; i < map.size(); i++) {
-        temporary[i].resize(globals.biomes.size(), 0);
-        temporary[i] = { map[i].oceanBool * 100.f, map[i].temp, map[i].percepitation, map[i].humidity, map[i].height, map[i].windStr, static_cast<float>(map[i].distToOcean) };
-    }
-
-    // initialize a placeholder 
-    std::unique_ptr<ClusteringMethod> clusteringMethod;
-    bool smoothing = false;
-
-    if (method == 1 || method == 3)
-    {
-        if (method == 1)
-        {
-            smoothing = true;
-        }
-        clusteringMethod = std::make_unique<GMM>(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
-    }
-    else if (method == 2)
-    {
-        smoothing = false;
-        clusteringMethod = std::make_unique<KMeans>(globals.biomes.size(), temporary[0].size(), kmeans_max_iter);
-    }
-
-    if (clusteringMethod == nullptr) {
-        std::cout << "Error: Clustering method not found" << std::endl;
-        return;
-    }
-
-    clusteringMethod->setData(temporary);
-    clusteringMethod->run();
-
-    for (int i = 0; i < map.size(); i++) {
-        int cluster = clusteringMethod->getClusterId(i);
-        map[i].biome = cluster;
-        map[i].biome_prob = clusteringMethod->getBiomeProb(i);
-    }
-
-    // set the biomes values to the averages 
-    for (int i = 0; i < globals.biomes.size(); i++) {
-        std::map<std::string, float> values;
-        std::vector<float> biomeValues = clusteringMethod->getCentroid(i);
-        for (int j = 0; j < names.size(); j++) {
-            values.emplace(names[j], biomeValues[j]);
-        }
-
-        globals.biomes[i].setValues(values);
-    }
-
-    // remove biomes with 0 cluster size
-    std::vector<int> toRemove;
-    std::vector<int> clusterSizes = clusteringMethod->getClusterSizes();
-
-    for (int i = 0; i < globals.biomes.size(); i++) {
-        if (clusterSizes[i] == 0) {
-            toRemove.push_back(i);
-        }
-    }
-    //for (int i = 0; i < toRemove.size(); i++) {
-    //    removeBiome(toRemove[i] - i, globals, map);
-    //}
-
-    for (int i = 0; i < globals.biomes.size(); i++) {
-        globals.biomes[i].numCells = clusterSizes[i];
-    }
-
-    // Here we observe the neighbors of each cell and check their biomes, updating the probabilities of a cells biomes and then afterwards taking the new biome with the highest probability
-    if (!smoothing) { return; }
-
-    std::vector<bool> ocean_bool;
-    for (std::size_t i = 0; i < globals.biomes.size(); i++)
-    {
-        ocean_bool.push_back(globals.biomes[i].isOcean);
-    }
-
-    for (std::size_t i = 0; i < map.size(); i++)
-    {
-        std::vector<int> neighbors = map[i].neighbors;
-        std::vector<float> probs(globals.biomes.size(), 0.f);
-        for (std::size_t j = 0; j < neighbors.size(); j++)
-        {
-            std::vector<float> neighbor_probs = map[neighbors[j]].biome_prob;
-            for (std::size_t k = 0; k < probs.size(); k++)
-            {
-                probs[k] += neighbor_probs[k];
-            }
-        }
-        // Take the average of the neighbors and weight them by smoothing factor
-        probs = scalarMultiplication(probs, prob_smoothing / neighbors.size());
-
-        map[i].biome_prob = elementWiseAdd(map[i].biome_prob, probs);
-
-        // make it a probability again
-        map[i].biome_prob = scalarMultiplication(map[i].biome_prob, 1.f / (sum_vec_float(map[i].biome_prob) + 1e-8));
-
-        booleanMapVector_f(map[i].biome_prob, ocean_bool, !map[i].oceanBool);
-    }
-    // reset biomes sizes
-    for (std::size_t i = 0; i < globals.biomes.size(); i++)
-    {
-        globals.biomes[i].numCells = 0;
-    }
-    // now find the highest probability and set the biome to that
-    for (std::size_t i = 0; i < map.size(); i++)
-    {
-        std::vector<float> probs = map[i].biome_prob;
-        map[i].biome = chooseIndexMax(probs);
-
-        globals.biomes[map[i].biome].numCells += 1;
-    }
-}
-
 void calcLakes(std::vector<Cell>& map)
 {
 
@@ -2055,49 +1909,50 @@ void calcIce(std::vector<Cell>& map, GlobalWorldObjects& globals)
 
 }
 
-void closeOceanCell(std::vector<Cell>& map, const GlobalWorldObjects& globals)
-{   // Start at every ocean cell, set them in the queue. 
-    // Go through neighbors and check if any neighbors are land.
-    // If they are, set the first to a coast cell. Then set their distance to ocean to 1.
-    // Then add the neighbors to the queue.
-    // If the current cell is a land cell, check neighbors distance to ocean 
-    // and set the distance to ocean to either the current cells distance + 1 or the neighbors current distance.
-    // Then add the neighbors to the queue.
-    Queue<int> queue;
+void closeOceanCell(std::vector<Cell>& map)
+{   // Steps from every cell to the closest cell on the other side of the coast, both sides use distToOcean:
+    // land cells get their distance to the ocean, ocean cells reuse the field for their distance to land.
+    // Cells that can not reach the other side keep std::numeric_limits<int>::max()
+    // Land cells next to the ocean are marked as coast.
+    const int unreached = std::numeric_limits<int>::max();
 
-    std::vector<bool> visited(map.size(), false);
-
-    // Add all ocean cells to the queue
-    for (int i = 0; i < globals.oceanCells.size(); i++)
+    for (bool fromOcean : { true, false })
     {
-        queue.push(globals.oceanCells[i]);
-        map[globals.oceanCells[i]].distToOcean = 0;
-        visited[globals.oceanCells[i]] = true;
-    }
-    while (!queue.empty())
-    {
-        int idx = queue.pop_random();
-        visited[idx] = true;
-
-        int curr_distance = map[idx].distToOcean;
-        if (curr_distance == 1 && map[idx].coastBool==false && map[idx].oceanBool == false)
+        // Breadth first from every cell of one side at once. A cell is marked when it is queued, so it is queued once
+        // and its first distance is already the shortest
+        std::vector<int> steps(map.size(), unreached);
+        Queue<int> queue;
+        for (int i = 0; i < map.size(); i++)
         {
-			map[idx].coastBool = true;
-		}
-
-        for (int i = 0; i < map[idx].neighbors.size(); i++)
-        {
-            int neighbor = map[idx].neighbors[i];
-            
-            if (map[neighbor].distToOcean > curr_distance + 1)
+            if (map[i].oceanBool == fromOcean)
             {
-                map[neighbor].distToOcean = curr_distance + 1;
-            }
-            if (visited[neighbor] == false)
-            {
-                queue.push(neighbor);
+                steps[i] = 0;
+                queue.push(i);
             }
         }
+        while (!queue.empty())
+        {
+            int idx = queue.pop_front();
+            for (int neighbor : map[idx].neighbors)
+            {
+                if (steps[neighbor] == unreached)
+                {
+                    steps[neighbor] = steps[idx] + 1;
+                    queue.push(neighbor);
+                }
+            }
+        }
+
+        // Only the other side is written, the sources are 0 by definition
+        for (int i = 0; i < map.size(); i++)
+        {
+            if (map[i].oceanBool != fromOcean) { map[i].distToOcean = steps[i]; }
+        }
+    }
+
+    for (Cell& cell : map)
+    {
+        if (!cell.oceanBool && cell.distToOcean == 1) { cell.coastBool = true; }
     }
 }
 

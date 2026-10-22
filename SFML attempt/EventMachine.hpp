@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <future>
 #include <limits>
 
@@ -58,7 +59,7 @@ static sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
 static void drawTempMap(vor::Voronoi& map, VertexMap& vertexMap) {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
-        sf::Color color(255, 255 / 2 + clamp(5 * map.cells[i].temp, 255 / 2, -255), 0, 255);
+        sf::Color color = temperatureColor(vertexMap.colors().temperature, map.cells[i].temp);
 
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
@@ -88,7 +89,7 @@ static void drawSeasonalTempMap(vor::Voronoi& map, VertexMap& vertexMap,
         // Get seasonal temperature
         float seasonalTemp = seasonCalc.getTemperature(map.cells[i], position, dayOfYear);
         
-        sf::Color color(255, 255 / 2 + clamp(10 * seasonalTemp, 255 / 2, -255), 0, 255); // Increased multiplier for more visible color change
+        sf::Color color = temperatureColor(vertexMap.colors().temperature, seasonalTemp);
 
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
@@ -115,7 +116,7 @@ static void drawPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
-        sf::Color color(0, clamp(255 * map.cells[i].percepitation / 100, 255, 0), 0, 255);
+        sf::Color color = precipitationColor(vertexMap.colors().precipitation, map.cells[i].percepitation);
 
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
@@ -143,7 +144,7 @@ static void drawSeasonalPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap
         
         float seasonalPrecip = seasonCalc.getPercepitationDistribution(map.cells[i], position, dayOfYear).mean;
         
-        sf::Color color(0, clamp(255 * seasonalPrecip / 100, 255, 0), 0, 255);
+        sf::Color color = precipitationColor(vertexMap.colors().precipitation, seasonalPrecip);
 
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
@@ -195,41 +196,9 @@ static void drawSeasonalHumidityMap(vor::Voronoi& map, VertexMap& vertexMap,
 
 static void drawHeightMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
-    if (true) {
-        for (std::size_t i = 0; i < map.cells.size(); i++) {
-            sf::Color color(
-                (128 * (1 - map.cells[i].oceanBool)), 
-                (255 * (1 - map.cells[i].oceanBool)), 
-                255 / 3 * (map.cells[i].oceanBool + 1.75), 
-                55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-
-            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-                map.vertices[j].color = color;
-            }
-        }
-        vertexMap.update(map);
-        return;
-    }
-    // Find min/max height for normalization (heights are now uncapped)
-    float minHeight = std::numeric_limits<float>::max();
-    float maxHeight = std::numeric_limits<float>::lowest();
     for (std::size_t i = 0; i < map.cells.size(); i++) {
-        if (map.cells[i].height < minHeight) minHeight = map.cells[i].height;
-        if (map.cells[i].height > maxHeight) maxHeight = map.cells[i].height;
-    }
-    float heightRange = maxHeight - minHeight;
-    if (heightRange < 0.001f) heightRange = 1.0f; // Prevent division by zero
+        sf::Color color = heightColor(vertexMap.colors().height, map.cells[i].height, map.cells[i].oceanBool);
 
-    for (std::size_t i = 0; i < map.cells.size(); i++) {
-        // Normalize height to [0, 1] for display purposes
-        float normalizedHeight = (map.cells[i].height - minHeight) / heightRange;
-        sf::Uint8 alpha = static_cast<sf::Uint8>(55 + 200 * normalizedHeight);
-        sf::Color color(
-            static_cast<sf::Uint8>(128 * (1 - map.cells[i].oceanBool)),
-            static_cast<sf::Uint8>(255 * (1 - map.cells[i].oceanBool)),
-            static_cast<sf::Uint8>(255 / 3 * (map.cells[i].oceanBool + 1.75)),
-            alpha
-        );
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
             map.vertices[j].color = color;
         }
@@ -571,15 +540,9 @@ struct BiomeUI {
         MapConfig& config) {
         biomeGenFuture = std::async(std::launch::async,
             [this, &map, &globals, &config] {  // Explicit captures
-                // Biome generation logic
-                globals.biomes.clear();
-                auto biomeColors = randomColors(config.n_biomes);
-
-                for (int i = 0; i < config.n_biomes; i++) {
-                    globals.addBiome("Biome" + std::to_string(i), biomeColors[i]);
-                }
-
-                calcBiome(map.cells, globals,
+                calcBiome(map.cells, globals.biomes,
+                    config.n_ocean_biomes,
+                    config.n_land_biomes,
                     config.kmeans_max_iter,
                     config.biome_method,
                     config.prob_smoothing);
@@ -610,8 +573,6 @@ struct BiomeUI {
         ImGui::Begin("Biome Generation Controls");
 
         if (ImGui::Button("Generate Biomes", { 200,50 })) {
-            // Ensure at least 1 biome exists before generation
-            config.n_biomes = (config.n_biomes < 1) ? 1 : config.n_biomes;
             generateBiomesAsync(map, globals, config);
             // Update the biome colors
 			changeBiomeColorBool = true;
@@ -667,24 +628,28 @@ struct BiomeUI {
             ImGui::EndTooltip();
         }
 
-        // Biome count input with minimum enforcement
-        ImGui::InputUInt("Amount of Biomes", &config.n_biomes);
-        if (config.n_biomes < 1) {
-            config.n_biomes = 1;
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1, 0, 0, 1), "Min 1");
-        }
-        else if (config.n_biomes > 99)
-        {
-			config.n_biomes = 99;
-			ImGui::SameLine();
-			ImGui::TextColored(ImVec4(1, 0, 0, 1), "Max 99");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::Text("Increase if generated biomes lack diversity.\n Colors will repeat at 41 biomes.");
-            ImGui::EndTooltip();
-        }
+        // Biome count inputs with minimum and maximum enforcement, ocean and land are clustered separately
+        auto biomeCountInput = [](const char* label, unsigned int& count, const char* tooltip) {
+            ImGui::InputUInt(label, &count);
+            if (count < 1) {
+                count = 1;
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), "Min 1");
+            }
+            else if (count > 99)
+            {
+                count = 99;
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), "Max 99");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("%s", tooltip);
+                ImGui::EndTooltip();
+            }
+        };
+        biomeCountInput("Ocean Biomes", config.n_ocean_biomes, "Amount of biomes for ocean cells, coloured from shallow to deep.");
+        biomeCountInput("Land Biomes", config.n_land_biomes, "Amount of biomes for land cells.\nIncrease if generated biomes lack diversity.\nColors will repeat after 42 biomes.");
 
         ImGui::End();
     }
@@ -767,10 +732,19 @@ void showNewMap(vor::Voronoi& map,
     }
 
 
-    ImGui::InputUInt("Amount of Biomes", &config.n_biomes);
+    ImGui::InputUInt("Ocean Biomes", &config.n_ocean_biomes);
+    config.n_ocean_biomes = std::clamp(config.n_ocean_biomes, 1u, 99u);
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
-        ImGui::Text("Amount of biomes to generate initially. \nLarge maps will often have a lot of ocean biomes.");
+        ImGui::Text("Amount of biomes to generate for ocean cells (1-99).");
+        ImGui::EndTooltip();
+    }
+
+    ImGui::InputUInt("Land Biomes", &config.n_land_biomes);
+    config.n_land_biomes = std::clamp(config.n_land_biomes, 1u, 99u);
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::Text("Amount of biomes to generate for land cells (1-99).");
         ImGui::EndTooltip();
     }
 
@@ -1567,6 +1541,7 @@ void biomeCountPieChart(GlobalWorldObjects& globals, bool& colorChange)
 
 void RenderBiomeTable(GlobalWorldObjects& globals, bool& doChange) {
     auto& biomes = globals.biomes;
+    if (biomes.empty()) { return; }
 
     static bool showValues = false; // Track the state of the "Read More" button
 
@@ -1722,7 +1697,7 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
 
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
-    ImGui::Text("Distance to Ocean");
+    ImGui::Text(cell.oceanBool ? "Distance to Land" : "Distance to Ocean");
     ImGui::TableSetColumnIndex(1);
     ImGui::Text("%d", cell.distToOcean);
 
@@ -1887,10 +1862,17 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
                 yMax[i] = dist.getMax();
             }
 
+            // Fit the y-axis to the data range (with a little padding)
+            float yLow = *std::min_element(yMin.begin(), yMin.end());
+            float yHigh = *std::max_element(yMax.begin(), yMax.end());
+            float yPad = (yHigh - yLow) * 0.05f;
+            if (yPad < 0.01f) yPad = std::max(0.01f, std::abs(yHigh) * 0.05f); // Flat data, avoid zero-height range
+
             // Plot the seasonal curve
             if (ImPlot::BeginPlot("##SeasonalCurve", ImVec2(-1, 200))) {
                 ImPlot::SetupAxes("Day of Year", climateVarNames[selectedClimateVar]);
                 ImPlot::SetupAxisLimits(ImAxis_X1, 0, yearLength, ImPlotCond_Always);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, yLow - yPad, yHigh + yPad, ImPlotCond_Always);
 
                 // Plot variance band (min to max)
                 ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
@@ -1936,6 +1918,8 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
     for (int i = 0; i < cell.biome_prob.size(); i++)
     {
         const Biome& biome = globals.biomes[i];
+        // The other side of the coast is always 0
+        if (biome.isOcean != cell.oceanBool) { continue; }
         ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
         ImGui::TextColored(color, "%s: %.2f", biome.name.c_str(), cell.biome_prob[i]);
     }

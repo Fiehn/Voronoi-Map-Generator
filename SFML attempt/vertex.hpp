@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include "BoundaryRender.hpp"
 
 class VertexMap {
 public:
@@ -7,32 +8,27 @@ public:
 	sf::VertexArray vertexArray = sf::VertexArray(sf::Triangles, 0);
 	bool useVertexBuffer;
 
+	// Smoothed boundaries, map.vertices holds the cell colours and the renderer builds the mesh that is drawn
+	BoundaryRenderer boundaries;
+	const RenderSettings* renderSettings = nullptr; // nullptr draws map.vertices directly
+	int mapMode = 0; // Current mapType, decides which boundary types are smoothed
+
 	VertexMap() {
 		useVertexBuffer = sf::VertexBuffer::isAvailable();
 	}
+	// Value map colours, the defaults when there are no render settings
+	const MapColors& colors() const {
+		static const MapColors defaults;
+		return renderSettings ? renderSettings->colors : defaults;
+	}
 	void genVertexMap(vor::Voronoi& map) {
-		if (useVertexBuffer) {
-			for (std::size_t i = 0; i < map.cells.size(); i++) {
-				sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1.0 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + 1.75), 55 + (sf::Uint8)std::abs(std::ceil(150 * map.cells[i].height)));
-				for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-					map.vertices[j].color = color;
-				}
+		for (std::size_t i = 0; i < map.cells.size(); i++) {
+			sf::Color color = heightColor(colors().height, map.cells[i].height, map.cells[i].oceanBool);
+			for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
+				map.vertices[j].color = color;
 			}
-			vertexBuffer.update(map.vertices.data());
 		}
-		else {
-			for (std::size_t i = 0; i < map.cells.size(); i++) {
-				sf::Color color((128 * (1 - map.cells[i].oceanBool)), (255 * (1.0 - map.cells[i].oceanBool)), 255 / 3 * (map.cells[i].oceanBool + 1.75), 55 + (sf::Uint8)std::abs(std::ceil(150 * map.cells[i].height)));
-				for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-					map.vertices[j].color = color;
-				}
-			}
-			// Fill vertex array / draw triangles from map.vertices
-			for (std::size_t i = 0; i < map.vertices.size(); i++) {
-				vertexArray.append(map.vertices[i]);
-			}
-
-		}
+		update(map);
 	}
 	void draw(sf::RenderWindow& window) {
 		if (useVertexBuffer) {
@@ -40,6 +36,9 @@ public:
 		}
 		else {
 			window.draw(vertexArray);
+		}
+		if (renderSettings) {
+			boundaries.draw(window, *renderSettings);
 		}
 	}
 	void clear() {
@@ -51,6 +50,7 @@ public:
 		}
 	}
 	void create(vor::Voronoi& map) {
+		boundaries.invalidate();
 		if (useVertexBuffer) {
 			vertexBuffer.create(map.vertexCount * 3);
 		}
@@ -59,13 +59,18 @@ public:
 		}
 	}
 	void update(vor::Voronoi& map) {
+		const std::vector<sf::Vertex>& vertices = renderSettings ? boundaries.sync(map, *renderSettings, mapMode) : map.vertices;
 		if (useVertexBuffer) {
-			vertexBuffer.update(map.vertices.data());
+			// The smoothed mesh has more vertices than map.vertices and its size changes with the settings
+			if (vertexBuffer.getVertexCount() != vertices.size()) {
+				vertexBuffer.create(vertices.size());
+			}
+			vertexBuffer.update(vertices.data());
 		}
 		else {
-			vertexArray.clear();
-			for (std::size_t i = 0; i < map.vertices.size(); i++) {
-				vertexArray.append(map.vertices[i]);
+			vertexArray.resize(vertices.size());
+			for (std::size_t i = 0; i < vertices.size(); i++) {
+				vertexArray[i] = vertices[i];
 			}
 		}
 	}
@@ -76,16 +81,11 @@ public:
 		if (useVertexBuffer) {
 			useVertexBuffer = false;
 			vertexBuffer.create(0);
-			for (std::size_t i = 0; i < map.vertices.size(); i++) {
-				vertexArray.append(map.vertices[i]);
-			}
 		}
 		else {
 			useVertexBuffer = true;
 			vertexArray.clear();
-			vertexBuffer.create(map.vertexCount * 3);
-			vertexBuffer.update(map.vertices.data());
 		}
+		update(map);
 	}
 };
-

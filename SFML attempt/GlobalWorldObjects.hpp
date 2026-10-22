@@ -41,7 +41,6 @@ public:
 	GlobalWorldObjects();
 	void clearGlobals();
 
-	void generateBiomes();
 	void addBiome(std::string name, sf::Color color);
 	void setConvergenceLines(std::vector<float> lines, std::vector<float> directions, std::vector<float> strength);
 	void generateConvergenceLines();

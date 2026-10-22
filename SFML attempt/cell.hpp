@@ -35,7 +35,9 @@ public:
     int biome = 0; // Biome of the cell
     std::vector<float> biome_prob; // Probabilities of each biome in the cell
 
-	int distToOcean = std::numeric_limits<int>::max(); // Distance to the nearest ocean cell (how many cells to the ocean (shortest distance))
+	// Cells to the nearest cell on the other side of the coast. Does double work: for land it is the distance to the ocean,
+	// for ocean cells it is the distance to land
+	int distToOcean = std::numeric_limits<int>::max();
 
     bool oceanBool = false; // Is an ocean
     bool coastBool = false; // Is next to ocean

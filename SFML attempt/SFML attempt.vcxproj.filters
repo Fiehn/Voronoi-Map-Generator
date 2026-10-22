@@ -76,6 +76,15 @@
     <ClCompile Include="Voronoi.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="BoundaryRender.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="MapColors.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="BiomeGen.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="PlanetaryObjects.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -172,6 +181,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="vertex.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BoundaryRender.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MapColors.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BiomeGen.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">

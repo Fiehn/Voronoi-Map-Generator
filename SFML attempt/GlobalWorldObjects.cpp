@@ -84,13 +84,6 @@ void GlobalWorldObjects::addBiome(std::string name, sf::Color color)
 
 }
 
-void GlobalWorldObjects::generateBiomes()
-{
-	addBiome("Tundra", sf::Color::White);
-	addBiome("Forest", sf::Color::Green);
-	//std::vector<std::string> names = { "Tundra", "Taiga", "Temperate Forest", "Tropical Rainforest", "Desert", "Savanna", "Grassland", "Shrubland", "Boreal Forest", "Chaparral", "Alpine", "Wetland", "Mangrove", "Coral Reef", "Kelp Forest", "Open Ocean", "Deep Ocean", "Ice Shelf", "Iceberg" };
-}
-
 std::vector<float> GlobalWorldObjects::getConvergenceLines() const
 {
 	return convergenceLines;
