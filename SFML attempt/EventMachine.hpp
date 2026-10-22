@@ -1697,7 +1697,7 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
 
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
-    ImGui::Text("Distance to Ocean");
+    ImGui::Text(cell.oceanBool ? "Distance to Land" : "Distance to Ocean");
     ImGui::TableSetColumnIndex(1);
     ImGui::Text("%d", cell.distToOcean);
 

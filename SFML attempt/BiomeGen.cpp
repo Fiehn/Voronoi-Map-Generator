@@ -14,6 +14,28 @@ namespace {
     const sf::Color SHALLOW_OCEAN = sf::Color(110, 170, 220);
     const sf::Color DEEP_OCEAN = sf::Color(20, 40, 100);
 
+    struct BiomeValue
+    {
+        const char* name;
+        float (*of)(const Cell&);
+    };
+
+    // Every value a biome shows in the biome table. The ones a side clusters on are its cluster centres,
+    // the others are the average over the biome's cells
+    const BiomeValue BIOME_VALUES[] = {
+        { "Temperature", [](const Cell& c) { return c.temp; } },
+        { "Percepitation", [](const Cell& c) { return c.percepitation; } },
+        { "Humidity", [](const Cell& c) { return c.humidity; } },
+        { "Height", [](const Cell& c) { return c.height; } },
+        { "Wind Strength", [](const Cell& c) { return c.windStr; } },
+        // distToOcean is the distance to the other side of the coast, so for ocean cells it is the distance to land
+        { "Dist to Coast", [](const Cell& c) { return static_cast<float>(c.distToOcean); } }
+    };
+
+    // Wind has no effect on ocean biomes, and ocean humidity is only a function of temperature
+    const std::vector<std::string> OCEAN_FEATURES = { "Temperature", "Percepitation", "Height", "Dist to Coast" };
+    const std::vector<std::string> LAND_FEATURES = { "Temperature", "Percepitation", "Humidity", "Height", "Wind Strength", "Dist to Coast" };
+
     // One side of the coast, clustered on its own. Its biomes are the block [offset, offset + count)
     struct Domain
     {
@@ -21,14 +43,25 @@ namespace {
         std::vector<std::size_t> cells;
         int offset = 0;
         int count = 0;
+        std::vector<const BiomeValue*> features;
     };
 
-    // Every ocean cell is 0 cells from the ocean, so distance to ocean is only a land feature
-    std::vector<float> biomeFeatures(const Cell& cell)
+    std::vector<const BiomeValue*> findValues(const std::vector<std::string>& names)
     {
-        std::vector<float> features = { cell.temp, cell.percepitation, cell.humidity, cell.height, cell.windStr };
-        if (!cell.oceanBool) { features.push_back(static_cast<float>(cell.distToOcean)); }
-        return features;
+        std::vector<const BiomeValue*> values;
+        for (const std::string& name : names)
+        {
+            for (const BiomeValue& value : BIOME_VALUES)
+            {
+                if (name == value.name) { values.push_back(&value); }
+            }
+        }
+        return values;
+    }
+
+    bool clustersOn(const Domain& domain, const BiomeValue& value)
+    {
+        return std::find(domain.features.begin(), domain.features.end(), &value) != domain.features.end();
     }
 
     std::unique_ptr<ClusteringMethod> makeClustering(int method, int k, int dimensions, int maxIter)
@@ -52,9 +85,14 @@ namespace {
 
         std::vector<std::vector<float>> data;
         data.reserve(domain.cells.size());
-        for (std::size_t cell : domain.cells) { data.push_back(biomeFeatures(map[cell])); }
+        for (std::size_t cell : domain.cells)
+        {
+            std::vector<float> point;
+            for (const BiomeValue* feature : domain.features) { point.push_back(feature->of(map[cell])); }
+            data.push_back(point);
+        }
 
-        std::unique_ptr<ClusteringMethod> clustering = makeClustering(method, domain.count, static_cast<int>(data[0].size()), maxIter);
+        std::unique_ptr<ClusteringMethod> clustering = makeClustering(method, domain.count, static_cast<int>(domain.features.size()), maxIter);
         if (clustering == nullptr) { return false; }
 
         clustering->setData(data);
@@ -68,22 +106,38 @@ namespace {
             std::copy(prob.begin(), prob.end(), cellProb[cell].begin() + domain.offset);
         }
 
-        // Biome values are the cluster centres, both sides get the same keys so the biome table lines up
+        // The clustered values are the cluster centres, averageOtherValues fills in the rest once the cells are final
         for (int j = 0; j < domain.count; j++)
         {
             std::vector<float> centre = clustering->getCentroid(j);
-            std::map<std::string, float> values = {
-                { "Ocean", domain.ocean ? 1.f : 0.f },
-                { "Temperature", centre[0] },
-                { "Percepitation", centre[1] },
-                { "Humidity", centre[2] },
-                { "Height", centre[3] },
-                { "Wind Strength", centre[4] },
-                { "Dist to Ocean", domain.ocean ? 0.f : centre[5] }
-            };
+            std::map<std::string, float> values = { { "Ocean", domain.ocean ? 1.f : 0.f } };
+            for (std::size_t f = 0; f < domain.features.size(); f++) { values[domain.features[f]->name] = centre[f]; }
             biomes[domain.offset + j].setValues(values);
         }
         return true;
+    }
+
+    // Values a side does not cluster on are the average over each biome's cells, so both sides have every key
+    // and the biome table lines up. A biome without cells gets 0
+    void averageOtherValues(const std::vector<Cell>& map, const Domain& domain, const std::vector<int>& cellBiome, std::vector<Biome>& biomes)
+    {
+        for (const BiomeValue& value : BIOME_VALUES)
+        {
+            if (clustersOn(domain, value)) { continue; }
+
+            std::vector<double> sums(domain.count, 0.0);
+            std::vector<int> counts(domain.count, 0);
+            for (std::size_t cell : domain.cells)
+            {
+                int local = cellBiome[cell] - domain.offset;
+                sums[local] += value.of(map[cell]);
+                counts[local]++;
+            }
+            for (int j = 0; j < domain.count; j++)
+            {
+                biomes[domain.offset + j].values[value.name] = counts[j] > 0 ? static_cast<float>(sums[j] / counts[j]) : 0.f;
+            }
+        }
     }
 
     // Ocean biomes run from light to dark blue, ordered from the shallowest to the deepest centre
@@ -144,6 +198,8 @@ void calcBiome(std::vector<Cell>& map, std::vector<Biome>& biomes, int nOcean, i
     Domain ocean;
     Domain land;
     ocean.ocean = true;
+    ocean.features = findValues(OCEAN_FEATURES);
+    land.features = findValues(LAND_FEATURES);
     for (std::size_t i = 0; i < map.size(); i++) { (map[i].oceanBool ? ocean : land).cells.push_back(i); }
 
     // A side with cells gets at least one biome, so every cell has a biome on its own side
@@ -181,6 +237,8 @@ void calcBiome(std::vector<Cell>& map, std::vector<Biome>& biomes, int nOcean, i
     if (method == 1) { smoothProbabilities(map, ocean, land, probSmoothing, cellBiome, cellProb); }
 
     for (int biome : cellBiome) { newBiomes[biome].numCells++; }
+    averageOtherValues(map, ocean, cellBiome, newBiomes);
+    averageOtherValues(map, land, cellBiome, newBiomes);
 
     biomes = std::move(newBiomes);
     for (std::size_t i = 0; i < map.size(); i++)

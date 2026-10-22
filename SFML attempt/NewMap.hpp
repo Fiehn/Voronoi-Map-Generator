@@ -177,7 +177,7 @@ static void genWorld(vor::Voronoi& map,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		closeOceanCell(map.cells, globals); }, "Distance To Oceans", currentStep, 
+		closeOceanCell(map.cells); }, "Distance To Oceans", currentStep, 
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
