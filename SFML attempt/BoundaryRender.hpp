@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <SFML/Graphics.hpp>
 #include "Voronoi.hpp"
+#include "MapColors.hpp"
 
 // Smooth boundary rendering
 // Builds a render mesh from the Voronoi geometry where the edges between differently labelled cells
@@ -36,6 +37,7 @@ struct RenderSettings
 {
     BoundaryStyle styles[BORDER_TYPE_COUNT];
     bool modeTypes[MAP_MODE_COUNT][BORDER_TYPE_COUNT] = {}; // Active boundary types for each map mode
+    MapColors colors; // Height, temperature and precipitation colours
 
     // Debug overlays (not saved)
     bool debugWireframe = false;
@@ -152,3 +154,6 @@ private:
 
 // Boundaries section for the Map Controls window, returns true when the geometry has to be rebuilt
 bool boundarySettingsUI(RenderSettings& settings, int mapMode);
+
+// Save and load buttons for the whole render settings file, returns true when the settings were loaded
+bool renderSettingsFileUI(RenderSettings& settings);

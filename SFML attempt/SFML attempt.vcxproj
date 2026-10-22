@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BoundaryRender.cpp" />
+    <ClCompile Include="MapColors.cpp" />
     <ClCompile Include="CellObjects.cpp" />
     <ClCompile Include="Cells.cpp" />
     <ClCompile Include="CrashHandler.cpp" />
@@ -196,6 +197,7 @@
   <ItemGroup>
     <ClInclude Include="AbstractWorld.hpp" />
     <ClInclude Include="BoundaryRender.hpp" />
+    <ClInclude Include="MapColors.hpp" />
     <ClInclude Include="cell.hpp" />
     <ClInclude Include="clustering.hpp" />
     <ClInclude Include="CultureData_old.hpp">

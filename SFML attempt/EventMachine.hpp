@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <future>
 #include <limits>
 
@@ -58,7 +59,7 @@ static sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
 static void drawTempMap(vor::Voronoi& map, VertexMap& vertexMap) {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
-        sf::Color color(255, 255 / 2 + clamp(5 * map.cells[i].temp, 255 / 2, -255), 0, 255);
+        sf::Color color = temperatureColor(vertexMap.colors().temperature, map.cells[i].temp);
 
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
@@ -88,7 +89,7 @@ static void drawSeasonalTempMap(vor::Voronoi& map, VertexMap& vertexMap,
         // Get seasonal temperature
         float seasonalTemp = seasonCalc.getTemperature(map.cells[i], position, dayOfYear);
         
-        sf::Color color(255, 255 / 2 + clamp(10 * seasonalTemp, 255 / 2, -255), 0, 255); // Increased multiplier for more visible color change
+        sf::Color color = temperatureColor(vertexMap.colors().temperature, seasonalTemp);
 
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
@@ -115,7 +116,7 @@ static void drawPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
-        sf::Color color(0, clamp(255 * map.cells[i].percepitation / 100, 255, 0), 0, 255);
+        sf::Color color = precipitationColor(vertexMap.colors().precipitation, map.cells[i].percepitation);
 
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
@@ -143,7 +144,7 @@ static void drawSeasonalPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap
         
         float seasonalPrecip = seasonCalc.getPercepitationDistribution(map.cells[i], position, dayOfYear).mean;
         
-        sf::Color color(0, clamp(255 * seasonalPrecip / 100, 255, 0), 0, 255);
+        sf::Color color = precipitationColor(vertexMap.colors().precipitation, seasonalPrecip);
 
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
@@ -195,41 +196,9 @@ static void drawSeasonalHumidityMap(vor::Voronoi& map, VertexMap& vertexMap,
 
 static void drawHeightMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
-    if (true) {
-        for (std::size_t i = 0; i < map.cells.size(); i++) {
-            sf::Color color(
-                (128 * (1 - map.cells[i].oceanBool)), 
-                (255 * (1 - map.cells[i].oceanBool)), 
-                255 / 3 * (map.cells[i].oceanBool + 1.75), 
-                55 + (sf::Uint8)std::abs(std::ceil(200 * map.cells[i].height)));
-
-            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-                map.vertices[j].color = color;
-            }
-        }
-        vertexMap.update(map);
-        return;
-    }
-    // Find min/max height for normalization (heights are now uncapped)
-    float minHeight = std::numeric_limits<float>::max();
-    float maxHeight = std::numeric_limits<float>::lowest();
     for (std::size_t i = 0; i < map.cells.size(); i++) {
-        if (map.cells[i].height < minHeight) minHeight = map.cells[i].height;
-        if (map.cells[i].height > maxHeight) maxHeight = map.cells[i].height;
-    }
-    float heightRange = maxHeight - minHeight;
-    if (heightRange < 0.001f) heightRange = 1.0f; // Prevent division by zero
+        sf::Color color = heightColor(vertexMap.colors().height, map.cells[i].height, map.cells[i].oceanBool);
 
-    for (std::size_t i = 0; i < map.cells.size(); i++) {
-        // Normalize height to [0, 1] for display purposes
-        float normalizedHeight = (map.cells[i].height - minHeight) / heightRange;
-        sf::Uint8 alpha = static_cast<sf::Uint8>(55 + 200 * normalizedHeight);
-        sf::Color color(
-            static_cast<sf::Uint8>(128 * (1 - map.cells[i].oceanBool)),
-            static_cast<sf::Uint8>(255 * (1 - map.cells[i].oceanBool)),
-            static_cast<sf::Uint8>(255 / 3 * (map.cells[i].oceanBool + 1.75)),
-            alpha
-        );
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
             map.vertices[j].color = color;
         }
@@ -1887,10 +1856,17 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
                 yMax[i] = dist.getMax();
             }
 
+            // Fit the y-axis to the data range (with a little padding)
+            float yLow = *std::min_element(yMin.begin(), yMin.end());
+            float yHigh = *std::max_element(yMax.begin(), yMax.end());
+            float yPad = (yHigh - yLow) * 0.05f;
+            if (yPad < 0.01f) yPad = std::max(0.01f, std::abs(yHigh) * 0.05f); // Flat data, avoid zero-height range
+
             // Plot the seasonal curve
             if (ImPlot::BeginPlot("##SeasonalCurve", ImVec2(-1, 200))) {
                 ImPlot::SetupAxes("Day of Year", climateVarNames[selectedClimateVar]);
                 ImPlot::SetupAxisLimits(ImAxis_X1, 0, yearLength, ImPlotCond_Always);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, yLow - yPad, yHigh + yPad, ImPlotCond_Always);
 
                 // Plot variance band (min to max)
                 ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);

@@ -82,7 +82,7 @@ int main()
     VertexMap vertexMap;
     std::cout << "Vertex Buffer Available? " << vertexMap.useVertexBuffer << std::endl;
 
-    // Render settings (boundary smoothing and outlines), kept apart from the map config
+    // Render settings (boundary smoothing, outlines and map colours), kept apart from the map config
     RenderSettings renderSettings;
     renderSettings.load_json(RENDER_SETTINGS_FILE);
     vertexMap.renderSettings = &renderSettings;
@@ -155,6 +155,29 @@ int main()
 
 	std::size_t maxCellInMap = map.cells.size();
 
+    // Recolours the map for the current map type
+    auto redrawMap = [&]() {
+        switch (mapType) {
+        case 0: drawHeightMap(map, vertexMap); break;
+        case 1:
+            if (useSeasonalView) { drawSeasonalTempMap(map, vertexMap, seasonCalc, currentDayOfYear); }
+            else { drawTempMap(map, vertexMap); }
+            break;
+        case 2: drawBiomeMap(map, globals, vertexMap); break;
+        case 3:
+            if (useSeasonalView) { drawSeasonalPercepitationMap(map, vertexMap, seasonCalc, currentDayOfYear); }
+            else { drawPercepitationMap(map, vertexMap); }
+            break;
+        case 4:
+            if (useSeasonalView) { drawSeasonalHumidityMap(map, vertexMap, seasonCalc, currentDayOfYear); }
+            else { drawHumidityMap(map, vertexMap); }
+            break;
+        case 5: drawContinentMap(map, globals, vertexMap); break;
+        case 6: drawCulturesMap(map, globals, vertexMap); break;
+        case 7: drawResourceMap(map, vertexMap, selectedResource); break;
+        }
+    };
+
     while (window.isOpen())
     {
         if (showMainMenu)
@@ -212,53 +235,9 @@ int main()
             if (mapType != 1 && mapType != 3 && mapType != 4) {
                 useSeasonalView = false;
             }
-            switch (mapType) {
-			case 0:
-				drawHeightMap(map, vertexMap);
-                drawWindArrowsBool = false;
-				break;
-			case 1:
-                if (useSeasonalView) {
-                    drawSeasonalTempMap(map, vertexMap, seasonCalc, currentDayOfYear);
-                } else {
-				    drawTempMap(map, vertexMap);
-                }
-                drawWindArrowsBool = false;
-				break;
-			case 2:
-				drawBiomeMap(map, globals, vertexMap);
-                drawWindArrowsBool = false;
-				break;
-			case 3:
-                if (useSeasonalView) {
-                    drawSeasonalPercepitationMap(map, vertexMap, seasonCalc, currentDayOfYear);
-                } else {
-				    drawPercepitationMap(map, vertexMap);
-                }
-                drawWindArrowsBool = false;
-				break;
-            case 5:
-                drawContinentMap(map, globals, vertexMap);
-                drawWindArrowsBool = false;
-                break;
-			case 6:
-                drawCulturesMap(map, globals, vertexMap);
-                drawWindArrowsBool = false;
-				break;
-			case 7:
-                drawResourceMap(map, vertexMap, selectedResource);
-				showResourceGenBool = true;
-				drawWindArrowsBool = false;
-                break;
-            case 4:
-                if (useSeasonalView) {
-                    drawSeasonalHumidityMap(map, vertexMap, seasonCalc, currentDayOfYear);
-                } else {
-				    drawHumidityMap(map, vertexMap);
-                }
-				drawWindArrowsBool = false;
-                break;
-			}
+            redrawMap();
+            drawWindArrowsBool = false;
+            if (mapType == 7) { showResourceGenBool = true; }
 		}
 
         // Seasonal day slider (only visible when on Temperature, Precipitation, or Humidity map)
@@ -282,25 +261,13 @@ int main()
                 
                 // Update map when day changes
                 if (std::abs(currentDayOfYear - previousDayOfYear) > 0.5f) {
-                    if (mapType == 1) {
-                        drawSeasonalTempMap(map, vertexMap, seasonCalc, currentDayOfYear);
-                    } else if (mapType == 3) {
-                        drawSeasonalPercepitationMap(map, vertexMap, seasonCalc, currentDayOfYear);
-                    } else if (mapType == 4) {
-                        drawSeasonalHumidityMap(map, vertexMap, seasonCalc, currentDayOfYear);
-                    }
+                    redrawMap();
                     previousDayOfYear = currentDayOfYear;
                 }
             } else {
                 // If we just disabled seasonal view, redraw normal map
                 if (previousDayOfYear >= 0.0f) {
-                    if (mapType == 1) {
-                        drawTempMap(map, vertexMap);
-                    } else if (mapType == 3) {
-                        drawPercepitationMap(map, vertexMap);
-                    } else if (mapType == 4) {
-                        drawHumidityMap(map, vertexMap);
-                    }
+                    redrawMap();
                     previousDayOfYear = -1.0f;
                 }
             }
@@ -355,6 +322,15 @@ int main()
 
         // Rebuilds from the current colours in map.vertices, so the map does not need to be redrawn
         if (boundarySettingsUI(renderSettings, mapType)) { vertexMap.update(map); }
+
+        // Only the value maps use the map colours, redrawing the others would reroll the continent colours
+        bool valueMap = mapType == 0 || mapType == 1 || mapType == 3;
+        if (mapColorsUI(renderSettings.colors) && valueMap) { redrawMap(); }
+        if (renderSettingsFileUI(renderSettings))
+        {
+            if (valueMap) { redrawMap(); }
+            else { vertexMap.update(map); }
+        }
 
         ImGui::End();
 

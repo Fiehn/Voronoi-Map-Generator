@@ -201,6 +201,32 @@ void RenderSettings::save_json(const std::string& filename) const
     }
     j["mode_types"] = jModes;
 
+    const HeightColors& height = colors.height;
+    const TemperatureColors& temperature = colors.temperature;
+    const PrecipitationColors& precipitation = colors.precipitation;
+    j["map_colors"] = {
+        {"height", {
+            {"land", colorToJson(height.land)},
+            {"ocean", colorToJson(height.ocean)},
+            {"overflow", colorToJson(height.overflow)},
+            {"alpha_floor", height.alphaFloor},
+            {"steps_per_unit", height.stepsPerUnit}
+        }},
+        {"temperature", {
+            {"cold", colorToJson(temperature.cold)},
+            {"hot", colorToJson(temperature.hot)},
+            {"cold_overflow", colorToJson(temperature.coldOverflow)},
+            {"hot_overflow", colorToJson(temperature.hotOverflow)},
+            {"steps_per_degree", temperature.stepsPerDegree}
+        }},
+        {"precipitation", {
+            {"dry", colorToJson(precipitation.dry)},
+            {"wet", colorToJson(precipitation.wet)},
+            {"overflow", colorToJson(precipitation.overflow)},
+            {"steps_per_unit", precipitation.stepsPerUnit}
+        }}
+    };
+
     std::ofstream o(filename);
     o << std::setw(4) << j << std::endl;
 }
@@ -238,6 +264,31 @@ bool RenderSettings::load_json(const std::string& filename)
             if (jModes[mode][t].is_boolean()) { modeTypes[mode][t] = jModes[mode][t].get<bool>(); }
         }
     }
+
+    const nlohmann::json& jColors = j.value("map_colors", nlohmann::json::object());
+
+    const nlohmann::json& jHeight = jColors.value("height", nlohmann::json::object());
+    HeightColors& height = colors.height;
+    height.land = colorFromJson(jHeight.value("land", nlohmann::json()), height.land);
+    height.ocean = colorFromJson(jHeight.value("ocean", nlohmann::json()), height.ocean);
+    height.overflow = colorFromJson(jHeight.value("overflow", nlohmann::json()), height.overflow);
+    height.alphaFloor = std::clamp(jHeight.value("alpha_floor", height.alphaFloor), 0, 255);
+    height.stepsPerUnit = std::clamp(jHeight.value("steps_per_unit", height.stepsPerUnit), 1.f, 10000.f);
+
+    const nlohmann::json& jTemperature = jColors.value("temperature", nlohmann::json::object());
+    TemperatureColors& temperature = colors.temperature;
+    temperature.cold = colorFromJson(jTemperature.value("cold", nlohmann::json()), temperature.cold);
+    temperature.hot = colorFromJson(jTemperature.value("hot", nlohmann::json()), temperature.hot);
+    temperature.coldOverflow = colorFromJson(jTemperature.value("cold_overflow", nlohmann::json()), temperature.coldOverflow);
+    temperature.hotOverflow = colorFromJson(jTemperature.value("hot_overflow", nlohmann::json()), temperature.hotOverflow);
+    temperature.stepsPerDegree = std::clamp(jTemperature.value("steps_per_degree", temperature.stepsPerDegree), 0.1f, 10000.f);
+
+    const nlohmann::json& jPrecipitation = jColors.value("precipitation", nlohmann::json::object());
+    PrecipitationColors& precipitation = colors.precipitation;
+    precipitation.dry = colorFromJson(jPrecipitation.value("dry", nlohmann::json()), precipitation.dry);
+    precipitation.wet = colorFromJson(jPrecipitation.value("wet", nlohmann::json()), precipitation.wet);
+    precipitation.overflow = colorFromJson(jPrecipitation.value("overflow", nlohmann::json()), precipitation.overflow);
+    precipitation.stepsPerUnit = std::clamp(jPrecipitation.value("steps_per_unit", precipitation.stepsPerUnit), 0.01f, 10000.f);
 
     geometryRevision++;
     styleRevision++;
@@ -1039,14 +1090,19 @@ bool boundarySettingsUI(RenderSettings& settings, int mapMode)
         ImGui::TreePop();
     }
 
+    if (geometryChanged) { settings.geometryRevision++; }
+    return geometryChanged;
+}
+
+bool renderSettingsFileUI(RenderSettings& settings)
+{
     if (ImGui::Button("Save Style")) { settings.save_json(RENDER_SETTINGS_FILE); }
+    if (ImGui::BeginItemTooltip()) { ImGui::Text("Saves the boundaries and map colours"); ImGui::EndTooltip(); }
     ImGui::SameLine();
     if (ImGui::Button("Load Style"))
     {
         if (settings.load_json(RENDER_SETTINGS_FILE)) { return true; }
         LOG_WARNING(Graphics, "Could not load render settings", std::string(RENDER_SETTINGS_FILE));
     }
-
-    if (geometryChanged) { settings.geometryRevision++; }
-    return geometryChanged;
+    return false;
 }
