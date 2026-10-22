@@ -53,8 +53,9 @@ public:
 	float condensation_rate = 0.15f; // rate at which moisture condenses into precipitation
 
     // Biomes
-    unsigned int kmeans_max_iter = 5; // The maximum amount of iterations for the kmeans algorithm
-    unsigned int n_biomes = 8; // The amount of clusters for the kmeans algorithm (amount of biomes)
+    unsigned int kmeans_max_iter = 15; // The maximum amount of iterations for the clustering (KMeans and every GMM restart)
+    unsigned int n_ocean_biomes = 3; // The amount of clusters for ocean cells (amount of ocean biomes)
+    unsigned int n_land_biomes = 8; // The amount of clusters for land cells (amount of land biomes)
     unsigned int biome_method = 1; // Method 1 is GMM and method 2 is Kmeans
     float prob_smoothing = 0.5f;
 
@@ -115,7 +116,8 @@ private:
 			{"sealevel", sealevel},
 			{"percepitation_repeats", percepitation_repeats},
 			{"kmeans_max_iter", kmeans_max_iter},
-			{"n_biomes", n_biomes},
+			{"n_ocean_biomes", n_ocean_biomes},
+			{"n_land_biomes", n_land_biomes},
 			{"biome_method", biome_method},
 			{"prob_smoothing", prob_smoothing},
 			{"max_percipitation", max_percipitation},
@@ -164,7 +166,9 @@ private:
 		sealevel = j.at("sealevel").get<float>();
 		percepitation_repeats = j.at("percepitation_repeats").get<unsigned int>();
 		kmeans_max_iter = j.at("kmeans_max_iter").get<unsigned int>();
-		n_biomes = j.at("n_biomes").get<unsigned int>();
+		// Older configs only have n_biomes, which can not be split between ocean and land
+		n_ocean_biomes = j.value("n_ocean_biomes", 3u);
+		n_land_biomes = j.value("n_land_biomes", 8u);
 		biome_method = j.at("biome_method").get<int>();
 		prob_smoothing = j.at("prob_smoothing").get<float>();
 		max_percipitation = j.at("max_percipitation").get<float>();

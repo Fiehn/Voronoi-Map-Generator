@@ -144,11 +144,6 @@ static void genWorld(vor::Voronoi& map,
                 lines.append(sf::Vertex(sf::Vector2f(MAXWIDTH, globals.convergenceLines[std::floor(i / 2)] * MAXHEIGHT), sf::Color::Green));
             }
         }
-        std::vector<sf::Color> biomeColors = randomColors(config.n_biomes);
-        for (int i = 0; i < config.n_biomes; i++) {
-            globals.addBiome("Biome" + std::to_string(i), biomeColors[i]);
-        }
-        biomeColors.clear();
         map.clearMap();
         }, "Initializing Global Variables", currentStep,
         totalSteps, window, loadingSprite, loadingBar,
@@ -214,7 +209,7 @@ static void genWorld(vor::Voronoi& map,
         totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcBiome(map.cells, globals, config.kmeans_max_iter, config.biome_method); }, "Calculating Biomes", currentStep, 
+		calcBiome(map.cells, globals.biomes, config.n_ocean_biomes, config.n_land_biomes, config.kmeans_max_iter, config.biome_method, config.prob_smoothing); }, "Calculating Biomes", currentStep, 
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {

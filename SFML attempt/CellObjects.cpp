@@ -5,15 +5,6 @@
 
 void Biome::setValues(const std::map<std::string, float>& value) {
     values = value;
-
-    if (values.at("Ocean") > 0.001f) {
-        isOcean = true;
-        values.at("Ocean") = 1;
-    }
-    else {
-        isOcean = false;
-        values.at("Ocean") = 0;
-    }
 }
 
 

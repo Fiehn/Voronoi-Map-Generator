@@ -486,22 +486,17 @@ public:
 		return it->second;
 	}
     std::vector<sf::Color> getRandomColors(int numColors) {
-        // Without replacement
-        if (numColors > colorMap.size()) {
-            throw std::invalid_argument("Number of colors requested exceeds number of colors in the map");
+        // Without replacement until the table runs out, after that the shuffled table repeats
+        std::vector<sf::Color> table;
+        for (auto const& pair : colorMap) {
+            table.push_back(pair.second);
+        }
+        for (int i = static_cast<int>(table.size()) - 1; i > 0; i--) {
+            std::swap(table[i], table[rand() % (i + 1)]);
         }
         std::vector<sf::Color> colors;
-        int size = colorMap.size();
-        std::vector<int> usedIndex = {};
-        for (auto const& pair : colorMap) {
-            int index = rand() % size;
-            while (std::find(usedIndex.begin(), usedIndex.end(), index) != usedIndex.end()) {
-				index = rand() % size;
-			}
-            auto it = colorMap.begin();
-            std::advance(it, index);
-            colors.push_back(it->second);
-            usedIndex.push_back(index);
+        for (int i = 0; i < numColors; i++) {
+            colors.push_back(table[i % table.size()]);
         }
 		return colors;
     }

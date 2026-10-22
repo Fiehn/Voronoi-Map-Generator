@@ -540,15 +540,9 @@ struct BiomeUI {
         MapConfig& config) {
         biomeGenFuture = std::async(std::launch::async,
             [this, &map, &globals, &config] {  // Explicit captures
-                // Biome generation logic
-                globals.biomes.clear();
-                auto biomeColors = randomColors(config.n_biomes);
-
-                for (int i = 0; i < config.n_biomes; i++) {
-                    globals.addBiome("Biome" + std::to_string(i), biomeColors[i]);
-                }
-
-                calcBiome(map.cells, globals,
+                calcBiome(map.cells, globals.biomes,
+                    config.n_ocean_biomes,
+                    config.n_land_biomes,
                     config.kmeans_max_iter,
                     config.biome_method,
                     config.prob_smoothing);
@@ -579,8 +573,6 @@ struct BiomeUI {
         ImGui::Begin("Biome Generation Controls");
 
         if (ImGui::Button("Generate Biomes", { 200,50 })) {
-            // Ensure at least 1 biome exists before generation
-            config.n_biomes = (config.n_biomes < 1) ? 1 : config.n_biomes;
             generateBiomesAsync(map, globals, config);
             // Update the biome colors
 			changeBiomeColorBool = true;
@@ -636,24 +628,28 @@ struct BiomeUI {
             ImGui::EndTooltip();
         }
 
-        // Biome count input with minimum enforcement
-        ImGui::InputUInt("Amount of Biomes", &config.n_biomes);
-        if (config.n_biomes < 1) {
-            config.n_biomes = 1;
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1, 0, 0, 1), "Min 1");
-        }
-        else if (config.n_biomes > 99)
-        {
-			config.n_biomes = 99;
-			ImGui::SameLine();
-			ImGui::TextColored(ImVec4(1, 0, 0, 1), "Max 99");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::Text("Increase if generated biomes lack diversity.\n Colors will repeat at 41 biomes.");
-            ImGui::EndTooltip();
-        }
+        // Biome count inputs with minimum and maximum enforcement, ocean and land are clustered separately
+        auto biomeCountInput = [](const char* label, unsigned int& count, const char* tooltip) {
+            ImGui::InputUInt(label, &count);
+            if (count < 1) {
+                count = 1;
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), "Min 1");
+            }
+            else if (count > 99)
+            {
+                count = 99;
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), "Max 99");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("%s", tooltip);
+                ImGui::EndTooltip();
+            }
+        };
+        biomeCountInput("Ocean Biomes", config.n_ocean_biomes, "Amount of biomes for ocean cells, coloured from shallow to deep.");
+        biomeCountInput("Land Biomes", config.n_land_biomes, "Amount of biomes for land cells.\nIncrease if generated biomes lack diversity.\nColors will repeat after 42 biomes.");
 
         ImGui::End();
     }
@@ -736,10 +732,19 @@ void showNewMap(vor::Voronoi& map,
     }
 
 
-    ImGui::InputUInt("Amount of Biomes", &config.n_biomes);
+    ImGui::InputUInt("Ocean Biomes", &config.n_ocean_biomes);
+    config.n_ocean_biomes = std::clamp(config.n_ocean_biomes, 1u, 99u);
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
-        ImGui::Text("Amount of biomes to generate initially. \nLarge maps will often have a lot of ocean biomes.");
+        ImGui::Text("Amount of biomes to generate for ocean cells (1-99).");
+        ImGui::EndTooltip();
+    }
+
+    ImGui::InputUInt("Land Biomes", &config.n_land_biomes);
+    config.n_land_biomes = std::clamp(config.n_land_biomes, 1u, 99u);
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::Text("Amount of biomes to generate for land cells (1-99).");
         ImGui::EndTooltip();
     }
 
@@ -1536,6 +1541,7 @@ void biomeCountPieChart(GlobalWorldObjects& globals, bool& colorChange)
 
 void RenderBiomeTable(GlobalWorldObjects& globals, bool& doChange) {
     auto& biomes = globals.biomes;
+    if (biomes.empty()) { return; }
 
     static bool showValues = false; // Track the state of the "Read More" button
 
@@ -1912,6 +1918,8 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
     for (int i = 0; i < cell.biome_prob.size(); i++)
     {
         const Biome& biome = globals.biomes[i];
+        // The other side of the coast is always 0
+        if (biome.isOcean != cell.oceanBool) { continue; }
         ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
         ImGui::TextColored(color, "%s: %.2f", biome.name.c_str(), cell.biome_prob[i]);
     }
