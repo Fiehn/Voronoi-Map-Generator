@@ -57,10 +57,9 @@ struct GenStepWrapper {
     }
 };
 
-static void genWorld(vor::Voronoi& map,
+static void genWorld(vor::SphereVoronoi& planet,
     GlobalWorldObjects& globals,
     sf::RenderWindow& window,
-    VertexMap& vertexMap,
     sf::VertexArray& lines,
 	SeasonalCalculator& seasonCalc,
     const unsigned int MAXWIDTH,
@@ -113,8 +112,8 @@ static void genWorld(vor::Voronoi& map,
 		progressText.setFillColor(sf::Color::White);
 	}
 
-    // Total processing steps 
-    const int totalSteps = 22;
+    // Total processing steps
+    const int totalSteps = 15;
     int currentStep = 0;
 
     // Initial draw
@@ -130,99 +129,70 @@ static void genWorld(vor::Voronoi& map,
         globals.setGlobalTemp(config.global_temp_avg);
 		globals.generatePlanet(config.earthLike);
         globals.generateConvergenceLines();
-		int numLines = globals.convergenceLines.size();
-        lines.clear();
-        lines.resize(2 * numLines);
-        for (int i = 0; i < numLines * 2; i++)
-        {
-            if (i % 2 == 0)
-            {
-                lines.append(sf::Vertex(sf::Vector2f(0, globals.convergenceLines[std::floor(i / 2)] * MAXHEIGHT), sf::Color::Green));
-            }
-            else
-            {
-                lines.append(sf::Vertex(sf::Vector2f(MAXWIDTH, globals.convergenceLines[std::floor(i / 2)] * MAXHEIGHT), sf::Color::Green));
-            }
-        }
-        map.clearMap();
+        lines.clear(); // The convergence lines are drawn on the sphere again with the overlays
+        planet.clearMap();
         }, "Initializing Global Variables", currentStep,
         totalSteps, window, loadingSprite, loadingBar,
         progressText, MAXWIDTH, MAXHEIGHT);
 
 
     GenStepWrapper::RunStep([&]() {
-        map.fillMap(config.ncellx, config.ncelly, MAXWIDTH, MAXHEIGHT,
-        config.point_jitter);
+        planet.fillMap(static_cast<int>(config.n_cells), config.point_jitter);
+        const vor::SphereValidation check = vor::validate(planet);
+        if (check.ok) { LOG_INFO(Map, "Sphere Voronoi valid:", check.report); }
+        else { LOG_ERROR(Map, "Sphere Voronoi failed validation:", check.report); }
         }, "Generating Voronoi diagram", currentStep, totalSteps, window,
         loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
     // Create the map (Step 2-15)
     auto start = std::chrono::high_resolution_clock::now();
 
     GenStepWrapper::RunStep([&]() {
-        random_height_gen(map.cells, globals, config, map.points, map.voronoi_points); }, "Generating Heightmap", currentStep,
+        planetHeightGen(planet, globals, config); }, "Generating Heightmap", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
- 
+
 	GenStepWrapper::RunStep([&]() {
-		smooth_height(map.cells, config.rise_threshold, config.height_smooth_repeats,
+		smooth_height(planet.cells, config.rise_threshold, config.height_smooth_repeats,
 		config.smooth_method); }, "Smoothing Heightmap", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		noise_height(map.cells, globals, config, map.points,
-        config.height_noise_repeats); }, "Adding Noise to Heightmap", currentStep, 
+		planetNoiseHeight(planet, globals, config,
+        config.height_noise_repeats); }, "Adding Noise to Heightmap", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcHeightValues(map.cells, globals, config.delta_coast_line); }, "Finishing Height Map", currentStep, 
+		calcHeightValues(planet.cells, globals, config.delta_coast_line); }, "Finishing Height Map", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		closeOceanCell(map.cells); }, "Distance To Oceans", currentStep, 
+		closeOceanCell(planet.cells); }, "Distance To Oceans", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcWind(map.cells, map.points, MAXHEIGHT, globals); }, "Calculating Wind", currentStep, 
+		planetCalcWind(planet, globals); }, "Calculating Wind", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcRiverStart(map.cells, globals, map.points, map.voronoi_points); }, "Calculating River", currentStep, 
+		planetCalcTemp(planet, globals); }, "Calculating Temperatures", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcTemp(map.cells, globals, map.points, MAXHEIGHT); }, "Calculating Temperatures", currentStep, 
+		smoothTemps(planet.cells, config.temp_smooth_repeats); }, "Smoothing Temperatures", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		smoothTemps(map.cells, config.temp_smooth_repeats); }, "Smoothing Temperatures", currentStep, 
+		planetCalcPercepitation(planet, globals, config); }, "Calculating Percepetation", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcPercepitation(map.cells, map.points, globals, config.percepitation_repeats, config.max_percipitation,config.ocean_evaporation_factor,config.land_evapotranspiration_factor, config.moisture_loss_rate, config.orographic_factor, config.moisture_loss_rate); }, "Calculating Percepetation", currentStep, 
+		calcHumid(planet.cells); }, "Calculating Humidity", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcHumid(map.cells); }, "Calculating Humidity", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
-
-    GenStepWrapper::RunStep([&]() {
-        calcClimateVariance(map.cells, map.points, globals, (float)MAXHEIGHT); }, "Calculating Climate Variance", currentStep,
+        planetCalcClimateVariance(planet, globals); }, "Calculating Climate Variance", currentStep,
         totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
-    GenStepWrapper::RunStep([&]() {
-		calcBiome(map.cells, globals.biomes, config.n_ocean_biomes, config.n_land_biomes, config.kmeans_max_iter, config.biome_method, config.prob_smoothing); }, "Calculating Biomes", currentStep, 
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
-
-    GenStepWrapper::RunStep([&]() {
-		ResourceGen::generateMapResources(map.cells, globals); }, "Generating Resources", currentStep,
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
-
-    // POP AND culture
-
-    GenStepWrapper::RunStep([&]() {
-		vertexMap.clear();
-		vertexMap.create(map);
-		vertexMap.genVertexMap(map); }, "Generating Vertex Buffer", currentStep,
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+    // Still being moved onto the sphere: rivers (which ran between wind and temperature), biomes and resources
 
     GenStepWrapper::RunStep([]() {}, "Finishing up the map!", currentStep, totalSteps, window,
         loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);

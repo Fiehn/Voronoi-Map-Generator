@@ -115,6 +115,8 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <EnableModules>false</EnableModules>
+      <!-- The IDE's background scan writes <name>.obj for headers too, the extension keeps it from overwriting these -->
+      <ObjectFileName>$(IntDir)%(Filename)%(Extension).obj</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,6 +137,8 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <EnableModules>false</EnableModules>
+      <!-- The IDE's background scan writes <name>.obj for headers too, the extension keeps it from overwriting these -->
+      <ObjectFileName>$(IntDir)%(Filename)%(Extension).obj</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -198,6 +202,8 @@
     <ClCompile Include="PlanetCamera.cpp" />
     <ClCompile Include="GlobeRenderer.cpp" />
     <ClCompile Include="PlanetView.cpp" />
+    <ClCompile Include="PlanetGen.cpp" />
+    <ClCompile Include="PlanetColors.cpp" />
     <ClCompile Include="windArrows.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -265,6 +271,8 @@
     <ClInclude Include="PlanetCamera.hpp" />
     <ClInclude Include="GlobeRenderer.hpp" />
     <ClInclude Include="PlanetView.hpp" />
+    <ClInclude Include="PlanetGen.hpp" />
+    <ClInclude Include="PlanetColors.hpp" />
     <ClInclude Include="CellObjects.hpp" />
     <ClInclude Include="util.hpp" />
     <ClInclude Include="SphereMath.hpp" />

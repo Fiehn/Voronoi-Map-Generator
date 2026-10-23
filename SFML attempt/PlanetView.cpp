@@ -1,6 +1,8 @@
 #include "PlanetView.hpp"
 #include "Logger.h"
 #include "imgui.h"
+#include "SphereMath.hpp"
+#include <limits>
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -48,12 +50,19 @@ void PlanetView::rebuild(const vor::SphereVoronoi& planet)
     renderer.build(planet);
     cellSpacing = planet.cells.empty() ? 0.f : std::sqrt(4.f * glm::pi<float>() / planet.cells.size());
     hoveredCell = -1;
-    recolor(planet);
+    uploadColors(planet);
 }
 
-void PlanetView::recolor(const vor::SphereVoronoi& planet)
+void PlanetView::setCellColors(const vor::SphereVoronoi& planet, const std::vector<sf::Color>& colors)
 {
-    renderer.setCellColors(debugCellColors(planet, colorMode));
+    mapColors = colors;
+    uploadColors(planet);
+}
+
+void PlanetView::uploadColors(const vor::SphereVoronoi& planet)
+{
+    if (debugColors) renderer.setCellColors(debugCellColors(planet, debugMode));
+    else if (mapColors.size() == planet.cells.size()) renderer.setCellColors(mapColors);
 }
 
 float PlanetView::maxZoom() const
@@ -125,35 +134,38 @@ void PlanetView::draw(sf::RenderWindow& window)
     window.resetGLStates();
 }
 
-void PlanetView::ui(vor::SphereVoronoi& planet, sf::RenderWindow& window)
+void PlanetView::ui(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals, sf::RenderWindow& window)
 {
-    ImGui::Begin("Globe (preview)");
-    ImGui::TextWrapped("Sphere cells with debug colours. The simulation still runs on the flat map until it is ported to the sphere.");
+    ImGui::Begin("Globe");
 
-    ImGui::InputInt("Cells", &previewCells, 1000, 10000);
-    previewCells = std::max(100, std::min(previewCells, 1000000));
-    ImGui::SliderFloat("Jitter", &previewJitter, 0.f, 1.f);
-    if (ImGui::BeginItemTooltip()) { ImGui::Text("How far each point may move from its spiral position, in cell spacings"); ImGui::EndTooltip(); }
-
-    if (ImGui::Button("Regenerate") || !hasPlanet()) {
-        planet.fillMap(previewCells, previewJitter);
-        const vor::SphereValidation check = vor::validate(planet);
-        if (check.ok) { LOG_INFO(Map, "Sphere Voronoi valid:", check.report); }
-        else { LOG_ERROR(Map, "Sphere Voronoi failed validation:", check.report); }
-        if (window.setActive(true)) rebuild(planet);
+    const bool oldDebug = debugColors;
+    const int oldMode = debugMode;
+    ImGui::Checkbox("Debug colours", &debugColors);
+    if (debugColors) {
+        ImGui::SameLine();
+        ImGui::RadioButton("Cells", &debugMode, 0); ImGui::SameLine();
+        ImGui::RadioButton("Lat/Lon grid", &debugMode, 1);
+        if (ImGui::BeginItemTooltip()) { ImGui::Text("White: prime meridian, red: 90E, warm: north, cool: south"); ImGui::EndTooltip(); }
     }
-
-    const int oldMode = colorMode;
-    ImGui::RadioButton("Cells", &colorMode, 0); ImGui::SameLine();
-    ImGui::RadioButton("Lat/Lon grid", &colorMode, 1);
-    if (ImGui::BeginItemTooltip()) { ImGui::Text("White: prime meridian, red: 90E, warm: north, cool: south"); ImGui::EndTooltip(); }
-    if (colorMode != oldMode && window.setActive(true)) recolor(planet);
+    if ((debugColors != oldDebug || debugMode != oldMode) && window.setActive(true)) uploadColors(planet);
 
     ImGui::Separator();
     ImGui::Text("Centre %.2f, %.2f  zoom %.0f px/rad (%.1f px per cell)", camera.lat, camera.lon, camera.zoom, camera.zoom * cellSpacing);
     if (hoveredCell >= 0 && hoveredCell < static_cast<int>(planet.cells.size())) {
         const Cell& cell = planet.cells[hoveredCell];
         ImGui::Text("Cell %d at %.2f, %.2f, %d sides", hoveredCell, planet.cellLat[hoveredCell], planet.cellLon[hoveredCell], static_cast<int>(cell.vertex.size()));
+        ImGui::Text("Height %.3f (rise %.3f), %s%s, %d cells from the %s", cell.height, cell.rise,
+            cell.oceanBool ? "ocean" : "land", cell.coastBool ? ", coast" : "",
+            cell.distToOcean == std::numeric_limits<int>::max() ? -1 : cell.distToOcean, cell.oceanBool ? "land" : "ocean");
+        if (cell.continent >= 0 && cell.continent < static_cast<int>(globals.continents.size())) {
+            const Continent& plate = globals.continents[cell.continent];
+            const char* type = plate.plateType == PlateType::Oceanic ? "oceanic" : plate.plateType == PlateType::Continental ? "continental" : "mixed";
+            const glm::vec3 velocity = plate.velocityAt(planet.points[hoveredCell]);
+            ImGui::Text("Plate %d (%s), moving %.2f toward %.0f deg%s", cell.continent, type,
+                glm::length(velocity), tangentToBearing(planet.points[hoveredCell], velocity), cell.volcanicActivity ? ", volcanic" : "");
+        }
+        ImGui::Text("Temperature %.1f (sd %.1f), precipitation %.1f, humidity %.2f", cell.temp, cell.tempVariance, cell.percepitation, cell.humidity);
+        ImGui::Text("Wind %.2f blowing toward %.0f deg", cell.windStr, cell.windDir);
         std::string neighbours;
         for (int nb : cell.neighbors) neighbours += std::to_string(nb) + " ";
         ImGui::TextWrapped("Neighbours: %s", neighbours.c_str());

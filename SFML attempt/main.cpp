@@ -26,6 +26,7 @@
 #include "GLContext.hpp"
 #include "SphereVoronoi.hpp"
 #include "PlanetView.hpp"
+#include "PlanetColors.hpp"
 #include "NewMap.hpp"
 #include "EventMachine.hpp"
 #include "MainMenu.hpp"
@@ -83,14 +84,13 @@ int main()
     sf::Font font;
     if (!font.loadFromFile("Fonts/Roboto-Medium.ttf")) { std::cout << "Could not load font" << std::endl; }
 
-    // Init the map
+    // The old flat map. It stays empty, the panels that still read it move to the planet next
     vor::Voronoi map;
 
-    // The sphere planet, previewed on the globe until the simulation moves onto it
+    // The planet: generated on the sphere and shown on the globe
     vor::SphereVoronoi planet;
     PlanetView planetView;
-    bool globeViewBool = false;
-    
+
     // Create the vertex map
     VertexMap vertexMap;
     std::cout << "Vertex Buffer Available? " << vertexMap.useVertexBuffer << std::endl;
@@ -155,41 +155,29 @@ int main()
     sf::Clock deltaClock;
 
 	// Seasonal Calculator (I should create a collected class for all of these calculators)
-    SeasonalCalculator seasonCalc(globals, windowHeight / 2);
+    SeasonalCalculator seasonCalc(globals);
 
     // Generate the actual map:
-    genWorld(map, globals, window, vertexMap,
+    genWorld(planet, globals, window,
         lines, seasonCalc,
         windowWidth, windowHeight,
 		font, config, seed, popManager);
+    window.setActive(true);
+    planetView.rebuild(planet);
 
-    // Draw initial wind arrows
-	windArrows = generateWindArrows(map, globalZoom, view, window.getSize());
+	std::size_t maxCellInMap = planet.cells.size();
 
-	std::size_t maxCellInMap = map.cells.size();
-
-    // Recolours the map for the current map type
+    // Recolours the globe for the current map type, on the slider's day when the seasonal view is on
     auto redrawMap = [&]() {
-        switch (mapType) {
-        case 0: drawHeightMap(map, vertexMap); break;
-        case 1:
-            if (useSeasonalView) { drawSeasonalTempMap(map, vertexMap, seasonCalc, currentDayOfYear); }
-            else { drawTempMap(map, vertexMap); }
-            break;
-        case 2: drawBiomeMap(map, globals, vertexMap); break;
-        case 3:
-            if (useSeasonalView) { drawSeasonalPercepitationMap(map, vertexMap, seasonCalc, currentDayOfYear); }
-            else { drawPercepitationMap(map, vertexMap); }
-            break;
-        case 4:
-            if (useSeasonalView) { drawSeasonalHumidityMap(map, vertexMap, seasonCalc, currentDayOfYear); }
-            else { drawHumidityMap(map, vertexMap); }
-            break;
-        case 5: drawContinentMap(map, globals, vertexMap); break;
-        case 6: drawCulturesMap(map, globals, vertexMap); break;
-        case 7: drawResourceMap(map, vertexMap, selectedResource); break;
+        if (!window.setActive(true)) { return; }
+        if (useSeasonalView) {
+            planetView.setCellColors(planet, seasonalMapModeColors(planet, globals, renderSettings.colors, mapType, selectedResource, seasonCalc, currentDayOfYear));
+        }
+        else {
+            planetView.setCellColors(planet, mapModeColors(planet.cells, globals, renderSettings.colors, mapType, selectedResource));
         }
     };
+    redrawMap();
 
     while (window.isOpen())
     {
@@ -204,20 +192,15 @@ int main()
         {
             ImGui::SFML::ProcessEvent(window, event);
 
-            if (globeViewBool)
+            planetView.handleEvent(event, window);
+
+            // The flat map's keys: Escape closes, T, B and P toggle the temperature, biome and precipitation maps
+            if (event.type == sf::Event::KeyPressed && !showLoadConfig && !showSaveConfig && !ImGui::GetIO().WantCaptureKeyboard)
             {
-                planetView.handleEvent(event, window);
-                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) { window.close(); }
-            }
-            else
-            {
-                eventloop(window, event,
-                    mapType, moving, oldPos,
-                    drawHighlightBool, highlight,
-                    map, highlightedCell, view, globalZoom,
-                    windowWidth, windowHeight, showLoadConfig, showSaveConfig,
-                    windArrows, drawWindArrowsBool
-                    );
+                if (event.key.code == sf::Keyboard::Escape) { window.close(); }
+                else if (event.key.code == sf::Keyboard::T) { mapType = mapType == 1 ? 0 : 1; }
+                else if (event.key.code == sf::Keyboard::B) { mapType = mapType == 2 ? 0 : 2; }
+                else if (event.key.code == sf::Keyboard::P) { mapType = mapType == 3 ? 0 : 3; }
             }
 
 			if (event.type == sf::Event::Closed) {
@@ -238,12 +221,6 @@ int main()
 
         ImGui::Begin("Map Controls");
 
-        if (ImGui::Checkbox("Globe view (preview)", &globeViewBool) && globeViewBool && !planetView.hasPlanet())
-        {
-            // Same cell count as the flat map, the old grid size is a product
-            planetView.previewCells = static_cast<int>(config.ncellx * config.ncelly);
-        }
-
         // Radio Buttons for the different maps
         ImGui::RadioButton("Height", &mapType, 0); ImGui::SameLine();
         ImGui::RadioButton("Temperature", &mapType, 1); ImGui::SameLine();
@@ -263,7 +240,6 @@ int main()
                 useSeasonalView = false;
             }
             redrawMap();
-            drawWindArrowsBool = false;
             if (mapType == 7) { showResourceGenBool = true; }
 		}
 
@@ -280,9 +256,8 @@ int main()
             if (useSeasonalView) {
                 ImGui::SliderFloat("Day of Year", &currentDayOfYear, 0.0f, yearLength, "%.0f");
                 
-                // Show season name
-                sf::Vector2f centerPos(windowWidth / 2.0f, windowHeight / 2.0f);
-                const char* seasonName = seasonCalc.getSeasonName(centerPos, currentDayOfYear);
+                // Show the season at the centre of the view
+                const char* seasonName = seasonCalc.getSeasonName(planetView.camera.lat, currentDayOfYear);
                 ImGui::SameLine();
                 ImGui::Text("(%s)", seasonName);
                 
@@ -301,18 +276,13 @@ int main()
             ImGui::Separator();
         }
 
-		ImGui::Checkbox("Draw Lines", &drawConvergenceLinesBool); ImGui::SameLine();
-        ImGui::Checkbox("Wind Arrows", &drawWindArrowsBool);
-		ImGui::Checkbox("Highlight Cell", &drawHighlightBool); ImGui::SameLine();
-		ImGui::Checkbox("Draw Rivers", &drawRiversBool); 
-		ImGui::Checkbox("Draw Lakes", &drawLakesBool); 
-        if (ImGui::BeginItemTooltip()) { ImGui::Text("Drawing lakes is currently broken."); ImGui::EndTooltip(); }
+		// The overlays (convergence lines, wind arrows, rivers, lakes, plate borders) come back on the globe later
 
 		ImGui::Checkbox("Planetary Parameters", &showPlanetaryParamsBool);
 		ImGui::Checkbox("Continent Viewer", &showContinentViewerBool);
 		ImGui::Checkbox("Population Viewer", &showPopulationVierwerBool);
 
-        ImGui::Text("Number of cells: %d", map.cells.size());
+        ImGui::Text("Number of cells: %d", planet.cells.size());
         ImGui::Text("Number of biomes: %d", globals.biomes.size());
         ImGui::Text("Sealevel: %.2f", globals.seaLevel);
         ImGui::Text("Global Temperature: %.2f", globals.globalTempAvg);
@@ -322,14 +292,14 @@ int main()
 
 
         // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position
-        highligtedCellObservation(map, globals, highlightedCell, &seasonCalc, &popManager);
+        highligtedCellObservation(planet, globals, highlightedCell, &seasonCalc, &popManager);
         
         if (mapType==2)
         {
             biomeObservation(globals,changeBiomeColorBool);
 
             if (changeBiomeColorBool) {
-                drawBiomeMap(map, globals, vertexMap);
+                redrawMap();
                 changeBiomeColorBool = false;
             }
         }
@@ -341,37 +311,35 @@ int main()
 		ImGui::Checkbox("Find Cell", &showFindSearcherBool); 
         if (ImGui::BeginItemTooltip()) { ImGui::Text("Find a cell by its index"); ImGui::EndTooltip(); }
 
-        if(ImGui::Button("Switch origin of vertexMap")) { vertexMap.switchOrigin(map); };
-        if (ImGui::Button("Check vertexMap")) { std::cout << vertexMap.useVertexBuffer << " : Array: " << vertexMap.vertexArray.getVertexCount() << " : Buffer: " << vertexMap.vertexBuffer.getVertexCount() << std::endl; };
-
         if (ImGui::Button("Save Config", { 200,50 })) { showSaveConfig = !showSaveConfig; }
         else if (ImGui::Button("Load Config", { 200, 50 })) { showLoadConfig = !showLoadConfig; };
 
-        // Rebuilds from the current colours in map.vertices, so the map does not need to be redrawn
-        if (boundarySettingsUI(renderSettings, mapType)) { vertexMap.update(map); }
+        // The boundary smoothing settings come back when the smoothing moves onto the sphere
 
         // Only the value maps use the map colours, redrawing the others would reroll the continent colours
         bool valueMap = mapType == 0 || mapType == 1 || mapType == 3;
         if (mapColorsUI(renderSettings.colors) && valueMap) { redrawMap(); }
-        if (renderSettingsFileUI(renderSettings))
-        {
-            if (valueMap) { redrawMap(); }
-            else { vertexMap.update(map); }
-        }
+        if (renderSettingsFileUI(renderSettings) && valueMap) { redrawMap(); }
 
         ImGui::End();
 
-        if (globeViewBool) { planetView.ui(planet, window); }
+        planetView.ui(planet, globals, window);
 
         if (showSimulationBool) { tickerControls(ticker, simulationSpeed, map, globals, config, vertexMap); }
 
 		searchFinder(map, findingCells, findCell, showFindSearcherBool, maxCellInMap);
-        biomeUI.biomePopUp(map, globals, config, showBiomeGenBool, mapType, changeBiomeColorBool);
-        showNewMap(map, globals, window, vertexMap,
-			windArrows, lines, seasonCalc,
+        biomeUI.biomePopUp(planet, globals, config, showBiomeGenBool, mapType, changeBiomeColorBool);
+        if (showNewMap(planet, globals, window,
+			lines, seasonCalc,
                 windowWidth, windowHeight,
                 font, config, seed, popManager,
-                showNewMapBool);
+                showNewMapBool))
+        {
+            window.setActive(true);
+            planetView.rebuild(planet);
+            maxCellInMap = planet.cells.size();
+            redrawMap();
+        }
 		configLoadSave(config, showLoadConfig, showSaveConfig);
 		planetaryParamsViewer(globals, showPlanetaryParamsBool);
         continentViewer(globals, showContinentViewerBool);
@@ -387,61 +355,10 @@ int main()
             highlightedCell = vor::INVALID_INDEX;
         }
 
-        if (globeViewBool) { planetView.update(window, planet); }
+        planetView.update(window, planet);
 
         window.clear();
-
-        if (globeViewBool)
-        {
-            planetView.draw(window);
-        }
-        else
-        {
-            vertexMap.draw(window);
-
-            if (drawConvergenceLinesBool) {
-                window.draw(lines);
-            }
-            if (drawWindArrowsBool) {
-                window.draw(windArrows);
-            }
-            if (highlightedCell != vor::INVALID_INDEX) {
-                window.draw(highlight);
-            }
-            if (showFindSearcherBool)
-            {
-                sf::VertexArray new_highlight;
-                for (int i = 0; i < findingCells.size(); i++)
-                {
-                    if (findingCells[i] < map.cells.size())
-                    {
-                        new_highlight = drawHighlightCell(map, findingCells[i]);
-                        window.draw(new_highlight);
-                    }
-                }
-            }
-            if (drawRiversBool)
-            {
-                drawRivers(globals, window);
-            }
-            if (drawLakesBool)
-            {
-                drawLakes(globals, window);
-            }
-            if (drawContinentBool)
-            {
-                drawContinents(globals, window);
-            }
-
-            /// CHANGE THIS TO A BOOL!
-            if (mapType == 5)
-            {
-                for (int i = 0; i < globals.continents.size(); i++)
-                {
-                    window.draw(globals.continents[i].drawDirectionArrows());
-                }
-            }
-        }
+        planetView.draw(window);
 
         ImGui::SFML::Render(window);
 

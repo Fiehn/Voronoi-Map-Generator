@@ -69,36 +69,6 @@ static void drawTempMap(vor::Voronoi& map, VertexMap& vertexMap) {
     vertexMap.update(map);
 }
 
-// Seasonal temperature map - uses SeasonalCalculator to show temperature at a specific day of year
-static void drawSeasonalTempMap(vor::Voronoi& map, VertexMap& vertexMap, 
-    const SeasonalCalculator& seasonCalc, float dayOfYear) 
-{
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        // Get cell position (approximate from first vertex or use center)
-        sf::Vector2f position(0.f, 0.f);
-        if (!map.cells[i].vertex.empty()) {
-            for (int v : map.cells[i].vertex) {
-                position.x += map.voronoi_points[v].x;
-                position.y += map.voronoi_points[v].y;
-            }
-            position.x /= map.cells[i].vertex.size();
-            position.y /= map.cells[i].vertex.size();
-        }
-        
-        // Get seasonal temperature
-        float seasonalTemp = seasonCalc.getTemperature(map.cells[i], position, dayOfYear);
-        
-        sf::Color color = temperatureColor(vertexMap.colors().temperature, seasonalTemp);
-
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
 static void drawBiomeMap(vor::Voronoi& map, const GlobalWorldObjects& globals, VertexMap& vertexMap)
 {
     for (size_t i = 0; i < map.cells.size(); i++)
@@ -126,66 +96,11 @@ static void drawPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap)
     vertexMap.update(map);
 }
 
-// Seasonal precipitation map
-static void drawSeasonalPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap, 
-    const SeasonalCalculator& seasonCalc, float dayOfYear)
-{
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        sf::Vector2f position(0.f, 0.f);
-        if (!map.cells[i].vertex.empty()) {
-            for (int v : map.cells[i].vertex) {
-                position.x += map.voronoi_points[v].x;
-                position.y += map.voronoi_points[v].y;
-            }
-            position.x /= map.cells[i].vertex.size();
-            position.y /= map.cells[i].vertex.size();
-        }
-        
-        float seasonalPrecip = seasonCalc.getPercepitationDistribution(map.cells[i], position, dayOfYear).mean;
-        
-        sf::Color color = precipitationColor(vertexMap.colors().precipitation, seasonalPrecip);
-
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
 static void drawHumidityMap(vor::Voronoi& map, VertexMap& vertexMap)
 {
     for (size_t i = 0; i < map.cells.size(); i++)
     {
         sf::Color color(0, 0, clamp(255 * map.cells[i].humidity, 255, 0), 255);
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
-// Seasonal humidity map
-static void drawSeasonalHumidityMap(vor::Voronoi& map, VertexMap& vertexMap, 
-    const SeasonalCalculator& seasonCalc, float dayOfYear)
-{
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        sf::Vector2f position(0.f, 0.f);
-        if (!map.cells[i].vertex.empty()) {
-            for (int v : map.cells[i].vertex) {
-                position.x += map.voronoi_points[v].x;
-                position.y += map.voronoi_points[v].y;
-            }
-            position.x /= map.cells[i].vertex.size();
-            position.y /= map.cells[i].vertex.size();
-        }
-        
-        float seasonalHumidity = seasonCalc.getHumidityDistribution(map.cells[i], position, dayOfYear).mean;
-        
-        sf::Color color(0, 0, clamp(255 * seasonalHumidity, 255, 0), 255);
         for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
         {
             map.vertices[j].color = color;
@@ -535,7 +450,7 @@ struct BiomeUI {
     } windowState;
 
     // Generation function with proper captures
-    void generateBiomesAsync(vor::Voronoi& map,
+    void generateBiomesAsync(vor::SphereVoronoi& map,
         GlobalWorldObjects& globals,
         MapConfig& config) {
         biomeGenFuture = std::async(std::launch::async,
@@ -549,7 +464,7 @@ struct BiomeUI {
             });
     }
 
-    void biomePopUp(vor::Voronoi& map, 
+    void biomePopUp(vor::SphereVoronoi& map, 
         GlobalWorldObjects& globals, 
         MapConfig& config, 
         bool& showBiomeGenBool, 
@@ -656,11 +571,10 @@ struct BiomeUI {
 };
 
 /// This needs to be fixed and thread safe :)
-void showNewMap(vor::Voronoi& map,
+// Returns true when a new map was generated
+bool showNewMap(vor::SphereVoronoi& planet,
     GlobalWorldObjects& globals,
     sf::RenderWindow& window,
-    VertexMap& vertexMap,
-    sf::VertexArray& windArrows,
     sf::VertexArray& lines,
 	SeasonalCalculator& seasonalCalc,
     const unsigned int windowWidth,
@@ -672,41 +586,35 @@ void showNewMap(vor::Voronoi& map,
     bool& showNewMapBool)
 {
 	if (!showNewMapBool) {
-		return;
+		return false;
 	}
+    bool generated = false;
     ImGui::Begin("New Map Controls");
     // push a color on the generate new map button
 
     if (ImGui::Button("Generate New Map", { 200,50 })) {
-        genWorld(map, globals, window, vertexMap,
+        genWorld(planet, globals, window,
             lines, seasonalCalc,
             windowWidth, windowHeight,
             font, config, seed, popManager);
         showNewMapBool = false;
+        generated = true;
     }
-
-    ImGui::Text("The map will have around %.d cells", config.ncellx * config.ncelly);
 
     ImGui::PushItemWidth(150.f);
 
-    ImGui::InputUInt("Cells x", &config.ncellx);
+    ImGui::InputUInt("Cells", &config.n_cells);
+    config.n_cells = std::clamp(config.n_cells, 100u, 1000000u);
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
-        ImGui::Text("Number of cells in the x direction. \nKeep at least above 100 or it starts to break down.");
+        ImGui::Text("Number of cells on the planet (100 to 1 000 000). \nKeep at least above 10 000 or it starts to break down.");
         ImGui::EndTooltip();
     }
 
-    ImGui::InputUInt("Cells y", &config.ncelly);
+    ImGui::SliderFloat("Jitter of the cells", &config.point_jitter, 0.0f, 1.0f);
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
-        ImGui::Text("Number of cells in the y direction. \nKeep at least above 100 or it starts to break down.");
-        ImGui::EndTooltip();
-    }
-
-    ImGui::DragFloat("Jitter of the cells", &config.point_jitter, 0.5f, 0.0f, 10.f);
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::Text("Amount each cell is jittered from their grid position");
+        ImGui::Text("How far each cell may move from its even spiral position, in cell spacings. \n0.5 looks like the old flat map.");
         ImGui::EndTooltip();
     }
 
@@ -844,6 +752,7 @@ void showNewMap(vor::Voronoi& map,
     ImGui::PopItemWidth();
 
     ImGui::End();
+    return generated;
 }
 
 void resourceMapController(vor::Voronoi& map,
@@ -1507,6 +1416,9 @@ void searchFinder(const vor::Voronoi& map, std::vector<std::size_t>& findingCell
 
 void biomeCountPieChart(GlobalWorldObjects& globals, bool& colorChange)
 {
+    // ImPlot asserts on colormaps with fewer than 2 colours
+    if (globals.biomes.size() < 2) { return; }
+
     // Biome distribution pie chart
     std::vector<const char*> labels;
     std::vector<float> data;
@@ -1635,17 +1547,20 @@ void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
     ImGui::End();
 }
 
-void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects& globals, std::size_t highlightedCell,
+void highligtedCellObservation(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals, std::size_t highlightedCell,
     const SeasonalCalculator* seasonCalc = nullptr, const PopManager* popManager = nullptr)
 {
-    if (highlightedCell == vor::INVALID_INDEX) {
+    if (highlightedCell >= planet.cells.size()) {
         return;
     }
     ImGui::Begin("Highlighted Cell");
 
-    const Cell& cell = map.cells[highlightedCell];
+    const Cell& cell = planet.cells[highlightedCell];
 
-    const Biome& biome = globals.biomes[cell.biome];
+    // Biomes may not be generated yet
+    const bool hasBiome = cell.biome >= 0 && cell.biome < static_cast<int>(globals.biomes.size());
+    static const Biome noBiome("None", -1, sf::Color(80, 80, 80));
+    const Biome& biome = hasBiome ? globals.biomes[cell.biome] : noBiome;
     ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
 
     ImGui::BeginTable("Highlighted Cell", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
@@ -1819,16 +1734,7 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
             const char* climateVarNames[] = { "Temperature", "Precipitation", "Humidity", "Wind Strength" };
             ImGui::Combo("Climate Variable", &selectedClimateVar, climateVarNames, IM_ARRAYSIZE(climateVarNames));
 
-            // Get cell position
-            sf::Vector2f position(0.f, 0.f);
-            if (!cell.vertex.empty()) {
-                for (int v : cell.vertex) {
-                    position.x += map.voronoi_points[v].x;
-                    position.y += map.voronoi_points[v].y;
-                }
-                position.x /= cell.vertex.size();
-                position.y /= cell.vertex.size();
-            }
+            const float lat = planet.cellLat[highlightedCell];
 
             // Generate data for the whole year (12 months)
             float yearLength = globals.planetaryParams.getYearLength();
@@ -1845,16 +1751,16 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
                 ClimateDistribution dist;
                 switch (selectedClimateVar) {
                 case 0: // Temperature
-                    dist = seasonCalc->getTemperatureDistribution(cell, position, dayOfYear);
+                    dist = seasonCalc->getTemperatureDistribution(cell, lat, dayOfYear);
                     break;
                 case 1: // Precipitation
-                    dist = seasonCalc->getPercepitationDistribution(cell, position, dayOfYear);
+                    dist = seasonCalc->getPercepitationDistribution(cell, lat, dayOfYear);
                     break;
                 case 2: // Humidity
-                    dist = seasonCalc->getHumidityDistribution(cell, position, dayOfYear);
+                    dist = seasonCalc->getHumidityDistribution(cell, lat, dayOfYear);
                     break;
                 case 3: // Wind Strength
-                    dist = seasonCalc->getWindStrengthDistribution(cell, position, dayOfYear);
+                    dist = seasonCalc->getWindStrengthDistribution(cell, lat, dayOfYear);
                     break;
                 }
                 yMean[i] = dist.mean;

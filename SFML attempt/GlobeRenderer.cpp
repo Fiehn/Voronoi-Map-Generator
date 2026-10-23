@@ -175,6 +175,9 @@ void GlobeRenderer::draw(const PlanetCamera& camera, const glm::vec2& viewport)
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
+    // Same blending as SFML's BlendAlpha, the height colours fade towards the background with their alpha
+    glEnable(GL_BLEND);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     glUseProgram(program);
     glUniformMatrix4fv(viewProjLocation, 1, GL_FALSE, glm::value_ptr(viewProj));
