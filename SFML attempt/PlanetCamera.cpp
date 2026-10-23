@@ -31,9 +31,31 @@ float PlanetCamera::minZoom(const glm::vec2& viewport)
 void PlanetCamera::clampTo(const glm::vec2& viewport, float maxZoom)
 {
     lat = glm::clamp(lat, -maxLat(), maxLat());
-    lon = wrapLon(lon);
-    const float lo = minZoom(viewport);
-    zoom = glm::clamp(zoom, lo, std::max(lo, maxZoom));
+    lon = fitLon(lon);
+    float lo = minZoom(viewport);
+    float hi = maxZoom;
+    if (mode == ViewMode::Flat) {
+        // The flat limits are on the map scale, so panning never hits them. Zoomed out, a flat
+        // view in Auto needs no limit of its own, the globe takes over long before
+        const float north = mapproj::northScale(projection, lat);
+        if (lock == ViewLock::Flat) lo = minFlatScale(viewport) * north;
+        hi = maxZoom * north;
+    }
+    zoom = glm::clamp(zoom, lo, std::max(lo, hi));
+}
+
+float PlanetCamera::visibleLatSpan(const glm::vec2& viewport) const
+{
+    return glm::degrees(viewport.y / zoom);
+}
+
+void PlanetCamera::setLock(ViewLock newLock, const glm::vec2& viewport, float maxZoom)
+{
+    lock = newLock;
+    if (lock == ViewLock::Globe) mode = ViewMode::Globe;
+    else if (lock == ViewLock::Flat) mode = ViewMode::Flat;
+    else mode = visibleLatSpan(viewport) < SWITCH_LAT_SPAN_DEG ? ViewMode::Flat : ViewMode::Globe;
+    clampTo(viewport, maxZoom);
 }
 
 float PlanetCamera::maxLat() const
@@ -42,14 +64,52 @@ float PlanetCamera::maxLat() const
     return mode == ViewMode::Flat ? std::min(MAX_LAT, mapproj::maxLat(projection)) : MAX_LAT;
 }
 
+bool PlanetCamera::flatWraps() const
+{
+    return wrap && mapproj::wrapsHorizontally(projection);
+}
+
+float PlanetCamera::fitLon(float l) const
+{
+    // Wrapping 180 would be -180 and jump the centre from one edge of a static map to the other
+    if (mode == ViewMode::Flat && !flatWraps()) return glm::clamp(l, -180.f, 180.f);
+    return wrapLon(l);
+}
+
 float PlanetCamera::flatScale() const
 {
     return zoom / mapproj::northScale(projection, lat);
 }
 
+void PlanetCamera::setFlatScale(float scale)
+{
+    zoom = scale * mapproj::northScale(projection, lat);
+}
+
+float PlanetCamera::minFlatScale(const glm::vec2& viewport) const
+{
+    const float maxY = mapproj::project(projection, mapproj::maxLat(projection), 0.f).y;
+    return viewport.y / (2.f * maxY);
+}
+
 glm::vec2 PlanetCamera::flatCentre() const
 {
     return mapproj::project(projection, lat, lon);
+}
+
+void PlanetCamera::setFlatCentre(const glm::vec2& map)
+{
+    const float scale = flatScale();
+    const glm::vec2 ll = mapproj::unproject(projection, map);
+    lat = glm::clamp(ll.x, -maxLat(), maxLat());
+    lon = fitLon(ll.y);
+    setFlatScale(scale);
+}
+
+glm::vec2 PlanetCamera::flatPixelToMap(const glm::vec2& pixel, const glm::vec2& viewport) const
+{
+    const float s = flatScale();
+    return flatCentre() + glm::vec2((pixel.x - 0.5f * viewport.x) / s, (0.5f * viewport.y - pixel.y) / s);
 }
 
 glm::mat4 PlanetCamera::flatViewProj(const glm::vec2& viewport) const
@@ -111,8 +171,31 @@ bool PlanetCamera::globePick(const glm::vec2& pixel, const glm::vec2& viewport, 
     return true;
 }
 
+bool PlanetCamera::flatPick(const glm::vec2& pixel, const glm::vec2& viewport, glm::vec3& hit) const
+{
+    const glm::vec2 map = flatPixelToMap(pixel, viewport);
+    const float maxY = mapproj::project(projection, mapproj::maxLat(projection), 0.f).y;
+    if (std::abs(map.y) > maxY) return false;
+    if (!flatWraps() && std::abs(map.x) > glm::pi<float>()) return false;
+    const glm::vec2 ll = mapproj::unproject(projection, map);
+    hit = latLonToUnit(ll.x, ll.y);
+    return true;
+}
+
+bool PlanetCamera::pick(const glm::vec2& pixel, const glm::vec2& viewport, glm::vec3& hit) const
+{
+    return mode == ViewMode::Flat ? flatPick(pixel, viewport, hit) : globePick(pixel, viewport, hit);
+}
+
 void PlanetCamera::drag(const glm::vec2& deltaPixels)
 {
+    if (mode == ViewMode::Flat) {
+        // The map point under the cursor follows it exactly, pixel y runs down and map y up
+        const float s = flatScale();
+        setFlatCentre(flatCentre() + glm::vec2(-deltaPixels.x / s, deltaPixels.y / s));
+        return;
+    }
+
     // Dragging right pulls the surface east to west, dragging down shows more of the north.
     // Longitude speeds up with 1 / cos(lat), capped so it stays usable next to the poles
     const float cosLat = std::max(std::cos(glm::radians(lat)), 0.1f);
@@ -123,6 +206,31 @@ void PlanetCamera::drag(const glm::vec2& deltaPixels)
 }
 
 void PlanetCamera::zoomAt(float factor, const glm::vec2& pixel, const glm::vec2& viewport, float maxZoom)
+{
+    if (mode == ViewMode::Flat) zoomFlatAt(factor, pixel, viewport, maxZoom);
+    else zoomGlobeAt(factor, pixel, viewport, maxZoom);
+    if (lock != ViewLock::Auto) return;
+
+    // Both views agree at the screen centre, so switching only needs the new mode
+    const float span = visibleLatSpan(viewport);
+    if (factor > 1.f && mode == ViewMode::Globe && span < SWITCH_LAT_SPAN_DEG) mode = ViewMode::Flat;
+    else if (factor < 1.f && mode == ViewMode::Flat && span > SWITCH_LAT_SPAN_DEG) mode = ViewMode::Globe;
+    else return;
+    clampTo(viewport, maxZoom);
+}
+
+void PlanetCamera::zoomFlatAt(float factor, const glm::vec2& pixel, const glm::vec2& viewport, float maxZoom)
+{
+    // Scale the map about the point under the cursor. The limits apply after, so at a limit
+    // the point may slide a little
+    const glm::vec2 anchor = flatPixelToMap(pixel, viewport);
+    const float s = flatScale() * factor;
+    setFlatScale(s);
+    setFlatCentre(anchor - glm::vec2((pixel.x - 0.5f * viewport.x) / s, (0.5f * viewport.y - pixel.y) / s));
+    clampTo(viewport, maxZoom);
+}
+
+void PlanetCamera::zoomGlobeAt(float factor, const glm::vec2& pixel, const glm::vec2& viewport, float maxZoom)
 {
     glm::vec3 before, after;
     const bool hadBefore = globePick(pixel, viewport, before);

@@ -36,6 +36,16 @@ struct PlanetMesh {
 
 PlanetMesh buildPlanetMesh(const vor::SphereVoronoi& sphere);
 
+// Outline of a cell as a line strip for both views: the ring with its first vertex repeated at
+// the end. The longitude starts unwrapped around the cell centre, like the mesh, and then
+// follows each step from the one before, so a pole cell's outline goes once round in longitude
+// and the flat view draws it as one line along the bottom of its band.
+struct OutlineVertex {
+    glm::vec3 position;
+    glm::vec2 latLon; // Radians
+};
+std::vector<OutlineVertex> buildCellOutline(const vor::SphereVoronoi& sphere, int cell);
+
 // Draws the planet's cells with raw OpenGL 3.3, on the globe or as a flat map depending on the
 // camera's mode. Positions are static and colours are a separate buffer, so recolouring the
 // map is one upload.
@@ -52,7 +62,7 @@ public:
 
     void build(const vor::SphereVoronoi& sphere);
     void setCellColors(const std::vector<sf::Color>& colors); // One per cell
-    void setHighlight(const vor::SphereVoronoi& sphere, int cell); // -1 hides it
+    void setHighlight(const vor::SphereVoronoi& sphere, int cell); // Outline of the cell, -1 hides it
     void draw(const PlanetCamera& camera, const glm::vec2& viewport);
 
     bool ready() const { return indexCount > 0; }
@@ -69,7 +79,7 @@ private:
     unsigned int program = 0;
     unsigned int vao = 0, positionBuffer = 0, latLonBuffer = 0, colorBuffer = 0, indexBuffer = 0;
     unsigned int highlightVao = 0, highlightBuffer = 0;
-    int viewProjLocation = -1, liftLocation = -1, projectionLocation = -1, firstCopyLocation = -1, maxYLocation = -1;
+    int viewProjLocation = -1, liftLocation = -1, projectionLocation = -1, firstCopyLocation = -1, maxYLocation = -1, maxXLocation = -1;
 
     int indexCount = 0;
     int poleFanIndexCount = 0;

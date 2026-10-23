@@ -5,6 +5,7 @@
 #include <SFML/Window/Context.hpp>
 #include "Logger.h"
 #include <cmath>
+#include <cstddef>
 #include <algorithm>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/constants.hpp>
@@ -22,6 +23,7 @@ uniform mat4 uViewProj;   // Globe: sphere to clip space. Flat: map to clip spac
 uniform float uLift;      // Globe: pushes overlays off the surface so they don't z-fight with it
 uniform float uFirstCopy; // Flat: instance i draws the map shifted by uFirstCopy + i world widths
 uniform float uMaxY;      // Flat: the map ends at |y| = uMaxY
+uniform float uMaxX;      // Flat: and at |x| = uMaxX when it doesn't wrap
 out vec4 vColor;
 
 const float PI = 3.14159265358979;
@@ -34,6 +36,8 @@ void main()
         gl_Position = uViewProj * vec4(aPosition * uLift, 1.0);
         gl_ClipDistance[0] = 1.0;
         gl_ClipDistance[1] = 1.0;
+        gl_ClipDistance[2] = 1.0;
+        gl_ClipDistance[3] = 1.0;
         return;
     }
 
@@ -44,9 +48,11 @@ void main()
     }
     map.x += (uFirstCopy + float(gl_InstanceID)) * 2.0 * PI;
     gl_Position = uViewProj * vec4(map, 0.0, 1.0);
-    // The cut is a straight line on the map, so clipping against it is exact
+    // The cut and the edges are straight lines on the map, so clipping against them is exact
     gl_ClipDistance[0] = uMaxY - map.y;
     gl_ClipDistance[1] = uMaxY + map.y;
+    gl_ClipDistance[2] = uMaxX - map.x;
+    gl_ClipDistance[3] = uMaxX + map.x;
 }
 )";
 
@@ -168,6 +174,32 @@ PlanetMesh buildPlanetMesh(const vor::SphereVoronoi& sphere)
     return mesh;
 }
 
+std::vector<OutlineVertex> buildCellOutline(const vor::SphereVoronoi& sphere, int cell)
+{
+    std::vector<OutlineVertex> outline;
+    if (cell < 0 || cell >= static_cast<int>(sphere.cells.size())) return outline;
+    const std::vector<int>& ring = sphere.cells[cell].vertex;
+    const int size = static_cast<int>(ring.size());
+    if (size == 0) return outline;
+
+    const double firstLon = latLonOf(sphere.voronoi_points[ring[0]]).y;
+    double lon = latLonOf(sphere.points[cell]).y;
+    std::vector<glm::dvec2> latLon;
+    for (int k = 0; k <= size; k++) {
+        const glm::dvec2 ll = latLonOf(sphere.voronoi_points[ring[k % size]]);
+        lon = mapproj::unwrapLon(ll.y, lon);
+        latLon.push_back(glm::dvec2(ll.x, lon));
+    }
+    // A pole cell's centre longitude means nothing, start it where its band starts instead so
+    // it stays inside the longitude range the flat view draws copies for
+    const bool pole = std::abs(latLon.back().y - latLon.front().y) > 180.0;
+    const double shift = pole ? firstLon - latLon.front().y : 0.0;
+    for (int k = 0; k <= size; k++) {
+        outline.push_back({ sphere.voronoi_points[ring[k % size]], toRadians(latLon[k].x, latLon[k].y + shift) });
+    }
+    return outline;
+}
+
 GlobeRenderer::~GlobeRenderer()
 {
     release();
@@ -212,6 +244,7 @@ void GlobeRenderer::build(const vor::SphereVoronoi& sphere)
         projectionLocation = glGetUniformLocation(program, "uProjection");
         firstCopyLocation = glGetUniformLocation(program, "uFirstCopy");
         maxYLocation = glGetUniformLocation(program, "uMaxY");
+        maxXLocation = glGetUniformLocation(program, "uMaxX");
     }
 
     PlanetMesh mesh = buildPlanetMesh(sphere);
@@ -251,14 +284,16 @@ void GlobeRenderer::build(const vor::SphereVoronoi& sphere)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.indices.size() * sizeof(GLuint), mesh.indices.data(), GL_STATIC_DRAW);
     indexCount = static_cast<int>(mesh.indices.size());
 
-    // The highlight ring, only positions; its colour is a constant attribute
+    // The highlight outline, positions and lat/lon interleaved; its colour is a constant attribute
     glGenVertexArrays(1, &highlightVao);
     glBindVertexArray(highlightVao);
     glGenBuffers(1, &highlightBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, highlightBuffer);
     glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(OutlineVertex), reinterpret_cast<const void*>(offsetof(OutlineVertex, position)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(OutlineVertex), reinterpret_cast<const void*>(offsetof(OutlineVertex, latLon)));
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -284,17 +319,13 @@ void GlobeRenderer::setCellColors(const std::vector<sf::Color>& colors)
 void GlobeRenderer::setHighlight(const vor::SphereVoronoi& sphere, int cell)
 {
     if (!ready()) return;
-    if (cell < 0 || cell >= static_cast<int>(sphere.cells.size())) {
-        highlightCount = 0;
-        return;
-    }
+    const std::vector<OutlineVertex> outline = buildCellOutline(sphere, cell);
+    highlightCount = static_cast<int>(outline.size());
+    if (outline.empty()) return;
 
-    std::vector<glm::vec3> ring;
-    for (int t : sphere.cells[cell].vertex) ring.push_back(sphere.voronoi_points[t]);
     glBindBuffer(GL_ARRAY_BUFFER, highlightBuffer);
-    glBufferData(GL_ARRAY_BUFFER, ring.size() * sizeof(glm::vec3), ring.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, outline.size() * sizeof(OutlineVertex), outline.data(), GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    highlightCount = static_cast<int>(ring.size());
 }
 
 void GlobeRenderer::draw(const PlanetCamera& camera, const glm::vec2& viewport)
@@ -337,7 +368,7 @@ void GlobeRenderer::drawGlobe(const PlanetCamera& camera, const glm::vec2& viewp
         glBindVertexArray(highlightVao);
         glVertexAttrib4f(1, 1.f, 1.f, 1.f, 1.f);
         glLineWidth(2.f);
-        glDrawArrays(GL_LINE_LOOP, 0, highlightCount);
+        glDrawArrays(GL_LINE_STRIP, 0, highlightCount);
         glLineWidth(1.f);
     }
 
@@ -352,25 +383,43 @@ void GlobeRenderer::drawFlat(const PlanetCamera& camera, const glm::vec2& viewpo
     const float turn = glm::two_pi<float>();
     const float halfWidth = 0.5f * viewport.x / camera.flatScale();
     const float centreX = camera.flatCentre().x;
-    const int firstCopy = static_cast<int>(std::ceil((centreX - halfWidth - lonMax) / turn));
-    const int lastCopy = static_cast<int>(std::floor((centreX + halfWidth - lonMin) / turn));
+    int firstCopy = static_cast<int>(std::ceil((centreX - halfWidth - lonMax) / turn));
+    int lastCopy = static_cast<int>(std::floor((centreX + halfWidth - lonMin) / turn));
+    // A static map is the copies either side too, clipped at 180W and 180E, so the cells
+    // across the 180th meridian fill its edges. No vertex is more than a turn from its copy
+    const bool wraps = camera.flatWraps();
+    if (!wraps) {
+        firstCopy = std::max(firstCopy, -1);
+        lastCopy = std::min(lastCopy, 1);
+    }
     if (lastCopy < firstCopy) return;
 
     const glm::mat4 viewProj = camera.flatViewProj(viewport);
     const float maxY = mapproj::project(camera.projection, mapproj::maxLat(camera.projection), 0.f).y;
+    // Wrapping, the x clip planes sit well outside every copy drawn
+    const float maxX = wraps ? turn * (2.f + std::max(std::abs(firstCopy), std::abs(lastCopy))) : glm::pi<float>();
 
     // Flat cells don't overlap and keep their winding, so no depth test and no culling
-    glEnable(GL_CLIP_DISTANCE0);
-    glEnable(GL_CLIP_DISTANCE1);
+    const GLenum clipPlanes[] = { GL_CLIP_DISTANCE0, GL_CLIP_DISTANCE1, GL_CLIP_DISTANCE2, GL_CLIP_DISTANCE3 };
+    for (GLenum plane : clipPlanes) glEnable(plane);
     glUniform1i(projectionLocation, static_cast<int>(camera.projection));
     glUniformMatrix4fv(viewProjLocation, 1, GL_FALSE, glm::value_ptr(viewProj));
     glUniform1f(firstCopyLocation, static_cast<float>(firstCopy));
     glUniform1f(maxYLocation, maxY);
+    glUniform1f(maxXLocation, maxX);
     glBindVertexArray(vao);
     const std::size_t offset = static_cast<std::size_t>(poleFanIndexCount) * sizeof(GLuint);
     glDrawElementsInstanced(GL_TRIANGLES, indexCount - poleFanIndexCount, GL_UNSIGNED_INT,
         reinterpret_cast<const void*>(offset), lastCopy - firstCopy + 1);
 
-    glDisable(GL_CLIP_DISTANCE0);
-    glDisable(GL_CLIP_DISTANCE1);
+    // The outline lies within the mesh's longitude range, so the same copies cover it
+    if (highlightCount > 0) {
+        glBindVertexArray(highlightVao);
+        glVertexAttrib4f(1, 1.f, 1.f, 1.f, 1.f);
+        glLineWidth(2.f);
+        glDrawArraysInstanced(GL_LINE_STRIP, 0, highlightCount, lastCopy - firstCopy + 1);
+        glLineWidth(1.f);
+    }
+
+    for (GLenum plane : clipPlanes) glDisable(plane);
 }

@@ -114,13 +114,11 @@ void PlanetView::update(const sf::RenderWindow& window, const vor::SphereVoronoi
     // Over the UI the last hovered cell stays, so its readout can still be looked at
     if (!hasPlanet() || ImGui::GetIO().WantCaptureMouse) return;
 
-    // Flat picking comes with M5c, until then the flat view has no hovered cell
     const sf::Vector2i mouse = sf::Mouse::getPosition(window);
     int cell = -1;
     glm::vec3 hit;
-    if (camera.mode == ViewMode::Globe
-        && mouse.x >= 0 && mouse.y >= 0 && mouse.x < static_cast<int>(viewport.x) && mouse.y < static_cast<int>(viewport.y)
-        && camera.globePick(glm::vec2(static_cast<float>(mouse.x), static_cast<float>(mouse.y)), viewport, hit)) {
+    if (mouse.x >= 0 && mouse.y >= 0 && mouse.x < static_cast<int>(viewport.x) && mouse.y < static_cast<int>(viewport.y)
+        && camera.pick(glm::vec2(static_cast<float>(mouse.x), static_cast<float>(mouse.y)), viewport, hit)) {
         cell = planet.findCell(hit, hoveredCell);
     }
     if (cell != hoveredCell) {
@@ -138,7 +136,7 @@ void PlanetView::draw(sf::RenderWindow& window)
 
 void PlanetView::ui(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals, sf::RenderWindow& window)
 {
-    ImGui::Begin("Globe");
+    ImGui::Begin("Planet view");
 
     const bool oldDebug = debugColors;
     const int oldMode = debugMode;
@@ -151,17 +149,33 @@ void PlanetView::ui(const vor::SphereVoronoi& planet, const GlobalWorldObjects& 
     }
     if ((debugColors != oldDebug || debugMode != oldMode) && window.setActive(true)) uploadColors(planet);
 
-    // Temporary (M5a): picks the view by hand. M5b replaces it with Auto / Globe / Flat and a
-    // projection choice; until then drag and zoom in the flat view still move like the globe
-    int view = camera.mode == ViewMode::Globe ? 0 : static_cast<int>(camera.projection);
+    const glm::vec2 viewport = viewportOf(window);
+    int lock = static_cast<int>(camera.lock);
     ImGui::Text("View"); ImGui::SameLine();
-    ImGui::RadioButton("Globe", &view, 0); ImGui::SameLine();
-    ImGui::RadioButton("Mercator", &view, static_cast<int>(Projection::Mercator)); ImGui::SameLine();
-    ImGui::RadioButton("Equirectangular", &view, static_cast<int>(Projection::Equirectangular));
-    camera.mode = view == 0 ? ViewMode::Globe : ViewMode::Flat;
-    if (view != 0) camera.projection = static_cast<Projection>(view);
+    ImGui::RadioButton("Auto", &lock, static_cast<int>(ViewLock::Auto)); ImGui::SameLine();
+    ImGui::RadioButton("Globe", &lock, static_cast<int>(ViewLock::Globe)); ImGui::SameLine();
+    ImGui::RadioButton("Flat", &lock, static_cast<int>(ViewLock::Flat));
+    if (ImGui::BeginItemTooltip()) {
+        ImGui::Text("Auto shows the flat map once less than %.0f deg of latitude fits the window height", PlanetCamera::SWITCH_LAT_SPAN_DEG);
+        ImGui::EndTooltip();
+    }
+    if (lock != static_cast<int>(camera.lock)) camera.setLock(static_cast<ViewLock>(lock), viewport, maxZoom());
+
+    const char* projections[] = { "Mercator", "Equirectangular" };
+    int projection = static_cast<int>(camera.projection) - static_cast<int>(Projection::Mercator);
+    if (ImGui::Combo("Projection", &projection, projections, IM_ARRAYSIZE(projections))) {
+        // Keeps the zoom, so the centre of a flat view stays the same size on screen
+        camera.projection = static_cast<Projection>(projection + static_cast<int>(Projection::Mercator));
+        camera.clampTo(viewport, maxZoom());
+    }
+    if (ImGui::Checkbox("Wrap around", &camera.wrap)) camera.clampTo(viewport, maxZoom());
+    if (ImGui::BeginItemTooltip()) {
+        ImGui::Text("Off: the flat map is one map from 180W to 180E that stops at its edges");
+        ImGui::EndTooltip();
+    }
 
     ImGui::Separator();
+    ImGui::Text("%s, %.0f deg of latitude in view", camera.mode == ViewMode::Globe ? "Globe" : "Flat map", camera.visibleLatSpan(viewport));
     ImGui::Text("Centre %.2f, %.2f  zoom %.0f px/rad (%.1f px per cell)", camera.lat, camera.lon, camera.zoom, camera.zoom * cellSpacing);
     if (hoveredCell >= 0 && hoveredCell < static_cast<int>(planet.cells.size())) {
         const Cell& cell = planet.cells[hoveredCell];

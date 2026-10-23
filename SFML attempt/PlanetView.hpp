@@ -9,7 +9,8 @@
 #include "GlobalWorldObjects.hpp"
 
 // The planet on screen: camera, globe renderer, mouse input and cell picking.
-// Left drag orbits, the wheel zooms towards the cursor, the cell under the cursor is highlighted.
+// Left drag orbits the globe or pans the flat map, the wheel zooms towards the cursor (and in
+// Auto switches between the two), the cell under the cursor is highlighted.
 //
 // The cells show the map mode colours given to setCellColors, or debug colours when those are switched on.
 class PlanetView {
