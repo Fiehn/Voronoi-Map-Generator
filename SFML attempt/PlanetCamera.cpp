@@ -30,10 +30,39 @@ float PlanetCamera::minZoom(const glm::vec2& viewport)
 
 void PlanetCamera::clampTo(const glm::vec2& viewport, float maxZoom)
 {
-    lat = glm::clamp(lat, -MAX_LAT, MAX_LAT);
+    lat = glm::clamp(lat, -maxLat(), maxLat());
     lon = wrapLon(lon);
     const float lo = minZoom(viewport);
     zoom = glm::clamp(zoom, lo, std::max(lo, maxZoom));
+}
+
+float PlanetCamera::maxLat() const
+{
+    // The flat view can't centre past the Mercator cut, beyond it there is no map
+    return mode == ViewMode::Flat ? std::min(MAX_LAT, mapproj::maxLat(projection)) : MAX_LAT;
+}
+
+float PlanetCamera::flatScale() const
+{
+    return zoom / mapproj::northScale(projection, lat);
+}
+
+glm::vec2 PlanetCamera::flatCentre() const
+{
+    return mapproj::project(projection, lat, lon);
+}
+
+glm::mat4 PlanetCamera::flatViewProj(const glm::vec2& viewport) const
+{
+    // Orthographic: subtract the centre, then scale pixels to the -1..1 of clip space
+    const float s = flatScale();
+    const glm::vec2 centre = flatCentre();
+    glm::mat4 m(1.f);
+    m[0][0] = 2.f * s / viewport.x;
+    m[1][1] = 2.f * s / viewport.y;
+    m[3][0] = -centre.x * m[0][0];
+    m[3][1] = -centre.y * m[1][1];
+    return m;
 }
 
 float PlanetCamera::globeDistance(const glm::vec2& viewport) const
@@ -89,7 +118,7 @@ void PlanetCamera::drag(const glm::vec2& deltaPixels)
     const float cosLat = std::max(std::cos(glm::radians(lat)), 0.1f);
     lon -= glm::degrees(deltaPixels.x / (zoom * cosLat));
     lat += glm::degrees(deltaPixels.y / zoom);
-    lat = glm::clamp(lat, -MAX_LAT, MAX_LAT);
+    lat = glm::clamp(lat, -maxLat(), maxLat());
     lon = wrapLon(lon);
 }
 

@@ -231,6 +231,9 @@
     <ClInclude Include="SphereMath.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MapProjection.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="POP_Manager.hpp">
       <Filter>Header Files\POPs\Managers</Filter>
     </ClInclude>

@@ -276,6 +276,7 @@
     <ClInclude Include="CellObjects.hpp" />
     <ClInclude Include="util.hpp" />
     <ClInclude Include="SphereMath.hpp" />
+    <ClInclude Include="MapProjection.hpp" />
     <ClInclude Include="POP_Manager.hpp" />
     <ClInclude Include="windArrows.hpp" />
   </ItemGroup>

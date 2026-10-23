@@ -114,10 +114,12 @@ void PlanetView::update(const sf::RenderWindow& window, const vor::SphereVoronoi
     // Over the UI the last hovered cell stays, so its readout can still be looked at
     if (!hasPlanet() || ImGui::GetIO().WantCaptureMouse) return;
 
+    // Flat picking comes with M5c, until then the flat view has no hovered cell
     const sf::Vector2i mouse = sf::Mouse::getPosition(window);
     int cell = -1;
     glm::vec3 hit;
-    if (mouse.x >= 0 && mouse.y >= 0 && mouse.x < static_cast<int>(viewport.x) && mouse.y < static_cast<int>(viewport.y)
+    if (camera.mode == ViewMode::Globe
+        && mouse.x >= 0 && mouse.y >= 0 && mouse.x < static_cast<int>(viewport.x) && mouse.y < static_cast<int>(viewport.y)
         && camera.globePick(glm::vec2(static_cast<float>(mouse.x), static_cast<float>(mouse.y)), viewport, hit)) {
         cell = planet.findCell(hit, hoveredCell);
     }
@@ -148,6 +150,16 @@ void PlanetView::ui(const vor::SphereVoronoi& planet, const GlobalWorldObjects& 
         if (ImGui::BeginItemTooltip()) { ImGui::Text("White: prime meridian, red: 90E, warm: north, cool: south"); ImGui::EndTooltip(); }
     }
     if ((debugColors != oldDebug || debugMode != oldMode) && window.setActive(true)) uploadColors(planet);
+
+    // Temporary (M5a): picks the view by hand. M5b replaces it with Auto / Globe / Flat and a
+    // projection choice; until then drag and zoom in the flat view still move like the globe
+    int view = camera.mode == ViewMode::Globe ? 0 : static_cast<int>(camera.projection);
+    ImGui::Text("View"); ImGui::SameLine();
+    ImGui::RadioButton("Globe", &view, 0); ImGui::SameLine();
+    ImGui::RadioButton("Mercator", &view, static_cast<int>(Projection::Mercator)); ImGui::SameLine();
+    ImGui::RadioButton("Equirectangular", &view, static_cast<int>(Projection::Equirectangular));
+    camera.mode = view == 0 ? ViewMode::Globe : ViewMode::Flat;
+    if (view != 0) camera.projection = static_cast<Projection>(view);
 
     ImGui::Separator();
     ImGui::Text("Centre %.2f, %.2f  zoom %.0f px/rad (%.1f px per cell)", camera.lat, camera.lon, camera.zoom, camera.zoom * cellSpacing);
