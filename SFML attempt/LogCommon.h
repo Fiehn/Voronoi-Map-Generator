@@ -4,7 +4,7 @@
 #include <variant>
 
 enum class LogLevel { Info, Warning, Error, Fatal};
-enum class LogCategory { General, Map, POP, Generations, Graphics, Culture, Language, Religion};
+enum class LogCategory { General, System, Map, POP, Generations, Graphics, Culture, Language, Religion};
 
 // Variant type for log payloads (storing multiple types on the heap)
 using LogPayload = std::variant<int, unsigned int, unsigned long, uint64_t, float, bool, double, std::string>;

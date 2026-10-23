@@ -74,8 +74,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <AllProjectIncludesArePublic>true</AllProjectIncludesArePublic>
-    <AllProjectBMIsArePublic>true</AllProjectBMIsArePublic>
-    <IncludePath>C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\Dear ImGUI;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\SFML ImGUI;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\Dear ImGUI;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\SFML ImGUI;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -115,7 +114,7 @@
       <AdditionalIncludeDirectories>C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\SFML ImGUI;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\Dear ImGUI</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <EnableModules>true</EnableModules>
+      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,7 +134,7 @@
       <AdditionalIncludeDirectories>C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <EnableModules>true</EnableModules>
+      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -148,6 +147,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BoundaryRender.cpp" />
+    <ClCompile Include="glad.c" />
+    <ClCompile Include="GLContext.cpp" />
     <ClCompile Include="MapColors.cpp" />
     <ClCompile Include="BiomeGen.cpp" />
     <ClCompile Include="CellObjects.cpp" />
@@ -185,7 +186,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="POP_Manager.cpp" />
-    <ClCompile Include="POP_Manager.hpp" />
     <ClCompile Include="ReligionManager.cpp" />
     <ClCompile Include="ReligionManager_old.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -198,6 +198,7 @@
   <ItemGroup>
     <ClInclude Include="AbstractWorld.hpp" />
     <ClInclude Include="BoundaryRender.hpp" />
+    <ClInclude Include="GLContext.hpp" />
     <ClInclude Include="MapColors.hpp" />
     <ClInclude Include="BiomeGen.hpp" />
     <ClInclude Include="cell.hpp" />
@@ -256,6 +257,8 @@
     <ClInclude Include="Voronoi.hpp" />
     <ClInclude Include="CellObjects.hpp" />
     <ClInclude Include="util.hpp" />
+    <ClInclude Include="SphereMath.hpp" />
+    <ClInclude Include="POP_Manager.hpp" />
     <ClInclude Include="windArrows.hpp" />
   </ItemGroup>
   <ItemGroup>

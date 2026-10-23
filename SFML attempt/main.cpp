@@ -23,7 +23,7 @@
 #include "imgui-SFML.h"
 #include "Include/ImGuiFD-main/ImGuiFD.h"
 #include "Include/ImPlot/implot.h"
-
+#include "GLContext.hpp"
 #include "NewMap.hpp"
 #include "EventMachine.hpp"
 #include "MainMenu.hpp"
@@ -41,11 +41,16 @@ int main()
 
     // MSAA so the smoothed boundaries and outlines don't stair-step
     sf::ContextSettings contextSettings;
+	contextSettings.depthBits = 24;
+	contextSettings.majorVersion = 3;
+	contextSettings.minorVersion = 3;
     contextSettings.antialiasingLevel = 4;
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML", sf::Style::Default, contextSettings);
     window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
     ImGui::SFML::Init(window);
 	ImPlot::CreateContext();
+
+	initGL();
 
     // Create the config
     MapConfig config;
