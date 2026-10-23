@@ -57,6 +57,26 @@ namespace vor {
         halfedges.clear();
     }
 
+    int SphereVoronoi::findCell(const glm::vec3& p, int start) const
+    {
+        if (cells.empty()) return -1;
+        int current = (start >= 0 && start < static_cast<int>(cells.size())) ? start : 0;
+        float best = glm::dot(points[current], p);
+
+        while (true) {
+            int next = current;
+            for (int nb : cells[current].neighbors) {
+                const float d = glm::dot(points[nb], p);
+                if (d > best) {
+                    best = d;
+                    next = nb;
+                }
+            }
+            if (next == current) return current;
+            current = next;
+        }
+    }
+
     void SphereVoronoi::triangulate()
     {
         const int n = static_cast<int>(points.size());

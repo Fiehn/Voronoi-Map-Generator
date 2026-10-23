@@ -91,6 +91,15 @@
     <ClCompile Include="Delaunator.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="PlanetCamera.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="GlobeRenderer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="PlanetView.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="BoundaryRender.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -187,6 +196,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Delaunator.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PlanetCamera.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GlobeRenderer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PlanetView.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cell.hpp">

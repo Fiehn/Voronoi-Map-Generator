@@ -33,6 +33,11 @@ namespace vor {
         void fillMap(int n_cells, float point_jitter);
         void clearMap();
 
+        // Cell containing the direction p (any length), or -1 if there are no cells. Walks to the
+        // neighbour closest to p until none is closer, which on a Delaunay mesh ends at the
+        // nearest centre. Starting from the previous answer makes repeated picks O(1)
+        int findCell(const glm::vec3& p, int start = 0) const;
+
         static int nextHalfedge(int e) { return (e % 3 == 2) ? e - 2 : e + 1; }
         static int prevHalfedge(int e) { return (e % 3 == 0) ? e + 2 : e - 1; }
 

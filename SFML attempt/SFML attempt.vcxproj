@@ -195,6 +195,9 @@
     <ClCompile Include="Voronoi.cpp" />
     <ClCompile Include="SphereVoronoi.cpp" />
     <ClCompile Include="Delaunator.cpp" />
+    <ClCompile Include="PlanetCamera.cpp" />
+    <ClCompile Include="GlobeRenderer.cpp" />
+    <ClCompile Include="PlanetView.cpp" />
     <ClCompile Include="windArrows.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -259,6 +262,9 @@
     <ClInclude Include="Voronoi.hpp" />
     <ClInclude Include="SphereVoronoi.hpp" />
     <ClInclude Include="Delaunator.hpp" />
+    <ClInclude Include="PlanetCamera.hpp" />
+    <ClInclude Include="GlobeRenderer.hpp" />
+    <ClInclude Include="PlanetView.hpp" />
     <ClInclude Include="CellObjects.hpp" />
     <ClInclude Include="util.hpp" />
     <ClInclude Include="SphereMath.hpp" />

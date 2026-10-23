@@ -3,6 +3,7 @@
 #include <map>
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include <glm/glm.hpp>
 #include "cell.hpp"
 #include <iostream>
 #include "util.hpp"
@@ -170,6 +171,14 @@ public:
 	
 	PlateType plateType = PlateType::Continental;
     float age = 3.0f;
+
+	// The plate on the sphere: it rotates about eulerAxis (through the planet centre) at angularSpeed,
+	// so the surface at p moves with velocityAt(p). centerDir is the normalised mean of its cell centres
+	glm::vec3 centerDir = glm::vec3(0.f, 0.f, 1.f);
+	glm::vec3 eulerAxis = glm::vec3(0.f, 1.f, 0.f);
+	float angularSpeed = 0.f;
+	glm::vec3 velocityAt(const glm::vec3& p) const { return angularSpeed * glm::cross(eulerAxis, p); }
+	void calcCenterOnSphere(const std::vector<glm::vec3>& points);
 	float crustThickness = 35.0f; // in km
 	float baseDensity = 2.7f; // g/cm^3
 

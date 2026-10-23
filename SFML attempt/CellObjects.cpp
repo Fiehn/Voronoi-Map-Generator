@@ -198,6 +198,18 @@ void Continent::finishContinent(const std::vector<sf::Vector2f>& voronoi_points,
 	calcCenter(voronoi_points, map);
 };
 
+void Continent::calcCenterOnSphere(const std::vector<glm::vec3>& points)
+{
+	glm::vec3 sum(0.f);
+	for (std::size_t cell : cells) {
+		sum += points[cell];
+	}
+	// A plate covering the whole sphere evenly has no meaningful centre, keep the old one
+	if (glm::length(sum) > 1e-6f) {
+		centerDir = glm::normalize(sum);
+	}
+};
+
 void Continent::addBoundryCell(std::size_t cellId)
 {
     boundCells.push_back(cellId);

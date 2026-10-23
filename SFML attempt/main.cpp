@@ -24,6 +24,8 @@
 #include "Include/ImGuiFD-main/ImGuiFD.h"
 #include "Include/ImPlot/implot.h"
 #include "GLContext.hpp"
+#include "SphereVoronoi.hpp"
+#include "PlanetView.hpp"
 #include "NewMap.hpp"
 #include "EventMachine.hpp"
 #include "MainMenu.hpp"
@@ -46,11 +48,12 @@ int main()
 	contextSettings.minorVersion = 3;
     contextSettings.antialiasingLevel = 4;
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML", sf::Style::Default, contextSettings);
-    window.setFramerateLimit(27); // For now there is no reason to have even this high framerate
+    window.setVerticalSyncEnabled(true); // The globe needs smooth orbiting
     ImGui::SFML::Init(window);
 	ImPlot::CreateContext();
 
 	initGL();
+	LOG_INFO(System, "Depth bits:", static_cast<int>(window.getSettings().depthBits));
 
     // Create the config
     MapConfig config;
@@ -82,6 +85,11 @@ int main()
 
     // Init the map
     vor::Voronoi map;
+
+    // The sphere planet, previewed on the globe until the simulation moves onto it
+    vor::SphereVoronoi planet;
+    PlanetView planetView;
+    bool globeViewBool = false;
     
     // Create the vertex map
     VertexMap vertexMap;
@@ -196,13 +204,21 @@ int main()
         {
             ImGui::SFML::ProcessEvent(window, event);
 
-			eventloop(window, event, 
-				mapType, moving, oldPos,
-				drawHighlightBool, highlight,
-				map, highlightedCell, view, globalZoom,
-				windowWidth, windowHeight, showLoadConfig, showSaveConfig,
-                windArrows, drawWindArrowsBool
-                );
+            if (globeViewBool)
+            {
+                planetView.handleEvent(event, window);
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) { window.close(); }
+            }
+            else
+            {
+                eventloop(window, event,
+                    mapType, moving, oldPos,
+                    drawHighlightBool, highlight,
+                    map, highlightedCell, view, globalZoom,
+                    windowWidth, windowHeight, showLoadConfig, showSaveConfig,
+                    windArrows, drawWindArrowsBool
+                    );
+            }
 
 			if (event.type == sf::Event::Closed) {
 				window.close();
@@ -221,6 +237,12 @@ int main()
         ImGui::SFML::Update(window, deltaClock.restart());
 
         ImGui::Begin("Map Controls");
+
+        if (ImGui::Checkbox("Globe view (preview)", &globeViewBool) && globeViewBool && !planetView.hasPlanet())
+        {
+            // Same cell count as the flat map, the old grid size is a product
+            planetView.previewCells = static_cast<int>(config.ncellx * config.ncelly);
+        }
 
         // Radio Buttons for the different maps
         ImGui::RadioButton("Height", &mapType, 0); ImGui::SameLine();
@@ -339,6 +361,8 @@ int main()
 
         ImGui::End();
 
+        if (globeViewBool) { planetView.ui(planet, window); }
+
         if (showSimulationBool) { tickerControls(ticker, simulationSpeed, map, globals, config, vertexMap); }
 
 		searchFinder(map, findingCells, findCell, showFindSearcherBool, maxCellInMap);
@@ -363,51 +387,60 @@ int main()
             highlightedCell = vor::INVALID_INDEX;
         }
 
+        if (globeViewBool) { planetView.update(window, planet); }
+
         window.clear();
-        
-        vertexMap.draw(window);
-        
-        if (drawConvergenceLinesBool) {
-			window.draw(lines);
-		}
-        if (drawWindArrowsBool) {
-			window.draw(windArrows);
-		}
-        if (highlightedCell != vor::INVALID_INDEX) {
-			window.draw(highlight);
-		}
-        if (showFindSearcherBool)
+
+        if (globeViewBool)
         {
-            sf::VertexArray new_highlight;
-            for (int i = 0; i < findingCells.size(); i++)
+            planetView.draw(window);
+        }
+        else
+        {
+            vertexMap.draw(window);
+
+            if (drawConvergenceLinesBool) {
+                window.draw(lines);
+            }
+            if (drawWindArrowsBool) {
+                window.draw(windArrows);
+            }
+            if (highlightedCell != vor::INVALID_INDEX) {
+                window.draw(highlight);
+            }
+            if (showFindSearcherBool)
             {
-                if (findingCells[i] < map.cells.size())
+                sf::VertexArray new_highlight;
+                for (int i = 0; i < findingCells.size(); i++)
                 {
-                    new_highlight = drawHighlightCell(map, findingCells[i]);
-                    window.draw(new_highlight);
+                    if (findingCells[i] < map.cells.size())
+                    {
+                        new_highlight = drawHighlightCell(map, findingCells[i]);
+                        window.draw(new_highlight);
+                    }
                 }
             }
-        }
-        if (drawRiversBool)
-		{
-			drawRivers(globals, window);
-		}
-        if (drawLakesBool)
-        {
-			drawLakes(globals, window);
-        }
-        if (drawContinentBool)
-        {
-            drawContinents(globals, window);
-        }
-
-        /// CHANGE THIS TO A BOOL!
-        if (mapType == 5)
-        {
-			for (int i = 0; i < globals.continents.size(); i++)
+            if (drawRiversBool)
             {
-				window.draw(globals.continents[i].drawDirectionArrows()); 
-			}
+                drawRivers(globals, window);
+            }
+            if (drawLakesBool)
+            {
+                drawLakes(globals, window);
+            }
+            if (drawContinentBool)
+            {
+                drawContinents(globals, window);
+            }
+
+            /// CHANGE THIS TO A BOOL!
+            if (mapType == 5)
+            {
+                for (int i = 0; i < globals.continents.size(); i++)
+                {
+                    window.draw(globals.continents[i].drawDirectionArrows());
+                }
+            }
         }
 
         ImGui::SFML::Render(window);
