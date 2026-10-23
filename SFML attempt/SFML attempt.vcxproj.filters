@@ -85,6 +85,12 @@
     <ClCompile Include="Voronoi.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="SphereVoronoi.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Delaunator.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="BoundaryRender.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -175,6 +181,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Voronoi.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SphereVoronoi.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Delaunator.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cell.hpp">
