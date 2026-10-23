@@ -83,6 +83,8 @@ public:
     // Getters
     float getLength() const { return len; };
     std::vector<sf::Vector2f> getPath() { return path; };
+    // The path as cell indices, the same walk as getPath, for drawing on any projection
+    const std::vector<std::size_t>& getPathCells() const { return pathCells; };
 
     // functions
     void purgeRiver(std::vector<Cell>& map);
@@ -94,6 +96,10 @@ public:
 	void finishRiver(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points) {
 		calcPath(map, voronoi_points);
 	};
+	// The planet's version, only the cell path
+	void finishRiver(const std::vector<Cell>& map) {
+		calcPathCells(map);
+	};
 
 	void addTributary(int tributary) { tributaries.push_back(tributary); };
 	void setParentRiver(int parent) { parentRiver = parent; };
@@ -102,10 +108,12 @@ private:
     float len = 0;
     std::vector<std::size_t> cells;
     std::vector<sf::Vector2f> path;
+    std::vector<std::size_t> pathCells;
 	std::vector<int> tributaries;
 	int parentRiver = -1;
     std::size_t endCell = 0;
-    void calcLen() { len = static_cast<float>(path.size()); };
+    void calcLen() { len = static_cast<float>(pathCells.size()); };
+    void calcPathCells(const std::vector<Cell>& map);
     void calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points);
 };
 

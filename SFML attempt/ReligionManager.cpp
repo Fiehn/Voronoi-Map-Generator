@@ -422,7 +422,7 @@ void ReligionManager::myth_phase_evolution(flecs::world& world,
 	History& history, 
 	flecs::entity religion_entity, 
 	uint32_t ticks_in_phase,
-	vor::Voronoi& map
+	vor::SphereVoronoi& map
 	)
 {
 

@@ -27,6 +27,9 @@ void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float
 void closeOceanCell(std::vector<Cell>& map);
 void smoothTemps(std::vector<Cell>& map, int smoothTimes);
 void calcHumid(std::vector<Cell>& map);
+void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::vector<std::size_t>& stack, std::size_t start, std::size_t river_id);
+// Rivers from the snow line down. The flat map's version also takes the positions for its river and lake drawing
+void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals);
 
 // The second group needs positions, these are the sphere versions of the Map.hpp functions.
 

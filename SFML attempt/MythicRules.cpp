@@ -125,7 +125,7 @@ namespace MythicRules {
 
 				LOG_INFO(Religion, "Deity ", subj_name, " split into ", nr, " new deities.");
 			};
-		rule.get_rule_weight = [](flecs::world& world, flecs::entity religion, vor::Voronoi& map) -> float
+		rule.get_rule_weight = [](flecs::world& world, flecs::entity religion, vor::SphereVoronoi& map) -> float
 			{
 				// Base weight because this is not dependent on location or other factors for now
 				return 1.0f;
@@ -188,7 +188,7 @@ namespace MythicRules {
 
 				history.log(0, EventType::DeityInteraction, actor_subj, actor_obj, snap);
 			};
-		rule.get_rule_weight = [](flecs::world& world, flecs::entity religion, vor::Voronoi& map) -> float
+		rule.get_rule_weight = [](flecs::world& world, flecs::entity religion, vor::SphereVoronoi& map) -> float
 			{
 				float base_weight = 1.0f;
 

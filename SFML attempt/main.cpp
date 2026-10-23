@@ -76,29 +76,20 @@ int main()
     sf::VertexArray lines;
     lines.setPrimitiveType(sf::Lines);
 
-    // Create empty highlighted cell
+    // The cell shown in the Highlighted Cell panel, the hovered one while Highlight Cell is on
     std::size_t highlightedCell = vor::INVALID_INDEX;
-    sf::VertexArray highlight(sf::LineStrip, 5);
-    
+
     // Load font!
     sf::Font font;
     if (!font.loadFromFile("Fonts/Roboto-Medium.ttf")) { std::cout << "Could not load font" << std::endl; }
-
-    // The old flat map. It stays empty, the panels that still read it move to the planet next
-    vor::Voronoi map;
 
     // The planet: generated on the sphere and shown on the globe
     vor::SphereVoronoi planet;
     PlanetView planetView;
 
-    // Create the vertex map
-    VertexMap vertexMap;
-    std::cout << "Vertex Buffer Available? " << vertexMap.useVertexBuffer << std::endl;
-
     // Render settings (boundary smoothing, outlines and map colours), kept apart from the map config
     RenderSettings renderSettings;
     renderSettings.load_json(RENDER_SETTINGS_FILE);
-    vertexMap.renderSettings = &renderSettings;
 
 	// Create the POP Manager
 	PopManager popManager;
@@ -234,7 +225,6 @@ int main()
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
 			mapTypeOld = mapType;
-            vertexMap.mapMode = mapType;
             // Reset seasonal view when changing map types (except for temperature, precipitation, humidity)
             if (mapType != 1 && mapType != 3 && mapType != 4) {
                 useSeasonalView = false;
@@ -277,6 +267,8 @@ int main()
         }
 
 		// The overlays (convergence lines, wind arrows, rivers, lakes, plate borders) come back on the globe later
+		ImGui::Checkbox("Highlight Cell", &drawHighlightBool);
+		if (ImGui::BeginItemTooltip()) { ImGui::Text("Show the cell under the cursor in the Highlighted Cell window"); ImGui::EndTooltip(); }
 
 		ImGui::Checkbox("Planetary Parameters", &showPlanetaryParamsBool);
 		ImGui::Checkbox("Continent Viewer", &showContinentViewerBool);
@@ -291,7 +283,9 @@ int main()
 		ImGui::Text("Amount of Rivers: %d", globals.rivers.size());
 
 
-        // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position
+        // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position.
+        // The hovered cell stays while the mouse is over the UI, so the window can be used
+        highlightedCell = drawHighlightBool && planetView.hoveredCell >= 0 ? static_cast<std::size_t>(planetView.hoveredCell) : vor::INVALID_INDEX;
         highligtedCellObservation(planet, globals, highlightedCell, &seasonCalc, &popManager);
         
         if (mapType==2)
@@ -325,9 +319,9 @@ int main()
 
         planetView.ui(planet, globals, window);
 
-        if (showSimulationBool) { tickerControls(ticker, simulationSpeed, map, globals, config, vertexMap); }
+        if (showSimulationBool) { tickerControls(ticker, simulationSpeed, planet, globals, config); }
 
-		searchFinder(map, findingCells, findCell, showFindSearcherBool, maxCellInMap);
+		searchFinder(planet, findingCells, findCell, showFindSearcherBool, maxCellInMap);
         biomeUI.biomePopUp(planet, globals, config, showBiomeGenBool, mapType, changeBiomeColorBool);
         if (showNewMap(planet, globals, window,
 			lines, seasonCalc,
@@ -343,16 +337,12 @@ int main()
 		configLoadSave(config, showLoadConfig, showSaveConfig);
 		planetaryParamsViewer(globals, showPlanetaryParamsBool);
         continentViewer(globals, showContinentViewerBool);
-		populationViewer(popManager, globals, showPopulationVierwerBool, map);
+		populationViewer(popManager, globals, showPopulationVierwerBool, planet);
 
-        if (showResourceGenBool)
+        if (resourceMapController(globals, config, showResourceGenBool, mapType, selectedResource))
         {
-			resourceMapController(map, globals, vertexMap, config, showResourceGenBool, mapType, selectedResource);
-        }
-
-        if (!drawHighlightBool) {
-            highlight.clear();
-            highlightedCell = vor::INVALID_INDEX;
+            mapTypeOld = mapType;
+            redrawMap();
         }
 
         planetView.update(window, planet);

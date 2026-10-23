@@ -39,13 +39,22 @@ static float riverCellScore(const Cell& cell) {
 };
 
 void River::calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& points) {
+    calcPathCells(map);
+    path.clear();
+    path.reserve(pathCells.size());
+    for (std::size_t cell : pathCells) {
+        path.push_back(points[cell]);
+    }
+};
+
+void River::calcPathCells(const std::vector<Cell>& map) {
 	// Will create something assembling a Minimum Spanning Tree
 	// Using a Depth First Search algorithm to find the path
 	// Prioritizing cells with rivers, then lakes, then oceans
 
 
-    path.clear();
-    path.reserve(cells.size() * 2); // Reserve enough space for the path
+    pathCells.clear();
+    pathCells.reserve(cells.size() * 2); // Reserve enough space for the path
 
     // Find the starting cell (endCell)
 	// Check if any of the neighboring cells are a lake or ocean
@@ -83,7 +92,7 @@ void River::calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2
 
     // Start the path from the end cell
     std::size_t q = endCell;
-    path.push_back(points[q]);
+    pathCells.push_back(q);
 
     // Track visited cells to avoid revisiting
     std::vector<bool> visited(map.size(), false);
@@ -116,7 +125,7 @@ void River::calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2
         if (!unvisitedNeighbors.empty()) {
             std::size_t neighbor = unvisitedNeighbors[0]; // Highest-priority neighbor
             visited[neighbor] = true;
-            path.push_back(points[neighbor]);
+            pathCells.push_back(neighbor);
             stack.push(neighbor);
             foundUnvisited = true;
         }
@@ -126,7 +135,7 @@ void River::calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2
             stack.pop();
             if (!stack.empty()) {
                 // Add the backtracking point to the path
-                path.push_back(points[stack.top()]);
+                pathCells.push_back(stack.top());
             }
         }
     }

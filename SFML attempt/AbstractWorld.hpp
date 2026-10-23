@@ -1,5 +1,6 @@
 #pragma once
-#include "Voronoi.hpp"
+#include "Voronoi.hpp" // Others still reach the flat map through here until it is removed
+#include "SphereVoronoi.hpp"
 #include "HistoryData.hpp"
 #include "flecs_schema.h"
 #include "ReligionManager.hpp"
@@ -43,7 +44,7 @@ public:
 		world.progress(); // Advance the ECS world (I have to figure out how to use this properly)
 	}
 
-	void myth_phase_step(flecs::entity religion_entity, uint32_t tick, vor::Voronoi& map) {
+	void myth_phase_step(flecs::entity religion_entity, uint32_t tick, vor::SphereVoronoi& map) {
 		// This is the myth phase or pre-history phase evolution step
 		// This is the first age after initial point generation
 		// Where the pops flood out and religions establish myths and resolve contradictions

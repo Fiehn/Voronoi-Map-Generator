@@ -166,6 +166,9 @@ void PlanetView::ui(const vor::SphereVoronoi& planet, const GlobalWorldObjects& 
         }
         ImGui::Text("Temperature %.1f (sd %.1f), precipitation %.1f, humidity %.2f", cell.temp, cell.tempVariance, cell.percepitation, cell.humidity);
         ImGui::Text("Wind %.2f blowing toward %.0f deg", cell.windStr, cell.windDir);
+        const bool hasBiome = cell.biome >= 0 && cell.biome < static_cast<int>(globals.biomes.size());
+        ImGui::Text("Biome %s%s%s%s", hasBiome ? globals.biomes[cell.biome].name.c_str() : "none",
+            cell.riverBool ? ", river" : "", cell.lakeBool ? ", lake" : "", cell.snowBool ? ", snow" : "");
         std::string neighbours;
         for (int nb : cell.neighbors) neighbours += std::to_string(nb) + " ";
         ImGui::TextWrapped("Neighbours: %s", neighbours.c_str());

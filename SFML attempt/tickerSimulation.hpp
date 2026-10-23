@@ -115,7 +115,9 @@ std::vector<std::size_t> cultureTicker(std::vector<Cell>& cells, GlobalWorldObje
 	return std::vector<std::size_t>();
 }
 
-void tick(vor::Voronoi& map, GlobalWorldObjects& globals, MapConfig& config, VertexMap& vertexMap, float deltaTime, std::mutex& globalsMutex)
+// Runs on the ticker thread, so it can't touch the globe's GL buffers. Changed cells get recoloured
+// on the main thread once cultures have colours again
+void tick(vor::SphereVoronoi& map, GlobalWorldObjects& globals, MapConfig& config, float deltaTime, std::mutex& globalsMutex)
 {
 	//// Try to acquire the lock with a timeout
 	//std::unique_lock<std::mutex> lock(globalsMutex, std::defer_lock);
@@ -137,15 +139,7 @@ void tick(vor::Voronoi& map, GlobalWorldObjects& globals, MapConfig& config, Ver
 		Cell& cell = map.cells[cellId];
 		if (cell.culture == -1) throw std::runtime_error("Cell has no culture");
 		//Culture& culture = globals.cultures[cell.culture];
-
-		for (size_t j = map.cells[cellId].vertex_offset; j < map.cells[cellId].vertex_offset + map.cells[cellId].vertex.size() * 3; j++)
-		{
-			//map.vertices[j].color = culture.color;
-		}
 	}
-	// Update the vertex buffer
-	vertexMap.update(map);
-
 }
 
 
@@ -154,11 +148,11 @@ public:
 	TickerSimulation()
 		: running(false), speed(1.0f), stopFlag(false) {}
 
-	void start(vor::Voronoi& map, GlobalWorldObjects& globals, MapConfig& config, VertexMap& vertexMap) {
+	void start(vor::SphereVoronoi& map, GlobalWorldObjects& globals, MapConfig& config) {
 		if (running) return; // Already running
 		stopFlag = false;
 		running = true;
-		tickerThread = std::thread(&TickerSimulation::run, this, std::ref(map), std::ref(globals), std::ref(config), std::ref(vertexMap));
+		tickerThread = std::thread(&TickerSimulation::run, this, std::ref(map), std::ref(globals), std::ref(config));
 	}
 
 	void stop()
@@ -202,7 +196,7 @@ private:
 	std::mutex globalsMutex;
 	std::condition_variable cv;
 	float speed;
-	void run(vor::Voronoi& map, GlobalWorldObjects& globals, MapConfig& config, VertexMap& vertexMap) {
+	void run(vor::SphereVoronoi& map, GlobalWorldObjects& globals, MapConfig& config) {
 		while (!stopFlag) {
 			{
 				std::unique_lock<std::mutex> lock(mutex);
@@ -213,7 +207,7 @@ private:
 			}
 
 			// Perform the tick
-			tick(map, globals, config, vertexMap, speed, globalsMutex);
+			tick(map, globals, config, speed, globalsMutex);
 
 			// Wait based on the simulation speed
 			std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(500 / speed)));
@@ -351,15 +345,14 @@ void cultureLineChart(GlobalWorldObjects& globals, bool colorChange = false)
 }
 
 void tickerControls(TickerSimulation& ticker, 
-	float& simulationSpeed, vor::Voronoi& map, 
-	GlobalWorldObjects& globals, MapConfig& config, 
-	VertexMap& vertexMap)
+	float& simulationSpeed, vor::SphereVoronoi& map,
+	GlobalWorldObjects& globals, MapConfig& config)
 {
 	//// TICKER CONTRLS
 	ImGui::Begin("Simulation Controls");
 	ImGui::SliderFloat("Simulation Speed", &simulationSpeed, 0.1f, 10.0f);
 	if (ImGui::Button("Start")) {
-		ticker.start(map, globals, config, vertexMap);
+		ticker.start(map, globals, config);
 	}
 	if (ImGui::Button("Pause")) {
 		ticker.pause();

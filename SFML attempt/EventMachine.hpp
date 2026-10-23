@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <future>
 #include <limits>
+#include "SphereMath.hpp"
 
 // Remember to add PopColormap() after the plot
 void pushTempColormap(const char* plot_id, const char* colormap_name, ImU32* colors, int size, bool colorsHaveChanged)
@@ -755,17 +756,17 @@ bool showNewMap(vor::SphereVoronoi& planet,
     return generated;
 }
 
-void resourceMapController(vor::Voronoi& map,
-    GlobalWorldObjects& globals,
-    VertexMap& vertexMap,
+// Returns true when another resource was picked, the map then needs recolouring
+bool resourceMapController(GlobalWorldObjects& globals,
     MapConfig& config,
     bool& showResourceMapBool,
     int& mapType,
     ResourceType& selectedResource)
 {
     if (!showResourceMapBool) {
-        return;
+        return false;
     }
+    bool changed = false;
 
     ImGui::Begin("Resource Map Controls", &showResourceMapBool);
     ImGui::Text("Select a resource to display on the map:");
@@ -883,12 +884,13 @@ void resourceMapController(vor::Voronoi& map,
 
     // Update map when selection changes
     if (previousResource != selectedResource) {
-        drawResourceMap(map, vertexMap, selectedResource);
+        changed = true;
         previousResource = selectedResource;
         mapType = 7; // Set to resource map mode
     }
 
     ImGui::End();
+    return changed;
 }
 
 void planetaryParamsViewer(GlobalWorldObjects& globals, bool& showPlanetaryParamsBool)
@@ -1380,7 +1382,7 @@ void configLoadSave(MapConfig& config, bool& showLoadConfig, bool& showSaveConfi
     }
 }
 
-void searchFinder(const vor::Voronoi& map, std::vector<std::size_t>& findingCells, std::size_t& findCell, bool& showFindSearcherBool, const std::size_t maxCellInMap)
+void searchFinder(const vor::SphereVoronoi& map, std::vector<std::size_t>& findingCells, std::size_t& findCell, bool& showFindSearcherBool, const std::size_t maxCellInMap)
 {
     if (!showFindSearcherBool)
     {
@@ -2073,15 +2075,32 @@ void continentViewer(GlobalWorldObjects& globals, bool& showContinentViewer)
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Center Position");
         ImGui::TableSetColumnIndex(1);
-        sf::Vector2f center = globals.continents[selectedContinent].getCenter();
-        ImGui::Text("(%.1f, %.1f)", center.x, center.y);
+        const glm::vec2 center = unitToLatLon(continent.centerDir);
+        ImGui::Text("lat %.1f, lon %.1f", center.x, center.y);
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Direction Vector");
+        ImGui::Text("Euler Pole");
         ImGui::TableSetColumnIndex(1);
-        sf::Vector2f dir = globals.continents[selectedContinent].getDirection();
-        ImGui::Text("(%.2f, %.2f)", dir.x, dir.y);
+        const glm::vec2 pole = unitToLatLon(continent.eulerAxis);
+        ImGui::Text("lat %.1f, lon %.1f, speed %.2f", pole.x, pole.y, continent.angularSpeed);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("The plate turns about this axis, counter clockwise seen from above the pole");
+            ImGui::EndTooltip();
+        }
+
+        // Plate velocity at its centre, the flat map's direction vector
+        const glm::vec3 centerVelocity = continent.velocityAt(continent.centerDir);
+        const float centerSpeed = glm::length(centerVelocity);
+        const float centerBearing = tangentToBearing(continent.centerDir, centerVelocity);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Motion at Center");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f toward %.0f deg", centerSpeed, centerBearing);
         if (ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();
@@ -2116,13 +2135,12 @@ void continentViewer(GlobalWorldObjects& globals, bool& showContinentViewer)
         draw_list->AddCircleFilled(center_pos, canvas_size / 2 - 5, ImColor(50, 50, 50, 255));
         draw_list->AddCircle(center_pos, canvas_size / 2 - 5, ImColor(100, 100, 100, 255), 32, 2.0f);
 
-        // Draw direction arrow
-        sf::Vector2f direction = globals.continents[selectedContinent].getDirection();
-        float mag = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+        // Draw direction arrow, north up
+        float mag = centerSpeed;
         if (mag > 0.001f)
         {
-            float normX = direction.x / mag;
-            float normY = direction.y / mag;
+            float normX = std::sin(glm::radians(centerBearing));
+            float normY = -std::cos(glm::radians(centerBearing));
             float arrowLen = (canvas_size / 2 - 10) * std::min(mag, 1.5f);
 
             ImVec2 arrowEnd(center_pos.x + normX * arrowLen, center_pos.y + normY * arrowLen);
@@ -2218,7 +2236,7 @@ void continentViewer(GlobalWorldObjects& globals, bool& showContinentViewer)
 }
 
 void populationViewer(PopManager& popManager, GlobalWorldObjects& globals,
-    bool& showPopulationViewer, const vor::Voronoi& map)
+    bool& showPopulationViewer, const vor::SphereVoronoi& map)
 {
     if (!showPopulationViewer)
     {

@@ -113,7 +113,7 @@ static void genWorld(vor::SphereVoronoi& planet,
 	}
 
     // Total processing steps
-    const int totalSteps = 15;
+    const int totalSteps = 18;
     int currentStep = 0;
 
     // Initial draw
@@ -173,6 +173,10 @@ static void genWorld(vor::SphereVoronoi& planet,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
+		calcRiverStart(planet.cells, globals); }, "Calculating River", currentStep,
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+
+    GenStepWrapper::RunStep([&]() {
 		planetCalcTemp(planet, globals); }, "Calculating Temperatures", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
@@ -192,7 +196,13 @@ static void genWorld(vor::SphereVoronoi& planet,
         planetCalcClimateVariance(planet, globals); }, "Calculating Climate Variance", currentStep,
         totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
-    // Still being moved onto the sphere: rivers (which ran between wind and temperature), biomes and resources
+    GenStepWrapper::RunStep([&]() {
+		calcBiome(planet.cells, globals.biomes, config.n_ocean_biomes, config.n_land_biomes, config.kmeans_max_iter, config.biome_method, config.prob_smoothing); }, "Calculating Biomes", currentStep,
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+
+    GenStepWrapper::RunStep([&]() {
+		ResourceGen::generateMapResources(planet.cells, globals); }, "Generating Resources", currentStep,
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([]() {}, "Finishing up the map!", currentStep, totalSteps, window,
         loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);

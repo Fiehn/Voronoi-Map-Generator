@@ -578,6 +578,216 @@ void calcHumid(std::vector<Cell>& map)
     }
 }
 
+void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::vector<std::size_t>& stack, std::size_t start, std::size_t river_id)
+{
+    // Recursive River function
+	// 1. Get the height difference between the start cell and its neighbors
+	// 2. Sort the neighbors based on the height difference
+	// 3. If the height difference is negative, the river ends or a lake is generated
+	// 4. If the height difference is positive, the river continues to the neighbor with the lowest height difference
+	// 5. If the neighbor is snow, lake or ocean, the river ends
+	// 6. If the neighbor is a river, pick a neighbor that has less than 2 river neighbors
+	// 7. If no neighbor is found, the river ends
+	// 8. If a neighbor is found, the river continues to the neighbor and the function is called recursively
+
+    std::vector<std::pair<std::size_t, float>> HeightDiff;
+    HeightDiff.reserve(map[start].neighbors.size());
+    float height = map[start].height;
+    for (std::size_t i = 0; i < map[start].neighbors.size(); i++)
+    {
+        HeightDiff.push_back({ map[start].neighbors[i], height - map[map[start].neighbors[i]].height });
+    }
+    std::sort(HeightDiff.begin(), HeightDiff.end(), [](const std::pair<int, float>& a, const std::pair<int, float>& b) { return a.second < b.second; });
+
+    int order = 1;
+
+    if (HeightDiff[HeightDiff.size() - 1].second < 0) // ITs too happy to make lakes, it needs more rivers.
+    {
+        // if no neighbor is found to have a lower height, either the river ends or it should generate a lake
+
+        // TODO: This needs to be tuned and fixed
+        float sum = 0;
+        for (const auto& pair : HeightDiff) {
+            sum += std::abs(pair.second);
+        }
+        if (sum <= 0.1)
+        {
+            for (int i = 0; i < map[start].neighbors.size(); i++)
+            {
+                map[map[start].neighbors[i]].lakeBool = true;
+				// check neighbors if they have a lake id add this cell to the lake object otherwise create a new lake object
+                // TODO: LAKES
+				for (int j = 0; j < map[map[start].neighbors[i]].neighbors.size(); j++)
+                {
+                    if (map[map[map[start].neighbors[i]].neighbors[j]].lakeBool == true)
+                    {
+						globals.lakes[map[map[map[start].neighbors[i]].neighbors[j]].lakeId].addCell(map[start].neighbors[i]);
+						map[map[start].neighbors[i]].lakeId = map[map[map[start].neighbors[i]].neighbors[j]].lakeId;
+						break;
+                    }
+                    else
+					{
+						int lake_id = globals.lakes.size();
+						globals.lakes.emplace_back(Lake(lake_id));
+						globals.lakes[globals.lakes.size() - 1].addCell(map[start].neighbors[i]);
+                        map[map[start].neighbors[i]].lakeId = lake_id;
+					}
+                }
+            }
+        }
+    }
+    else
+    {
+        //if (map[HeightDiff[HeightDiff.size() - order].first].snowBool == true){ return;}else
+        // We check if the neighbor is snow, ocean or river
+        if (map[HeightDiff[HeightDiff.size() - order].first].oceanBool == true)
+        {
+            return;
+        }
+        else if (map[HeightDiff[HeightDiff.size() - order].first].riverBool == true)
+        {// pick a neighbor whose neighbor's neighbors are not rivers
+            std::vector<int> possibleNeighbors;
+            for (int i = 0; i < map[start].neighbors.size(); i++)
+            {
+                if (map[map[start].neighbors[i]].riverBool == false)
+                {
+                    int countRiverNeighbors = 0;
+                    for (int j = 0; j < map[map[start].neighbors[i]].neighbors.size(); j++)
+                    {
+                        if (map[map[map[start].neighbors[i]].neighbors[j]].riverBool) { countRiverNeighbors += 1; }
+                    }
+                    if (countRiverNeighbors <= 1)
+                    {
+                        possibleNeighbors.push_back(map[start].neighbors[i]);
+                    }
+                }
+            }
+            if (possibleNeighbors.size() > 0)
+            {
+                std::sort(possibleNeighbors.begin(), possibleNeighbors.end());
+                map[possibleNeighbors[possibleNeighbors.size() - 1]].riverBool = true;
+                globals.riverCells.push_back(possibleNeighbors[possibleNeighbors.size() - 1]);
+                map[possibleNeighbors[possibleNeighbors.size() - 1]].riverStr = map[start].riverStr; //- RandomBetween(0.001, 0.003);
+                globals.rivers[river_id].addCell(possibleNeighbors[possibleNeighbors.size() - 1]);
+				map[possibleNeighbors[possibleNeighbors.size() - 1]].riverId = river_id;
+                riverIteration(map, globals, stack, possibleNeighbors[possibleNeighbors.size() - 1], river_id);
+            }
+            else {
+				// If no neighbor is found the river feeds into any neighbor that is an ocean, snow or river
+                globals.rivers[river_id].addCell(HeightDiff[HeightDiff.size() - order].first);
+				globals.rivers[river_id].setParentRiver(map[HeightDiff[HeightDiff.size() - order].first].riverId);
+				globals.rivers[map[HeightDiff[HeightDiff.size() - order].first].riverId].addTributary(river_id);
+                return;
+            }
+        }
+    }
+
+	// is this ever reached?? TODO: Check if this is ever reached
+    map[HeightDiff[HeightDiff.size() - order].first].riverBool = true;
+    globals.riverCells.push_back(HeightDiff[HeightDiff.size() - order].first);
+    map[HeightDiff[HeightDiff.size() - order].first].riverStr = map[start].riverStr; //- RandomBetween(0.001, 0.003);
+    globals.rivers[river_id].addCell(HeightDiff[HeightDiff.size() - order].first);
+	map[HeightDiff[HeightDiff.size() - order].first].riverId = river_id;
+    riverIteration(map, globals, stack, HeightDiff[HeightDiff.size() - order].first, river_id);
+
+    // FLow strenght calculate here
+
+}
+
+// The flat map's calcRiverStart without positions: rivers keep their path as cells, and lakes keep their
+// cells but get no outline (finishLake), which was already broken
+void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals)
+{
+    std::vector<std::size_t> stack;
+
+    // Find all snow cells with more than 2 non-snow neighbors
+    stack.reserve(globals.snowCells.size());
+    for (int i = 0; i < globals.snowCells.size(); i++)
+    {
+        int countNonSnow = 0;
+
+        for (int j = 0; j < map[globals.snowCells[i]].neighbors.size(); j++)
+        {
+            if (!map[map[globals.snowCells[i]].neighbors[j]].snowBool)
+            {
+                countNonSnow = countNonSnow + 1;
+            }
+        }
+        if (countNonSnow >= 2)
+        {
+            stack.push_back(globals.snowCells[i]);
+        }
+    }
+
+    // Lake id start
+	int newest_lake_id = 0;
+
+    // Start the river from the snow cells
+    std::size_t i = 0;
+    while (!stack.empty())
+    {
+        // TODO: LAKES
+        // ADD: After each iteration check all neighbors of all lakes and see if they need to be rivers, and add them to the stack. (at random!)
+        int count = 0;
+        int idx = pop_random_i(stack);
+        if (map[idx].riverBool == true)
+        {
+            continue;
+        }
+        if (map[idx].lakeBool == true)
+        {
+            continue;
+        }
+        for (int i = 0; i < map[idx].neighbors.size(); i++)
+        {
+            if (map[map[idx].neighbors[i]].riverBool == true)
+            {
+                count++;
+            }
+        }
+        if (count >= 1)
+        {
+            continue;
+        }
+        if (RandomBetween(0.0, 1.0) > 0.4)
+        {
+            // If this is the place we can start a new river
+
+            globals.rivers.emplace_back(River(i));
+
+            globals.rivers[i].addCell(idx);
+
+            globals.riverCells.push_back(idx);
+            map[idx].riverBool = true;
+            map[idx].riverStr = RandomBetween(0.99, 1.0); // has to be based on temperature and percepitation as well
+			map[idx].riverId = i;
+            riverIteration(map, globals, stack, idx, i);
+			globals.rivers[i].finishRiver(map);
+			i++;
+        }
+
+		// Check any new lakes that might have been created and add neighbors to the stack
+		for (int j = newest_lake_id; j < globals.lakes.size(); j++)
+        {
+			// Add neighbors to the stack
+            for (int j = 0; j < globals.lakes[newest_lake_id].getCells().size(); j++)
+            {
+				std::vector<int> neighbors = map[globals.lakes[newest_lake_id].getCells()[j]].neighbors;
+                for (int k = 0; k < map[globals.lakes[newest_lake_id].getCells()[j]].neighbors.size(); k++)
+                {
+					if (map[neighbors[k]].riverBool == false && map[neighbors[k]].lakeBool == false && map[neighbors[k]].oceanBool == false && map[neighbors[k]].snowBool == false)
+                    {
+						stack.push_back(neighbors[k]);
+					}
+				}
+			}
+			// Increment the lake index/id for the next lake
+			newest_lake_id++;
+		}
+    }
+
+}
+
 //////////
 // Sphere versions of the position based steps
 //////////

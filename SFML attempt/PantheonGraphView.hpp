@@ -322,7 +322,7 @@ public:
     }
 };
 
-void DrawReligionControls(flecs::world& world, ReligionManager& relManager, History& history, Cell& testCell, vor::Voronoi& map) {
+void DrawReligionControls(flecs::world& world, ReligionManager& relManager, History& history, Cell& testCell, vor::SphereVoronoi& map) {
     static flecs::entity activeReligion = world.entity(0);
     static PantheonGraphView graphView(&world);
     static uint32_t currentTick = 0;

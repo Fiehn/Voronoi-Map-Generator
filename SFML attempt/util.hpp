@@ -373,8 +373,8 @@ inline int chooseIndex(std::vector<float> rates) {
 
 inline float normalDistPDF(float mean, float std)
 {
-    // Box-Muller transform
-	float u1 = (float)rand() / RAND_MAX;
+    // Box-Muller transform. u1 must not be 0, log(0) gave infinite values once in 32768 draws
+	float u1 = ((float)rand() + 1.0f) / ((float)RAND_MAX + 1.0f);
 	float u2 = (float)rand() / RAND_MAX;
 	return mean + std * sqrt(-2 * log(u1)) * cos(2 * PI * u2);
 }
