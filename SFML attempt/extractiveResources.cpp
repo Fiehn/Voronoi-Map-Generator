@@ -431,7 +431,7 @@ namespace ResourceGen {
 		float heightPenalty = 1.f - clamp((cell.height - 0.5f) * 2.f, 1.f, 0.f);
 		
 		// river bonus
-		float riverBonus = cell.riverBool ? 0.2f : 0.f;
+		float riverBonus = cell.riverBool ? 0.1f + 0.2f * cell.riverStrength() : 0.f; // A big river waters more than a stream
 
 		baseYield += tempFactor * waterFactor * heightPenalty + riverBonus;
 		return clamp(baseYield * RandomBetween(0.7f, 1.1f), 0.f, 1.f);

@@ -218,6 +218,31 @@ float PlanetView::maxZoom() const
     return cellSpacing > 0.f ? PIXELS_PER_CELL_AT_MAX_ZOOM / cellSpacing : camera.zoom;
 }
 
+void PlanetView::focusOn(const vor::SphereVoronoi& planet, const std::vector<std::size_t>& cells, const sf::RenderWindow& window)
+{
+    glm::vec3 sum(0.f);
+    for (std::size_t cell : cells) {
+        if (cell < planet.points.size()) sum += planet.points[cell];
+    }
+    // Cells all round the planet have no middle
+    if (glm::length(sum) < 1e-4f) return;
+    const glm::vec3 middle = glm::normalize(sum);
+
+    float radius = 0.f; // Radians
+    for (std::size_t cell : cells) {
+        if (cell < planet.points.size()) radius = std::max(radius, std::acos(std::clamp(glm::dot(middle, planet.points[cell]), -1.f, 1.f)));
+    }
+    radius = std::max(radius, 3.f * cellSpacing);
+
+    const glm::vec2 latLon = unitToLatLon(middle);
+    camera.lat = latLon.x;
+    camera.lon = latLon.y;
+    const glm::vec2 viewport = viewportOf(window);
+    camera.zoom = std::clamp(0.35f * std::min(viewport.x, viewport.y) / radius, PlanetCamera::minZoom(viewport), maxZoom());
+    camera.setLock(camera.lock, viewport, maxZoom()); // Auto picks the globe or the flat map for the new zoom
+    camera.clampTo(viewport, maxZoom());
+}
+
 void PlanetView::handleEvent(const sf::Event& event, const sf::RenderWindow& window)
 {
     const bool overUi = ImGui::GetIO().WantCaptureMouse;

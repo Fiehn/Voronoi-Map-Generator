@@ -24,6 +24,7 @@
 #include "GLContext.hpp"
 #include "SphereVoronoi.hpp"
 #include "PlanetView.hpp"
+#include "RiverObserver.hpp"
 #include "PlanetColors.hpp"
 #include "RenderSettings.hpp"
 #include "NewMap.hpp"
@@ -96,6 +97,7 @@ int main()
 	bool showResourceGenBool = false; // Get window to regenerate resources
 	bool showPlanetaryParamsBool = false; // Show planetary parameters window
 	bool showContinentViewerBool = false; // Show continent viewer
+	RiverObserver riverObserver; // Rivers and lakes window
 	bool showPopulationVierwerBool = false; // Show population viewer
 
 	bool changeBiomeColorBool = false; // Change the color of the biomes
@@ -269,6 +271,7 @@ int main()
 
 		ImGui::Checkbox("Planetary Parameters", &showPlanetaryParamsBool);
 		ImGui::Checkbox("Continent Viewer", &showContinentViewerBool);
+		ImGui::Checkbox("River Observer", &riverObserver.open);
 		ImGui::Checkbox("Population Viewer", &showPopulationVierwerBool);
 
         ImGui::Text("Number of cells: %d", planet.cells.size());
@@ -340,12 +343,14 @@ int main()
             window.setActive(true);
             planetView.rebuild(planet, renderSettings, mapType);
             planetView.setWorldOverlays(planet, globals);
+            riverObserver.reset();
             maxCellInMap = planet.cells.size();
             redrawMap();
         }
 		configLoadSave(config, showLoadConfig, showSaveConfig);
 		planetaryParamsViewer(globals, showPlanetaryParamsBool);
         continentViewer(globals, showContinentViewerBool);
+        riverObserver.ui(planet, globals, planetView, window);
 		populationViewer(popManager, globals, showPopulationVierwerBool, planet);
 
         if (resourceMapController(globals, config, showResourceGenBool, mapType, selectedResource))
@@ -356,7 +361,9 @@ int main()
 
         if (window.setActive(true))
         {
-            planetView.setFoundCells(planet, showFindSearcherBool ? findingCells : std::vector<std::size_t>());
+            std::vector<std::size_t> outlined = showFindSearcherBool ? findingCells : std::vector<std::size_t>();
+            if (riverObserver.open) { outlined.insert(outlined.end(), riverObserver.highlight().begin(), riverObserver.highlight().end()); }
+            planetView.setFoundCells(planet, outlined);
         }
         planetView.update(window, planet);
 

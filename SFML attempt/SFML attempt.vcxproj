@@ -211,6 +211,7 @@
     <ClCompile Include="PlanetView.cpp" />
     <ClCompile Include="PlanetGen.cpp" />
     <ClCompile Include="Hydrology.cpp" />
+    <ClCompile Include="RiverObserver.cpp" />
     <ClCompile Include="PlanetColors.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -280,6 +281,7 @@
     <ClInclude Include="PlanetView.hpp" />
     <ClInclude Include="PlanetGen.hpp" />
     <ClInclude Include="Hydrology.hpp" />
+    <ClInclude Include="RiverObserver.hpp" />
     <ClInclude Include="WaterBody.hpp" />
     <ClInclude Include="PlanetColors.hpp" />
     <ClInclude Include="CellObjects.hpp" />

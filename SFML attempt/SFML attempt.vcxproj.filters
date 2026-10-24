@@ -109,6 +109,9 @@
     <ClCompile Include="Hydrology.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="RiverObserver.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="PlanetColors.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -229,6 +232,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Hydrology.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RiverObserver.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WaterBody.hpp">

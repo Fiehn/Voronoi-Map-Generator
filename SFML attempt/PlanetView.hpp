@@ -40,6 +40,9 @@ public:
     // Rivers, convergence lines, wind and plate arrows of a newly generated world. Needs the window's GL context active
     void setWorldOverlays(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals);
 
+    // Moves the camera to the middle of these cells and zooms so they fill about 70% of the window. Needs a planet
+    void focusOn(const vor::SphereVoronoi& planet, const std::vector<std::size_t>& cells, const sf::RenderWindow& window);
+
     void handleEvent(const sf::Event& event, const sf::RenderWindow& window);
     void update(const sf::RenderWindow& window, const vor::SphereVoronoi& planet); // Once per frame, picks the hovered cell
     void draw(sf::RenderWindow& window);
