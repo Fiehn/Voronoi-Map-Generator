@@ -99,7 +99,7 @@ void PlanetView::updateOverlays(const vor::SphereVoronoi& planet, const RenderSe
 
 void PlanetView::setWorldOverlays(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals)
 {
-    rivers = riverPaths(planet, globals.rivers);
+    rivers = riverPaths(planet, globals.rivers, globals.waterBodies);
     convergenceLats.clear();
     for (float fraction : globals.convergenceLines) convergenceLats.push_back(convergenceLineLat(fraction));
     uploadWorldLines();
@@ -130,7 +130,13 @@ void PlanetView::uploadArrows(int level)
 void PlanetView::uploadWorldLines()
 {
     RibbonBatch riverBatch;
-    for (const std::vector<glm::vec3>& path : rivers) riverBatch.addLine(path, false, overlayStyles.rivers.color, overlayStyles.rivers.widthPx);
+    // Wider toward the mouth: the style's width is the biggest river's, riverMinWidthPx the smallest's
+    const float minPx = std::min(overlayStyles.riverMinWidthPx, overlayStyles.rivers.widthPx);
+    for (const RiverPath& path : rivers) {
+        std::vector<float> widths(path.strength.size());
+        for (std::size_t i = 0; i < widths.size(); i++) { widths[i] = minPx + (overlayStyles.rivers.widthPx - minPx) * path.strength[i]; }
+        riverBatch.addLine(path.points, widths, false, overlayStyles.rivers.color);
+    }
     renderer.setRibbons(RibbonGroup::Rivers, riverBatch);
 
     RibbonBatch lineBatch;
@@ -210,6 +216,31 @@ void PlanetView::uploadColors(const vor::SphereVoronoi& planet)
 float PlanetView::maxZoom() const
 {
     return cellSpacing > 0.f ? PIXELS_PER_CELL_AT_MAX_ZOOM / cellSpacing : camera.zoom;
+}
+
+void PlanetView::focusOn(const vor::SphereVoronoi& planet, const std::vector<std::size_t>& cells, const sf::RenderWindow& window)
+{
+    glm::vec3 sum(0.f);
+    for (std::size_t cell : cells) {
+        if (cell < planet.points.size()) sum += planet.points[cell];
+    }
+    // Cells all round the planet have no middle
+    if (glm::length(sum) < 1e-4f) return;
+    const glm::vec3 middle = glm::normalize(sum);
+
+    float radius = 0.f; // Radians
+    for (std::size_t cell : cells) {
+        if (cell < planet.points.size()) radius = std::max(radius, std::acos(std::clamp(glm::dot(middle, planet.points[cell]), -1.f, 1.f)));
+    }
+    radius = std::max(radius, 3.f * cellSpacing);
+
+    const glm::vec2 latLon = unitToLatLon(middle);
+    camera.lat = latLon.x;
+    camera.lon = latLon.y;
+    const glm::vec2 viewport = viewportOf(window);
+    camera.zoom = std::clamp(0.35f * std::min(viewport.x, viewport.y) / radius, PlanetCamera::minZoom(viewport), maxZoom());
+    camera.setLock(camera.lock, viewport, maxZoom()); // Auto picks the globe or the flat map for the new zoom
+    camera.clampTo(viewport, maxZoom());
 }
 
 void PlanetView::handleEvent(const sf::Event& event, const sf::RenderWindow& window)
@@ -349,6 +380,16 @@ void PlanetView::ui(const vor::SphereVoronoi& planet, const GlobalWorldObjects& 
         }
         ImGui::Text("Temperature %.1f (sd %.1f), precipitation %.1f, humidity %.2f", cell.temp, cell.tempVariance, cell.percepitation, cell.humidity);
         ImGui::Text("Wind %.2f blowing toward %.0f deg", cell.windStr, cell.windDir);
+        if (cell.riverBool) {
+            ImGui::Text("River %d: %.0f m3/s, %.0f m wide, %.1f m deep, %.2f m/s", cell.riverId, cell.discharge, cell.riverWidth, cell.riverDepth, cell.riverSpeed);
+        }
+        else if (cell.lakeBool && cell.waterBody >= 0 && cell.waterBody < static_cast<int>(globals.waterBodies.size())) {
+            const WaterBody& lake = globals.waterBodies[cell.waterBody];
+            ImGui::Text("Lake %d: %.0f km2, %.0f m deep, %s", cell.waterBody, lake.areaKm2, lake.depthM, lake.full ? "drains over its outlet" : "closed basin");
+        }
+        else if (!cell.oceanBool) {
+            ImGui::Text("Runoff %.1f (PET %.1f), discharge %.1f m3/s", cell.runoff, cell.pet, cell.discharge);
+        }
         const bool hasBiome = cell.biome >= 0 && cell.biome < static_cast<int>(globals.biomes.size());
         ImGui::Text("Biome %s%s%s%s", hasBiome ? globals.biomes[cell.biome].name.c_str() : "none",
             cell.riverBool ? ", river" : "", cell.lakeBool ? ", lake" : "", cell.snowBool ? ", snow" : "");

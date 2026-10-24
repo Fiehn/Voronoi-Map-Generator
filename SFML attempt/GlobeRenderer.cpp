@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include "GlobeRenderer.hpp"
+#include "WaterBody.hpp"
 #include "GLContext.hpp"
 #include "MapProjection.hpp"
 #include "SphereMath.hpp"
@@ -341,20 +342,149 @@ void appendCellOutline(RibbonBatch& batch, const vor::SphereVoronoi& sphere, int
     batch.addLine(ring, true, style.color, style.widthPx);
 }
 
-std::vector<std::vector<glm::vec3>> riverPaths(const vor::SphereVoronoi& sphere, const std::vector<River>& rivers)
+namespace {
+    constexpr float MOUTH_INTO_WATER = 0.35f; // Of the way from the shared edge to the water cell's centre
+
+    // One pass of corner cutting on points[from..to] with both ends fixed: every segment is replaced by the
+    // points a quarter and three quarters along it, pushed back out to the sphere
+    void chaikinRange(const RiverPath& in, std::size_t from, std::size_t to, RiverPath& out)
+    {
+        out.points.push_back(in.points[from]);
+        out.strength.push_back(in.strength[from]);
+        out.pinned.push_back(1);
+        for (std::size_t i = from; i < to; i++) {
+            const glm::vec3& a = in.points[i];
+            const glm::vec3& b = in.points[i + 1];
+            if (i > from) {
+                out.points.push_back(glm::normalize(0.75f * a + 0.25f * b));
+                out.strength.push_back(0.75f * in.strength[i] + 0.25f * in.strength[i + 1]);
+                out.pinned.push_back(0);
+            }
+            if (i + 1 < to) {
+                out.points.push_back(glm::normalize(0.25f * a + 0.75f * b));
+                out.strength.push_back(0.25f * in.strength[i] + 0.75f * in.strength[i + 1]);
+                out.pinned.push_back(0);
+            }
+        }
+        out.points.push_back(in.points[to]);
+        out.strength.push_back(in.strength[to]);
+        out.pinned.push_back(1);
+    }
+
+    // The path is cut at its pinned points, which every pass leaves where they are
+    void chaikin(RiverPath& path, int passes)
+    {
+        for (int pass = 0; pass < passes; pass++) {
+            RiverPath next;
+            std::size_t from = 0;
+            for (std::size_t i = 1; i < path.points.size(); i++) {
+                if (!path.pinned[i] && i + 1 != path.points.size()) continue;
+                RiverPath piece;
+                if (i - from >= 2) chaikinRange(path, from, i, piece);
+                else { // Nothing to cut between two pinned points
+                    piece.points = { path.points[from], path.points[i] };
+                    piece.strength = { path.strength[from], path.strength[i] };
+                    piece.pinned = { 1, 1 };
+                }
+                const std::size_t skip = next.points.empty() ? 0 : 1; // Shared with the piece before
+                next.points.insert(next.points.end(), piece.points.begin() + skip, piece.points.end());
+                next.strength.insert(next.strength.end(), piece.strength.begin() + skip, piece.strength.end());
+                next.pinned.insert(next.pinned.end(), piece.pinned.begin() + skip, piece.pinned.end());
+                from = i;
+            }
+            if (next.points.empty()) return;
+            path = std::move(next);
+        }
+    }
+
+    // The middle of the edge cell a shares with cell b, or the centre of a when they do not touch
+    glm::vec3 sharedEdgeMiddle(const vor::SphereVoronoi& sphere, int a, int b)
+    {
+        const Cell& cell = sphere.cells[a];
+        for (std::size_t k = 0; k < cell.neighbors.size(); k++) {
+            if (cell.neighbors[k] != b) continue;
+            const glm::vec3 sum = sphere.voronoi_points[cell.vertex[k]] + sphere.voronoi_points[cell.vertex[(k + 1) % cell.vertex.size()]];
+            if (glm::length(sum) > 1e-6f) return glm::normalize(sum);
+        }
+        return sphere.points[a];
+    }
+
+    // Where a river meets the water cell b from cell a: over their shared edge and a little way in
+    glm::vec3 waterEntry(const vor::SphereVoronoi& sphere, int a, int b)
+    {
+        const glm::vec3 edge = sharedEdgeMiddle(sphere, a, b);
+        return glm::normalize(edge + MOUTH_INTO_WATER * (sphere.points[b] - edge));
+    }
+}
+
+std::vector<RiverPath> riverPaths(const vor::SphereVoronoi& sphere, const std::vector<River>& rivers, const std::vector<WaterBody>& lakes)
 {
-    std::vector<std::vector<glm::vec3>> paths;
+    float largest = 0.f;
+    for (const Cell& cell : sphere.cells) {
+        if (cell.riverBool) largest = std::max(largest, cell.discharge);
+    }
+    const auto strengthOf = [&](float discharge) { return largest > 0.f ? std::sqrt(std::clamp(discharge / largest, 0.f, 1.f)) : 0.f; };
+
+    // The cell a tributary joins is a pinned point of the river it joins
+    std::vector<std::vector<std::size_t>> joinCells(rivers.size());
+    for (const River& river : rivers) {
+        if (river.parentRiver >= 0 && river.parentRiver < static_cast<int>(rivers.size()) && !river.getPathCells().empty()) {
+            joinCells[river.parentRiver].push_back(river.getPathCells().back());
+        }
+    }
+
+    // The lake edge a river that leaves a lake starts from: the outlet's shared edge with a cell of the lake
+    std::vector<int> leavesLake(rivers.size(), -1);
+    for (std::size_t b = 0; b < lakes.size(); b++) {
+        if (lakes[b].outflowRiver >= 0 && lakes[b].outflowRiver < static_cast<int>(rivers.size())) leavesLake[lakes[b].outflowRiver] = static_cast<int>(b);
+    }
+
+    std::vector<RiverPath> paths;
     paths.reserve(rivers.size());
     for (const River& river : rivers) {
-        std::vector<glm::vec3> path;
-        for (std::size_t cell : river.getPathCells()) {
-            if (cell < sphere.points.size()) path.push_back(sphere.points[cell]);
+        RiverPath path;
+        const std::vector<std::size_t>& cells = river.getPathCells();
+        for (std::size_t k = 0; k < cells.size(); k++) {
+            const std::size_t cell = cells[k];
+            if (cell >= sphere.points.size()) continue;
+            path.points.push_back(sphere.points[cell]);
+            // A tributary's last cell belongs to the river it joins, which carries more than the tributary
+            const bool joins = river.mouthType == RiverMouth::River && k + 1 == cells.size();
+            path.strength.push_back(strengthOf(joins ? river.mouthDischarge : sphere.cells[cell].discharge));
+            path.pinned.push_back(std::find(joinCells[river.id].begin(), joinCells[river.id].end(), cell) != joinCells[river.id].end());
         }
+        if (path.points.empty()) { paths.push_back(std::move(path)); continue; }
+
+        // Out of a lake: start on the lake's edge
+        const int lake = leavesLake[river.id];
+        if (lake >= 0) {
+            const int outlet = static_cast<int>(cells.front());
+            for (int nb : sphere.cells[outlet].neighbors) {
+                if (sphere.cells[nb].waterBody != lake) continue;
+                path.points.insert(path.points.begin(), sharedEdgeMiddle(sphere, outlet, nb));
+                path.strength.insert(path.strength.begin(), path.strength.front());
+                path.pinned.insert(path.pinned.begin(), 1);
+                break;
+            }
+        }
+
+        // Ocean and lake mouths: on across the edge between the last river cell and the water
+        if (river.mouthType == RiverMouth::Ocean || river.mouthType == RiverMouth::Lake) {
+            const int last = static_cast<int>(cells.back());
+            const int down = sphere.cells[last].downstream;
+            if (down >= 0) {
+                path.points.push_back(waterEntry(sphere, last, down));
+                path.strength.push_back(strengthOf(river.mouthDischarge));
+                path.pinned.push_back(1);
+            }
+        }
+        path.pinned.front() = 1;
+        path.pinned.back() = 1;
+        chaikin(path, 2);
         paths.push_back(std::move(path));
     }
     return paths;
 }
-
 void appendLatitudeCircle(RibbonBatch& batch, float lat, const OverlayStyle& style)
 {
     std::vector<glm::vec3> circle;

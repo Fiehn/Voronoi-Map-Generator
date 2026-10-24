@@ -4,11 +4,13 @@
 #include <ctime>
 #include <limits>
 #include <numeric>
+#include <queue>
 #include <random>
 #include <stdexcept>
 #include <glm/gtc/constants.hpp>
 #include "SphereMath.hpp"
 #include "util.hpp"
+#include "SeasonalCalculator.hpp"
 
 //////////
 // Steps that only walk the cell graph
@@ -419,22 +421,6 @@ void generateOceans(std::vector<Cell>& map, GlobalWorldObjects& globals)
     }
 }
 
-void generateSnowline(std::vector<Cell>& map, GlobalWorldObjects& globals)
-{
-	// Generate snowline cells
-    // If above snowline heigh
-	// and temperature is below 5C
-	// mark as snowline
-    for (size_t i = 0; i < map.size(); i++)
-    {
-        if (map[i].height >= globals.globalSnowline && map[i].temp <= 5.0f)
-        {
-            map[i].snowBool = true;
-            globals.snowCells.push_back(i);
-        }
-	}
-}
-
 void generateTreeline(std::vector<Cell>& map, GlobalWorldObjects& globals)
 {
     // Generate treeline cells
@@ -446,6 +432,38 @@ void generateTreeline(std::vector<Cell>& map, GlobalWorldObjects& globals)
 	}
 }
 
+void planetCalcSnowIce(vor::SphereVoronoi& planet, GlobalWorldObjects& globals)
+{
+    // Permanent snow and glaciers: land whose warmest month averages at or below 0 C.
+    // Sea ice: ocean whose warmest month averages at or below -2 C.
+    // Needs the smoothed temperatures. The snow line is whatever height that makes it, globalSnowline only reports it
+    const SeasonalCalculator seasons(globals);
+    const float yearLength = globals.planetaryParams.getYearLength();
+    constexpr float SEA_ICE_TEMP = -2.0f;
+
+    globals.snowCells.clear();
+    float lowestSnow = std::numeric_limits<float>::max();
+    for (std::size_t i = 0; i < planet.cells.size(); i++)
+    {
+        Cell& cell = planet.cells[i];
+        float warmest = -std::numeric_limits<float>::max();
+        for (int month = 0; month < 12; month++)
+        {
+            const float dayOfYear = (month + 0.5f) * (yearLength / 12.0f);
+            warmest = std::max(warmest, seasons.getTemperature(cell, planet.cellLat[i], dayOfYear));
+        }
+
+        cell.snowBool = !cell.oceanBool && warmest <= 0.0f;
+        cell.iceBool = cell.oceanBool && warmest <= SEA_ICE_TEMP;
+        if (cell.snowBool)
+        {
+            globals.snowCells.push_back(i);
+            lowestSnow = std::min(lowestSnow, cell.height);
+        }
+    }
+    globals.globalSnowline = globals.snowCells.empty() ? 1.0f : lowestSnow;
+}
+
 void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float deltaCoastLine) // sea level, coast, treeline and snow line
 {
 	// USE DELTA COASTLINE TO ADJUST coast lines later
@@ -455,9 +473,8 @@ void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float
     // Generate oceans and coasts
 	generateOceans(map, globals);
 
-    // Snowline
-	generateSnowline(map, globals);
-        
+	// Snow and sea ice need temperatures, see planetCalcSnowIce
+
 	// Treeline
 	generateTreeline(map, globals);
     
@@ -528,266 +545,80 @@ void smoothTemps(std::vector<Cell>& map, int smoothTimes)
 
 void calcHumid(std::vector<Cell>& map)
 {
-    // Humidity should depend on:
-    // 1. Temperature (warmer air holds more moisture)
-    // 2. Precipitation (more rain = more moisture available)
-    // 3. Proximity to water bodies
-    // 4. Evapotranspiration from vegetation
-    for (int i = 0; i < map.size(); i++)
+    // Humidity depends on the water cycle, so it runs after the hydrology step. It is built from:
+    // 1. Precipitation (more rain = more moisture available)
+    // 2. Temperature (warmer air holds more moisture)
+    // 3. Proximity to the ocean
+    // 4. Proximity to fresh water: lakes, and rivers by how much they carry
+    // 5. Evapotranspiration, the share of the potential that the land actually evaporates
+    // Ocean and lakes are saturated
+
+    // Fresh water proximity: lakes are 1, a river is its strength, and it fades with every step over land
+    const int n = static_cast<int>(map.size());
+    std::vector<float> fresh(n, 0.0f);
+    std::priority_queue<std::pair<float, int>> queue;
+    for (int i = 0; i < n; i++)
+    {
+        fresh[i] = map[i].lakeBool ? 1.0f : map[i].riverStrength();
+        if (fresh[i] > 0.0f) { queue.push({ fresh[i], i }); }
+    }
+    while (!queue.empty())
+    {
+        const auto [value, idx] = queue.top();
+        queue.pop();
+        if (value < fresh[idx]) { continue; }
+        for (int nb : map[idx].neighbors)
+        {
+            const float faded = value * 0.7f;
+            if (!map[nb].oceanBool && faded > fresh[nb])
+            {
+                fresh[nb] = faded;
+                queue.push({ faded, nb });
+            }
+        }
+    }
+
+    for (int i = 0; i < n; i++)
     {
         float humidity = 0.0f;
 
-        if (map[i].oceanBool)
+        if (map[i].oceanBool || map[i].lakeBool)
         {
-			// Ocean cells: very high humidity
             // Warmer water = more evaporation
-			float tempFactor = clamp((map[i].temp + 10.0f) / 40.0f, 1.0f, 0.1f);
-			humidity = 0.8 + 0.2f * tempFactor;
+            float tempFactor = clamp((map[i].temp + 10.0f) / 40.0f, 1.0f, 0.1f);
+            humidity = 0.8 + 0.2f * tempFactor;
         }
         else
         {
-            // Base humidity from precipitation and temperature
             // Logarithmic realtionship: more precip = higher humidity, but with diminishing returns
-			float precipFactor = std::log(map[i].percepitation + 1.0f) / std::log(500.0f + 1.0f); // assuming 500mm/year max
-			precipFactor = clamp(precipFactor, 1.0f, 0.0f);
+            float precipFactor = std::log(map[i].percepitation + 1.0f) / std::log(500.0f + 1.0f); // assuming 500mm/year max
+            precipFactor = clamp(precipFactor, 1.0f, 0.0f);
 
             // Temperature effect on stauration capacity
-			// warmer air holds more moisture, but also increases evapotranspiration
-			float tempFactor = 1.0f / (1.0f + std::exp(-0.1f * (map[i].temp - 15.0f))); // sigmoid centered at 15C
+            float tempFactor = 1.0f / (1.0f + std::exp(-0.1f * (map[i].temp - 15.0f))); // sigmoid centered at 15C
 
-			// Distance to ocean effect, coastal areas are more humid
-			float oceanProximityFactor = std::exp(-0.03f * map[i].distToOcean); // decays with distance
+            // Distance to ocean effect, coastal areas are more humid
+            float oceanProximityFactor = std::exp(-0.03f * map[i].distToOcean); // decays with distance
 
-            // Vegetation/surface moisture effect (simplified, should link to biome later)
-			float surfaceMoisture = map[i].treeBool ? 0.1f : 0.0f; // more vegetation = more evapotranspiration
+            // Land that evaporates what it could has water to give to the air, frozen land (PET near 0) has none
+            float surfaceMoisture = map[i].pet > 0.01f ? clamp(map[i].aet / map[i].pet, 1.0f, 0.0f) : 0.0f;
 
-			// Combine factors
-            humidity = precipFactor * 0.5f // 50% for precipitation
-                     + tempFactor * 0.3f      // 30% for temperature
-                     + oceanProximityFactor * 0.15f // 15% for ocean proximity
-				+ surfaceMoisture * 0.05f; // 5% for surface moisture
+            humidity = precipFactor * 0.5f
+                     + tempFactor * 0.25f
+                     + oceanProximityFactor * 0.1f
+                     + fresh[i] * 0.05f
+                     + surfaceMoisture * 0.1f;
 
-			// Height adjustment: higher altitudes tend to be less humid
+            // Height adjustment: higher altitudes tend to be less humid
             if (map[i].height > 0.7f)
             {
-				humidity *= (1.0f - (map[i].height - 0.7f) * 0.5f); // reduce humidity at high altitudes
+                humidity *= (1.0f - (map[i].height - 0.7f) * 0.5f);
             }
-			humidity = clamp(humidity, 1.0f, 0.0f);
+            humidity = clamp(humidity, 1.0f, 0.0f);
         }
-		map[i].humidity = humidity;
+        map[i].humidity = humidity;
     }
 }
-
-void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::vector<std::size_t>& stack, std::size_t start, std::size_t river_id)
-{
-    // Recursive River function
-	// 1. Get the height difference between the start cell and its neighbors
-	// 2. Sort the neighbors based on the height difference
-	// 3. If the height difference is negative, the river ends or a lake is generated
-	// 4. If the height difference is positive, the river continues to the neighbor with the lowest height difference
-	// 5. If the neighbor is snow, lake or ocean, the river ends
-	// 6. If the neighbor is a river, pick a neighbor that has less than 2 river neighbors
-	// 7. If no neighbor is found, the river ends
-	// 8. If a neighbor is found, the river continues to the neighbor and the function is called recursively
-
-    std::vector<std::pair<std::size_t, float>> HeightDiff;
-    HeightDiff.reserve(map[start].neighbors.size());
-    float height = map[start].height;
-    for (std::size_t i = 0; i < map[start].neighbors.size(); i++)
-    {
-        HeightDiff.push_back({ map[start].neighbors[i], height - map[map[start].neighbors[i]].height });
-    }
-    std::sort(HeightDiff.begin(), HeightDiff.end(), [](const std::pair<int, float>& a, const std::pair<int, float>& b) { return a.second < b.second; });
-
-    int order = 1;
-
-    if (HeightDiff[HeightDiff.size() - 1].second < 0) // ITs too happy to make lakes, it needs more rivers.
-    {
-        // if no neighbor is found to have a lower height, either the river ends or it should generate a lake
-
-        // TODO: This needs to be tuned and fixed
-        float sum = 0;
-        for (const auto& pair : HeightDiff) {
-            sum += std::abs(pair.second);
-        }
-        if (sum <= 0.1)
-        {
-            for (int i = 0; i < map[start].neighbors.size(); i++)
-            {
-                map[map[start].neighbors[i]].lakeBool = true;
-				// check neighbors if they have a lake id add this cell to the lake object otherwise create a new lake object
-                // TODO: LAKES
-				for (int j = 0; j < map[map[start].neighbors[i]].neighbors.size(); j++)
-                {
-                    if (map[map[map[start].neighbors[i]].neighbors[j]].lakeBool == true)
-                    {
-						globals.lakes[map[map[map[start].neighbors[i]].neighbors[j]].lakeId].addCell(map[start].neighbors[i]);
-						map[map[start].neighbors[i]].lakeId = map[map[map[start].neighbors[i]].neighbors[j]].lakeId;
-						break;
-                    }
-                    else
-					{
-						int lake_id = globals.lakes.size();
-						globals.lakes.emplace_back(Lake(lake_id));
-						globals.lakes[globals.lakes.size() - 1].addCell(map[start].neighbors[i]);
-                        map[map[start].neighbors[i]].lakeId = lake_id;
-					}
-                }
-            }
-        }
-    }
-    else
-    {
-        //if (map[HeightDiff[HeightDiff.size() - order].first].snowBool == true){ return;}else
-        // We check if the neighbor is snow, ocean or river
-        if (map[HeightDiff[HeightDiff.size() - order].first].oceanBool == true)
-        {
-            return;
-        }
-        else if (map[HeightDiff[HeightDiff.size() - order].first].riverBool == true)
-        {// pick a neighbor whose neighbor's neighbors are not rivers
-            std::vector<int> possibleNeighbors;
-            for (int i = 0; i < map[start].neighbors.size(); i++)
-            {
-                if (map[map[start].neighbors[i]].riverBool == false)
-                {
-                    int countRiverNeighbors = 0;
-                    for (int j = 0; j < map[map[start].neighbors[i]].neighbors.size(); j++)
-                    {
-                        if (map[map[map[start].neighbors[i]].neighbors[j]].riverBool) { countRiverNeighbors += 1; }
-                    }
-                    if (countRiverNeighbors <= 1)
-                    {
-                        possibleNeighbors.push_back(map[start].neighbors[i]);
-                    }
-                }
-            }
-            if (possibleNeighbors.size() > 0)
-            {
-                std::sort(possibleNeighbors.begin(), possibleNeighbors.end());
-                map[possibleNeighbors[possibleNeighbors.size() - 1]].riverBool = true;
-                globals.riverCells.push_back(possibleNeighbors[possibleNeighbors.size() - 1]);
-                map[possibleNeighbors[possibleNeighbors.size() - 1]].riverStr = map[start].riverStr; //- RandomBetween(0.001, 0.003);
-                globals.rivers[river_id].addCell(possibleNeighbors[possibleNeighbors.size() - 1]);
-				map[possibleNeighbors[possibleNeighbors.size() - 1]].riverId = river_id;
-                riverIteration(map, globals, stack, possibleNeighbors[possibleNeighbors.size() - 1], river_id);
-            }
-            else {
-				// If no neighbor is found the river feeds into any neighbor that is an ocean, snow or river
-                globals.rivers[river_id].addCell(HeightDiff[HeightDiff.size() - order].first);
-				globals.rivers[river_id].setParentRiver(map[HeightDiff[HeightDiff.size() - order].first].riverId);
-				globals.rivers[map[HeightDiff[HeightDiff.size() - order].first].riverId].addTributary(river_id);
-                return;
-            }
-        }
-    }
-
-	// is this ever reached?? TODO: Check if this is ever reached
-    map[HeightDiff[HeightDiff.size() - order].first].riverBool = true;
-    globals.riverCells.push_back(HeightDiff[HeightDiff.size() - order].first);
-    map[HeightDiff[HeightDiff.size() - order].first].riverStr = map[start].riverStr; //- RandomBetween(0.001, 0.003);
-    globals.rivers[river_id].addCell(HeightDiff[HeightDiff.size() - order].first);
-	map[HeightDiff[HeightDiff.size() - order].first].riverId = river_id;
-    riverIteration(map, globals, stack, HeightDiff[HeightDiff.size() - order].first, river_id);
-
-    // FLow strenght calculate here
-
-}
-
-// The flat map's calcRiverStart without positions: rivers keep their path as cells, and lakes keep their
-// cells but get no outline (finishLake), which was already broken
-void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals)
-{
-    std::vector<std::size_t> stack;
-
-    // Find all snow cells with more than 2 non-snow neighbors
-    stack.reserve(globals.snowCells.size());
-    for (int i = 0; i < globals.snowCells.size(); i++)
-    {
-        int countNonSnow = 0;
-
-        for (int j = 0; j < map[globals.snowCells[i]].neighbors.size(); j++)
-        {
-            if (!map[map[globals.snowCells[i]].neighbors[j]].snowBool)
-            {
-                countNonSnow = countNonSnow + 1;
-            }
-        }
-        if (countNonSnow >= 2)
-        {
-            stack.push_back(globals.snowCells[i]);
-        }
-    }
-
-    // Lake id start
-	int newest_lake_id = 0;
-
-    // Start the river from the snow cells
-    std::size_t i = 0;
-    while (!stack.empty())
-    {
-        // TODO: LAKES
-        // ADD: After each iteration check all neighbors of all lakes and see if they need to be rivers, and add them to the stack. (at random!)
-        int count = 0;
-        int idx = pop_random_i(stack);
-        if (map[idx].riverBool == true)
-        {
-            continue;
-        }
-        if (map[idx].lakeBool == true)
-        {
-            continue;
-        }
-        for (int i = 0; i < map[idx].neighbors.size(); i++)
-        {
-            if (map[map[idx].neighbors[i]].riverBool == true)
-            {
-                count++;
-            }
-        }
-        if (count >= 1)
-        {
-            continue;
-        }
-        if (RandomBetween(0.0, 1.0) > 0.4)
-        {
-            // If this is the place we can start a new river
-
-            globals.rivers.emplace_back(River(i));
-
-            globals.rivers[i].addCell(idx);
-
-            globals.riverCells.push_back(idx);
-            map[idx].riverBool = true;
-            map[idx].riverStr = RandomBetween(0.99, 1.0); // has to be based on temperature and percepitation as well
-			map[idx].riverId = i;
-            riverIteration(map, globals, stack, idx, i);
-			globals.rivers[i].finishRiver(map);
-			i++;
-        }
-
-		// Check any new lakes that might have been created and add neighbors to the stack
-		for (int j = newest_lake_id; j < globals.lakes.size(); j++)
-        {
-			// Add neighbors to the stack
-            for (int j = 0; j < globals.lakes[newest_lake_id].getCells().size(); j++)
-            {
-				std::vector<int> neighbors = map[globals.lakes[newest_lake_id].getCells()[j]].neighbors;
-                for (int k = 0; k < map[globals.lakes[newest_lake_id].getCells()[j]].neighbors.size(); k++)
-                {
-					if (map[neighbors[k]].riverBool == false && map[neighbors[k]].lakeBool == false && map[neighbors[k]].oceanBool == false && map[neighbors[k]].snowBool == false)
-                    {
-						stack.push_back(neighbors[k]);
-					}
-				}
-			}
-			// Increment the lake index/id for the next lake
-			newest_lake_id++;
-		}
-    }
-
-}
-
 //////////
 // Sphere versions of the position based steps
 //////////
@@ -1538,7 +1369,10 @@ void planetCalcTemp(vor::SphereVoronoi& planet, GlobalWorldObjects& globals)
 
     // Planetary temperature modifiers
     float baseTemp = globals.globalTempAvg;
-    float equatorToPoleGradient = globals.planetaryParams.equatorToPoleTemp;
+    // equatorToPoleTemp is a relative measure that also drives the circulation strength (Earth = 20), the old
+    // code used it as the actual drop, which left the poles at 13 C. Earth's sea level drop is about 50 C
+    constexpr float POLE_DROP_PER_GRADIENT = 2.5f;
+    float equatorToPoleGradient = globals.planetaryParams.equatorToPoleTemp * POLE_DROP_PER_GRADIENT;
     float greenhouseBoost = globals.planetaryParams.greenhouseEffectFactor;
     float axisTilt = globals.planetaryParams.axialTilt;
 

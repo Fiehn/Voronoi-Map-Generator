@@ -6,6 +6,7 @@ class GlobalWorldObjects; // Forward declaration
 #include "CellObjects.hpp"
 #include "PlanetaryObjects.hpp"
 #include "AbstractWorld.hpp"
+#include "WaterBody.hpp"
 
 class GlobalWorldObjects
 {
@@ -29,7 +30,7 @@ public:
 	std::vector<float> windStrength; // Wind strength for each convergence line (0 to 1) (1 being the strongest) (will be the strength of the wind in the zone below the convergence line)
 
 	std::vector<River> rivers; // List of rivers in the world
-	std::vector<Lake> lakes; // List of lakes in the world
+	std::vector<WaterBody> waterBodies; // Lakes of the hydrology step
 
 	std::vector<Continent> continents; // List of continents
 

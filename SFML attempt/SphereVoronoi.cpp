@@ -53,6 +53,7 @@ namespace vor {
         voronoi_points.clear();
         cellLat.clear();
         cellLon.clear();
+        cellArea.clear();
         triangles.clear();
         halfedges.clear();
     }
@@ -148,6 +149,15 @@ namespace vor {
         }
     }
 
+    namespace {
+
+        // Signed area of the spherical triangle a, b, c; positive when counter clockwise from outside
+        double sphericalTriangleArea(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c)
+        {
+            return 2.0 * std::atan2(glm::dot(a, glm::cross(b, c)), 1.0 + glm::dot(a, b) + glm::dot(b, c) + glm::dot(c, a));
+        }
+    }
+
     void SphereVoronoi::buildCells()
     {
         const int n = static_cast<int>(points.size());
@@ -162,6 +172,7 @@ namespace vor {
         cells.reserve(n);
         cellLat.resize(n);
         cellLon.resize(n);
+        cellArea.assign(n, 0.f);
         for (int i = 0; i < n; i++) {
             cells.emplace_back(i);
             glm::vec2 latLon = unitToLatLon(points[i]);
@@ -180,16 +191,20 @@ namespace vor {
                 if (twin < 0) break;
                 e = prevHalfedge(twin);
             } while (e != start && cells[i].vertex.size() < triangles.size());
+
+            // Fan of spherical triangles from the centre around the ring, the same sum validate() checks
+            const std::size_t ring = cells[i].vertex.size();
+            const glm::dvec3 centre = glm::normalize(glm::dvec3(points[i]));
+            double area = 0.0;
+            for (std::size_t k = 0; ring >= 3 && k < ring; k++) {
+                area += sphericalTriangleArea(centre, glm::dvec3(voronoi_points[cells[i].vertex[k]]),
+                    glm::dvec3(voronoi_points[cells[i].vertex[(k + 1) % ring]]));
+            }
+            cellArea[i] = static_cast<float>(area);
         }
     }
 
     namespace {
-
-        // Signed area of the spherical triangle a, b, c; positive when counter clockwise from outside
-        double sphericalTriangleArea(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c)
-        {
-            return 2.0 * std::atan2(glm::dot(a, glm::cross(b, c)), 1.0 + glm::dot(a, b) + glm::dot(b, c) + glm::dot(c, a));
-        }
 
         // Counts failures per check and keeps the first example
         struct CheckLog {

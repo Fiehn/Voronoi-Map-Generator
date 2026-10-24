@@ -1282,6 +1282,18 @@ void highligtedCellObservation(const vor::SphereVoronoi& planet, const GlobalWor
 
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
+    ImGui::Text("Discharge (m3/s)");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.1f", cell.discharge);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("River width / depth / speed");
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%.1f m / %.2f m / %.2f m/s", cell.riverWidth, cell.riverDepth, cell.riverSpeed);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
     ImGui::Text("Lake Id");
     ImGui::TableSetColumnIndex(1);
     ImGui::Text("%d", cell.lakeId);

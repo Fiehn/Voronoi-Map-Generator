@@ -8,8 +8,8 @@
 
 namespace {
 
-    const char* BORDER_TYPE_NAMES[BORDER_TYPE_COUNT] = { "Coast", "Continent", "Biome" };
-    const char* MAP_MODE_NAMES[MAP_MODE_COUNT] = { "Height", "Temperature", "Biome", "Percepitation", "Humidity", "Continents", "Cultures", "Resources" };
+    const char* BORDER_TYPE_NAMES[BORDER_TYPE_COUNT] = { "Coast", "Shore", "Continent", "Biome" };
+    const char* MAP_MODE_NAMES[MAP_MODE_COUNT] = { "Height", "Temperature", "Biome", "Percepitation", "Humidity", "Continents", "Cultures", "Resources", "Water" };
 
     nlohmann::json colorToJson(const sf::Color& color)
     {
@@ -32,7 +32,7 @@ namespace {
     const OverlayEntry OVERLAYS[] = {
         { "Highlighted cell", "highlight", &OverlaySettings::highlight },
         { "Found cells", "found_cells", &OverlaySettings::foundCells },
-        { "Rivers", "rivers", &OverlaySettings::rivers },
+        { "Rivers (widest)", "rivers", &OverlaySettings::rivers },
         { "Convergence lines", "convergence_lines", &OverlaySettings::convergenceLines },
     };
 
@@ -59,6 +59,12 @@ RenderSettings::RenderSettings()
     coast.outlineWidthPx = 2.f;
     coast.outlineColor = sf::Color(25, 30, 40, 255);
 
+    BoundaryStyle& shore = styles[static_cast<int>(BorderType::Shore)];
+    shore.subdivisions = 6;
+    shore.strength = 1.f;
+    shore.outlineWidthPx = 1.5f;
+    shore.outlineColor = sf::Color(25, 55, 110, 255);
+
     BoundaryStyle& continent = styles[static_cast<int>(BorderType::Continent)];
     continent.subdivisions = 6;
     continent.strength = 1.f;
@@ -75,6 +81,7 @@ RenderSettings::RenderSettings()
     for (int mode = 0; mode < MAP_MODE_COUNT; mode++)
     {
         modeTypes[mode][static_cast<int>(BorderType::Coast)] = true;
+        modeTypes[mode][static_cast<int>(BorderType::Shore)] = true;
     }
     modeTypes[2][static_cast<int>(BorderType::Biome)] = true;
     modeTypes[5][static_cast<int>(BorderType::Continent)] = true;
@@ -133,12 +140,28 @@ void RenderSettings::save_json(const std::string& filename) const
         }}
     };
 
+    j["map_colors"]["water"] = {
+        {"lake", colorToJson(colors.water.lake)},
+        {"dry", colorToJson(colors.water.dry)},
+        {"wet", colorToJson(colors.water.wet)},
+        {"ocean", colorToJson(colors.water.ocean)}
+    };
+
+    j["map_colors"]["snow_ice"] = {
+        {"enabled", colors.snowIce.enabled},
+        {"snow", colorToJson(colors.snowIce.snow)},
+        {"ice", colorToJson(colors.snowIce.ice)},
+        {"snow_strength", colors.snowIce.snowStrength},
+        {"ice_strength", colors.snowIce.iceStrength}
+    };
+
     nlohmann::json jOverlays = nlohmann::json::object();
     for (const OverlayEntry& entry : OVERLAYS)
     {
         const OverlayStyle& style = overlays.*entry.style;
         jOverlays[entry.key] = { {"color", colorToJson(style.color)}, {"width_px", style.widthPx} };
     }
+    jOverlays["river_min_width_px"] = overlays.riverMinWidthPx;
     j["overlays"] = jOverlays;
 
     std::ofstream o(filename);
@@ -158,10 +181,16 @@ bool RenderSettings::load_json(const std::string& filename)
         return false;
     }
 
+    // Styles are matched by name and mode flags by position, files from before the Shore type have one entry fewer
     const nlohmann::json& jStyles = j.value("styles", nlohmann::json::array());
-    for (int t = 0; t < BORDER_TYPE_COUNT && t < static_cast<int>(jStyles.size()); t++)
+    for (const nlohmann::json& js : jStyles)
     {
-        const nlohmann::json& js = jStyles[t];
+        int t = -1;
+        for (int k = 0; k < BORDER_TYPE_COUNT; k++)
+        {
+            if (js.value("name", std::string()) == BORDER_TYPE_NAMES[k]) { t = k; }
+        }
+        if (t < 0) { continue; }
         BoundaryStyle& style = styles[t];
         style.subdivisions = std::clamp(js.value("subdivisions", style.subdivisions), 1, 16);
         style.strength = std::clamp(js.value("strength", style.strength), 0.f, 1.f);
@@ -173,9 +202,11 @@ bool RenderSettings::load_json(const std::string& filename)
     const nlohmann::json& jModes = j.value("mode_types", nlohmann::json::array());
     for (int mode = 0; mode < MAP_MODE_COUNT && mode < static_cast<int>(jModes.size()); mode++)
     {
+        const bool oldFormat = jModes[mode].size() == BORDER_TYPE_COUNT - 1; // Coast, Continent, Biome
         for (int t = 0; t < BORDER_TYPE_COUNT && t < static_cast<int>(jModes[mode].size()); t++)
         {
-            if (jModes[mode][t].is_boolean()) { modeTypes[mode][t] = jModes[mode][t].get<bool>(); }
+            const int type = oldFormat && t >= static_cast<int>(BorderType::Shore) ? t + 1 : t;
+            if (jModes[mode][t].is_boolean()) { modeTypes[mode][type] = jModes[mode][t].get<bool>(); }
         }
     }
 
@@ -204,10 +235,25 @@ bool RenderSettings::load_json(const std::string& filename)
     precipitation.overflow = colorFromJson(jPrecipitation.value("overflow", nlohmann::json()), precipitation.overflow);
     precipitation.stepsPerUnit = std::clamp(jPrecipitation.value("steps_per_unit", precipitation.stepsPerUnit), 0.01f, 10000.f);
 
+    const nlohmann::json& jWater = jColors.value("water", nlohmann::json::object());
+    colors.water.lake = colorFromJson(jWater.value("lake", nlohmann::json()), colors.water.lake);
+    colors.water.dry = colorFromJson(jWater.value("dry", nlohmann::json()), colors.water.dry);
+    colors.water.wet = colorFromJson(jWater.value("wet", nlohmann::json()), colors.water.wet);
+    colors.water.ocean = colorFromJson(jWater.value("ocean", nlohmann::json()), colors.water.ocean);
+
+    const nlohmann::json& jSnowIce = jColors.value("snow_ice", nlohmann::json::object());
+    colors.snowIce.enabled = jSnowIce.value("enabled", colors.snowIce.enabled);
+    colors.snowIce.snow = colorFromJson(jSnowIce.value("snow", nlohmann::json()), colors.snowIce.snow);
+    colors.snowIce.ice = colorFromJson(jSnowIce.value("ice", nlohmann::json()), colors.snowIce.ice);
+    colors.snowIce.snowStrength = std::clamp(jSnowIce.value("snow_strength", colors.snowIce.snowStrength), 0.f, 1.f);
+    colors.snowIce.iceStrength = std::clamp(jSnowIce.value("ice_strength", colors.snowIce.iceStrength), 0.f, 1.f);
+
     const nlohmann::json& jOverlays = j.value("overlays", nlohmann::json::object());
+    overlays.riverMinWidthPx = std::clamp(jOverlays.value("river_min_width_px", overlays.riverMinWidthPx), 0.5f, 8.f);
     for (const OverlayEntry& entry : OVERLAYS)
     {
-        const nlohmann::json& jo = jOverlays.value(entry.key, nlohmann::json::object());
+        if (!jOverlays.contains(entry.key)) { continue; }
+        const nlohmann::json& jo = jOverlays.at(entry.key);
         OverlayStyle& style = overlays.*entry.style;
         style.color = colorFromJson(jo.value("color", nlohmann::json()), style.color);
         style.widthPx = std::clamp(jo.value("width_px", style.widthPx), 0.5f, 8.f);
@@ -287,6 +333,11 @@ void overlaySettingsUI(RenderSettings& settings)
         OverlayStyle& style = settings.overlays.*entry.style;
         if (ImGui::SliderFloat("Width (px)", &style.widthPx, 0.5f, 8.f, "%.1f")) { settings.styleRevision++; }
         if (colorEdit("Color", style.color)) { settings.styleRevision++; }
+        if (entry.style == &OverlaySettings::rivers)
+        {
+            if (ImGui::SliderFloat("Smallest river (px)", &settings.overlays.riverMinWidthPx, 0.5f, 8.f, "%.1f")) { settings.styleRevision++; }
+            if (ImGui::BeginItemTooltip()) { ImGui::Text("Rivers are drawn between the smallest and the widest, by the square root of their discharge"); ImGui::EndTooltip(); }
+        }
         ImGui::TreePop();
     }
     ImGui::PopID();

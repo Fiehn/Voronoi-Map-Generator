@@ -74,64 +74,32 @@ public:
     };
 };
 
+enum class RiverMouth {
+    Ocean,
+    Lake,     // Ends in a lake, mouthLake is the index in globals.waterBodies
+    Closed,   // Ends where the water is lost: no ocean and no lake to take it
+    River     // A tributary, ends on a cell of the river it joins
+};
+
+// One river from the hydrology step: the cells from its source down to its mouth, in order, without
+// backtracking. A river is the main stem from a mouth upstream along the larger branch, the smaller branch
+// is a tributary of its own, whose path ends on the confluence cell (which belongs to the parent)
 class River {
 public:
-	int id = 0;
-    // Constructor
-    River(int id);
+    int id = 0;
+    explicit River(int id) : id(id) {}
 
-    // Getters
-    float getLength() const { return len; };
-    // The path as cell indices, a walk through the river's cells (it may backtrack)
-    const std::vector<std::size_t>& getPathCells() const { return pathCells; };
-
-    // functions
-    void purgeRiver(std::vector<Cell>& map);
-
-	void addCell(std::size_t cell);
-
-	void finishRiver(const std::vector<Cell>& map) {
-		calcPathCells(map);
-	};
-
-	void addTributary(int tributary) { tributaries.push_back(tributary); };
-	void setParentRiver(int parent) { parentRiver = parent; };
-
-private:
-    float len = 0;
-    std::vector<std::size_t> cells;
     std::vector<std::size_t> pathCells;
-	std::vector<int> tributaries;
-	int parentRiver = -1;
-    std::size_t endCell = 0;
-    void calcLen() { len = static_cast<float>(pathCells.size()); };
-    void calcPathCells(const std::vector<Cell>& map);
+    float lengthKm = 0.f;         // Along the cell centres, a main stem includes the step to the water it flows into
+    RiverMouth mouthType = RiverMouth::Closed;
+    int mouthLake = -1;
+    float mouthDischarge = 0.f;   // m3/s at the last cell the river owns
+    int parentRiver = -1;
+    std::vector<int> tributaries;
+
+    float getLength() const { return lengthKm; }
+    const std::vector<std::size_t>& getPathCells() const { return pathCells; }
 };
-
-class Lake {
-public:
-	int id = 0;
-    
-	// Constructor
-	Lake(int id) {
-		this->id = id;
-	};
-
-	// Getters
-	float getArea() const { return area; };
-	float getMaxDepth() const { return maxDepth; };
-	std::vector<std::size_t> getCells() { return cells; };
-
-	// Functions
-	void addCell(std::size_t cell) { cells.push_back(cell); };
-
-private:
-    // Not computed yet, lakes are redone with the hydrology overhaul
-    float area = 0;
-    float maxDepth = 0;
-    std::vector<std::size_t> cells;
-};
-
 enum class PlateType {
     Oceanic,
     Continental,

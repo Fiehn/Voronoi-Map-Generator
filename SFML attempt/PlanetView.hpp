@@ -40,6 +40,9 @@ public:
     // Rivers, convergence lines, wind and plate arrows of a newly generated world. Needs the window's GL context active
     void setWorldOverlays(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals);
 
+    // Moves the camera to the middle of these cells and zooms so they fill about 70% of the window. Needs a planet
+    void focusOn(const vor::SphereVoronoi& planet, const std::vector<std::size_t>& cells, const sf::RenderWindow& window);
+
     void handleEvent(const sf::Event& event, const sf::RenderWindow& window);
     void update(const sf::RenderWindow& window, const vor::SphereVoronoi& planet); // Once per frame, picks the hovered cell
     void draw(sf::RenderWindow& window);
@@ -65,7 +68,7 @@ private:
     SphereBoundaries boundaries;
     OverlaySettings overlayStyles; // Of the last updateOverlays, for the highlight and found cells
     std::vector<std::size_t> foundCells;
-    std::vector<std::vector<glm::vec3>> rivers; // Kept to rebuild the ribbons after a style change or a new mesh
+    std::vector<RiverPath> rivers; // Kept to rebuild the ribbons after a style change or a new mesh
     std::vector<float> convergenceLats;
     std::vector<ArrowLevel> arrowLevels;
     std::vector<std::vector<Arrow>> windByLevel, platesByLevel; // Every level's arrows, made with the world
