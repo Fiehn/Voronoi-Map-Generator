@@ -10,6 +10,7 @@ enum class BorderType : int
 {
     // Ordered by priority, an edge gets the first enabled type whose labels differ across it
     Coast = 0,  // oceanBool differs
+    Shore,      // lakeBool differs, a lake edge
     Continent,  // continent differs
     // TODO: Culture boundaries (cell.culture) once the Cultures map is implemented.
     Biome,      // biome differs
@@ -17,7 +18,7 @@ enum class BorderType : int
 };
 
 constexpr int BORDER_TYPE_COUNT = static_cast<int>(BorderType::Count);
-constexpr int MAP_MODE_COUNT = 8; // Matches the mapType radio buttons in main.cpp
+constexpr int MAP_MODE_COUNT = 9; // Matches the mapType radio buttons in main.cpp
 inline constexpr const char* RENDER_SETTINGS_FILE = "render_settings.json";
 
 struct BoundaryStyle
@@ -40,7 +41,8 @@ struct OverlaySettings
 {
     OverlayStyle highlight{ sf::Color::White, 2.f };  // Cell under the cursor
     OverlayStyle foundCells{ sf::Color::Red, 2.f };   // Cells in the Find Cell list
-    OverlayStyle rivers{ sf::Color::Blue, 1.5f };
+    OverlayStyle rivers{ sf::Color::Blue, 6.f }; // The width is the biggest river's
+    float riverMinWidthPx = 1.f; // The smallest river's
     OverlayStyle convergenceLines{ sf::Color::Green, 1.5f }; // Wind convergence zones
 };
 

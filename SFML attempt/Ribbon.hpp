@@ -38,8 +38,11 @@ struct RibbonBatch {
     // Points on the unit sphere. Repeated points are dropped, and so is the last point of a
     // closed line if it repeats the first
     void addLine(const std::vector<glm::vec3>& points, bool closed, sf::Color color, float widthPx);
+    // The same with a width in pixels for every point, interpolated along each segment
+    void addLine(const std::vector<glm::vec3>& points, const std::vector<float>& widthsPx, bool closed, sf::Color color);
     void addDisc(const glm::vec3& point, sf::Color color, float widthPx);
 
 private:
+    void addLineImpl(const std::vector<glm::vec3>& points, const std::vector<float>& widthsPx, bool closed, sf::Color color);
     void extendLonRange(float lon);
 };

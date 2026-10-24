@@ -51,8 +51,21 @@ std::vector<sf::Color> mapModeColors(const std::vector<Cell>& cells, const Globa
         }
         break;
     }
+    case 8:
+        for (std::size_t i = 0; i < n; i++) {
+            if (cells[i].oceanBool) out[i] = colors.water.ocean;
+            else if (cells[i].lakeBool) out[i] = colors.water.lake;
+            else out[i] = waterColor(colors.water, cells[i].discharge);
+        }
+        break;
     default: // Cultures have no colours yet
         break;
+    }
+    // Lakes are water in the modes that show the terrain
+    if (mapType == 0 || mapType == 2) {
+        for (std::size_t i = 0; i < n; i++) {
+            if (cells[i].lakeBool && !cells[i].oceanBool) out[i] = colors.water.lake;
+        }
     }
     return out;
 }

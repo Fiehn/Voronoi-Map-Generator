@@ -34,12 +34,26 @@ void RibbonBatch::extendLonRange(float lon)
 
 void RibbonBatch::addLine(const std::vector<glm::vec3>& input, bool closed, sf::Color color, float widthPx)
 {
+    addLineImpl(input, std::vector<float>(input.size(), widthPx), closed, color);
+}
+
+void RibbonBatch::addLine(const std::vector<glm::vec3>& input, const std::vector<float>& widthsPx, bool closed, sf::Color color)
+{
+    addLineImpl(input, widthsPx, closed, color);
+}
+
+void RibbonBatch::addLineImpl(const std::vector<glm::vec3>& input, const std::vector<float>& widthsPx, bool closed, sf::Color color)
+{
     std::vector<glm::vec3> p;
+    std::vector<float> w;
     p.reserve(input.size());
-    for (const glm::vec3& point : input) {
-        if (p.empty() || glm::length(point - p.back()) > DUPLICATE_DISTANCE) p.push_back(point);
+    for (std::size_t k = 0; k < input.size(); k++) {
+        if (p.empty() || glm::length(input[k] - p.back()) > DUPLICATE_DISTANCE) {
+            p.push_back(input[k]);
+            w.push_back(k < widthsPx.size() ? widthsPx[k] : 1.f);
+        }
     }
-    if (closed && p.size() > 1 && glm::length(p.front() - p.back()) <= DUPLICATE_DISTANCE) p.pop_back();
+    if (closed && p.size() > 1 && glm::length(p.front() - p.back()) <= DUPLICATE_DISTANCE) { p.pop_back(); w.pop_back(); }
 
     const int n = static_cast<int>(p.size());
     if (n < 2) return;
@@ -54,13 +68,12 @@ void RibbonBatch::addLine(const std::vector<glm::vec3>& input, bool closed, sf::
     // Whole turns a closed line goes round, by the step from its last point back to its first
     const double turn = closed ? mapproj::unwrapLon(ll[0].y, ll[n - 1].y) - ll[0].y : 0.0;
 
-    const float halfWidth = 0.5f * widthPx;
     const unsigned int first = static_cast<unsigned int>(vertices.size());
     const auto emit = [&](int i, double lonShift) {
         const glm::vec2 latLon(static_cast<float>(glm::radians(ll[i].x)), static_cast<float>(glm::radians(ll[i].y + lonShift)));
         extendLonRange(latLon.y);
-        vertices.push_back({ p[i], latLon, color, halfWidth, -1.f });
-        vertices.push_back({ p[i], latLon, color, halfWidth, 1.f });
+        vertices.push_back({ p[i], latLon, color, 0.5f * w[i], -1.f });
+        vertices.push_back({ p[i], latLon, color, 0.5f * w[i], 1.f });
     };
 
     if (closed) emit(n - 1, -turn);

@@ -32,15 +32,27 @@ struct PrecipitationColors
     float stepsPerUnit = 2.55f;
 };
 
+// Lakes in the terrain modes, and the Water mode: land from dry to wet by the discharge of its water (log scale)
+struct WaterColors
+{
+    sf::Color lake = sf::Color(70, 130, 205);
+    sf::Color dry = sf::Color(232, 226, 205);
+    sf::Color wet = sf::Color(10, 45, 150);
+    sf::Color ocean = sf::Color(85, 85, 85);
+    float fullDischarge = 10000.f; // m3/s that has the wet colour
+};
+
 struct MapColors
 {
     HeightColors height;
     TemperatureColors temperature;
     PrecipitationColors precipitation;
+    WaterColors water;
 };
 
 sf::Color heightColor(const HeightColors& colors, float height, bool ocean);
 sf::Color temperatureColor(const TemperatureColors& colors, float temperature);
+sf::Color waterColor(const WaterColors& colors, float discharge);
 sf::Color precipitationColor(const PrecipitationColors& colors, float precipitation);
 
 // Map Colours section for the Map Controls window, returns true when a colour changed and the map has to be redrawn

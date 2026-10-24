@@ -204,7 +204,8 @@ int main()
         ImGui::RadioButton("Continents", &mapType, 5); ImGui::SameLine();
 		ImGui::RadioButton("Cultures", &mapType, 6); ImGui::SameLine();
 		ImGui::RadioButton("Resources", &mapType, 7);
-		ImGui::RadioButton("Humidity", &mapType, 4);
+		ImGui::RadioButton("Humidity", &mapType, 4); ImGui::SameLine();
+		ImGui::RadioButton("Water", &mapType, 8);
             
         if (mapType != mapTypeOld) {
             std::cout << "Map Type: " << mapType << std::endl;
@@ -251,7 +252,6 @@ int main()
             ImGui::Separator();
         }
 
-		// Lakes are not drawn
 		ImGui::Checkbox("Draw Lines", &planetView.showConvergenceLines);
 		if (ImGui::BeginItemTooltip()) { ImGui::Text("Wind convergence lines"); ImGui::EndTooltip(); }
 		ImGui::SameLine();

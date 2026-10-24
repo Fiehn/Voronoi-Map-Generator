@@ -99,7 +99,7 @@ void PlanetView::updateOverlays(const vor::SphereVoronoi& planet, const RenderSe
 
 void PlanetView::setWorldOverlays(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals)
 {
-    rivers = riverPaths(planet, globals.rivers);
+    rivers = riverPaths(planet, globals.rivers, globals.waterBodies);
     convergenceLats.clear();
     for (float fraction : globals.convergenceLines) convergenceLats.push_back(convergenceLineLat(fraction));
     uploadWorldLines();
@@ -130,7 +130,13 @@ void PlanetView::uploadArrows(int level)
 void PlanetView::uploadWorldLines()
 {
     RibbonBatch riverBatch;
-    for (const std::vector<glm::vec3>& path : rivers) riverBatch.addLine(path, false, overlayStyles.rivers.color, overlayStyles.rivers.widthPx);
+    // Wider toward the mouth: the style's width is the biggest river's, riverMinWidthPx the smallest's
+    const float minPx = std::min(overlayStyles.riverMinWidthPx, overlayStyles.rivers.widthPx);
+    for (const RiverPath& path : rivers) {
+        std::vector<float> widths(path.strength.size());
+        for (std::size_t i = 0; i < widths.size(); i++) { widths[i] = minPx + (overlayStyles.rivers.widthPx - minPx) * path.strength[i]; }
+        riverBatch.addLine(path.points, widths, false, overlayStyles.rivers.color);
+    }
     renderer.setRibbons(RibbonGroup::Rivers, riverBatch);
 
     RibbonBatch lineBatch;

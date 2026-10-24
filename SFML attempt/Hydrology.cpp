@@ -216,7 +216,10 @@ HydrologyStats planetCalcHydrology(vor::SphereVoronoi& planet, GlobalWorldObject
 			int recipient = -1;
 			for (int r : landRoots)
 			{
-				if (recipient < 0 || nodes[compNode[r]].evapEff > nodes[compNode[recipient]].evapEff) { recipient = r; }
+				const Node& cand = nodes[compNode[r]];
+				const Node* best = recipient < 0 ? nullptr : &nodes[compNode[recipient]];
+				// Most evaporation wins, and with none the basin with the lowest pit: a lake fills the lowest cells first
+				if (!best || cand.evapEff > best->evapEff || (cand.evapEff == best->evapEff && cand.minHeight < best->minHeight)) { recipient = r; }
 			}
 			for (int r : landRoots)
 			{
@@ -306,10 +309,19 @@ HydrologyStats planetCalcHydrology(vor::SphereVoronoi& planet, GlobalWorldObject
 		gather(ni, members);
 		stampId++;
 		for (int m : members) { stamp[m] = stampId; }
+		// If the water that leaves over the pass comes back into this depression there is no way out
+		{
+			int x = node.target;
+			for (int steps = 0; x >= 0 && steps <= n; steps++)
+			{
+				if (stamp[x] == stampId || x == node.pass) { return; }
+				x = downstream[x];
+			}
+		}
 		std::vector<int> queue;
 		for (int nb : cells[node.pass].neighbors)
 		{
-			if (stamp[nb] == stampId)
+			if (stamp[nb] == stampId && cells[nb].waterBody < 0)
 			{
 				stamp[nb] = -2;
 				downstream[nb] = node.pass;
@@ -321,7 +333,7 @@ HydrologyStats planetCalcHydrology(vor::SphereVoronoi& planet, GlobalWorldObject
 			const int x = queue[head];
 			for (int nb : cells[x].neighbors)
 			{
-				if (stamp[nb] == stampId && cells[nb].height < node.spillLevel)
+				if (stamp[nb] == stampId && cells[nb].waterBody < 0 && cells[nb].height < node.spillLevel)
 				{
 					stamp[nb] = -2;
 					downstream[nb] = x;
@@ -465,6 +477,14 @@ HydrologyStats planetCalcHydrology(vor::SphereVoronoi& planet, GlobalWorldObject
 	}
 	}
 
+	// A pit that ended up neither under a lake nor crossed (its depression was merged into a lake that only
+	// fills its lowest cells) sends its water over its own pass, to the sibling basin that has the lake
+	for (int i = 0; i < n; i++)
+	{
+		if (cells[i].oceanBool || naturalDown[i] >= 0 || cells[i].waterBody >= 0 || nodeOfPit[i] < 0 || downstream[i] >= 0) { continue; }
+		passThrough(nodeOfPit[i]);
+	}
+
 	// 3. Discharge. Cells with nothing upstream first, each one passes its sum to the cell it flows to.
 	// The links through the flooded part of a crossed depression do not follow the rank, hence the sort
 	std::vector<double> discharge(n, 0.0);
@@ -479,6 +499,7 @@ HydrologyStats planetCalcHydrology(vor::SphereVoronoi& planet, GlobalWorldObject
 	{
 		if (upstreamLeft[i] == 0) { ready.push_back(i); }
 	}
+	std::vector<int> stuck; // Pits that still have nowhere to send the water
 	int sorted = 0;
 	while (!ready.empty())
 	{
@@ -488,7 +509,7 @@ HydrologyStats planetCalcHydrology(vor::SphereVoronoi& planet, GlobalWorldObject
 		const int to = downstream[c];
 		if (to < 0)
 		{
-			if (!cells[c].oceanBool && cells[c].waterBody < 0) { stats.deadEnd += discharge[c]; }
+			if (!cells[c].oceanBool && cells[c].waterBody < 0) { stuck.push_back(c); }
 			continue;
 		}
 		discharge[to] += discharge[c];
@@ -496,6 +517,23 @@ HydrologyStats planetCalcHydrology(vor::SphereVoronoi& planet, GlobalWorldObject
 		if (--upstreamLeft[to] == 0) { ready.push_back(to); }
 	}
 	stats.cyclicCells = n - sorted;
+
+	// Whatever is left in a pit becomes a one-cell closed lake, so no river ends on dry land
+	for (int c : stuck)
+	{
+		if (discharge[c] <= 0.0) { continue; }
+		WaterBody body;
+		body.cells = { c };
+		body.level = body.minHeight = cells[c].height;
+		body.areaKm2 = static_cast<float>(areaKm2[c]);
+		body.inflow = body.evaporation = static_cast<float>(discharge[c]);
+		cells[c].waterBody = static_cast<int>(globals.waterBodies.size());
+		globals.waterBodies.push_back(std::move(body));
+		stats.lakes++;
+		stats.closedLakes++;
+		stats.deadEnd += discharge[c];
+		stats.lakeEvaporation += discharge[c];
+	}
 	for (int i = 0; i < n; i++)
 	{
 		cells[i].discharge = static_cast<float>(discharge[i]);

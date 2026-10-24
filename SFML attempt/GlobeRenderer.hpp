@@ -43,12 +43,24 @@ PlanetMesh buildPlanetMesh(const vor::SphereVoronoi& sphere);
 PlanetMesh buildPlanetMesh(const vor::SphereVoronoi& sphere, const std::vector<glm::vec3>& rims, const std::vector<int>& rimStart);
 
 class River;
+struct WaterBody;
 
 // Outline of a cell's original polygon (not the smoothed rim), as a closed ribbon line
 void appendCellOutline(RibbonBatch& batch, const vor::SphereVoronoi& sphere, int cell, const OverlayStyle& style);
 
-// Each river as the centres of its path cells, in River::getPathCells order, from the source to the mouth. A tributary ends on the cell of the river it joins
-std::vector<std::vector<glm::vec3>> riverPaths(const vor::SphereVoronoi& sphere, const std::vector<River>& rivers);
+// A river ready to draw: points on the unit sphere from the source to the mouth, and for each the
+// strength sqrt(discharge / the largest discharge of any river), 0 to 1, that sets its width
+struct RiverPath {
+    std::vector<glm::vec3> points;
+    std::vector<float> strength;
+    std::vector<char> pinned; // Points the smoothing keeps where they are: the ends and the cells tributaries join at
+};
+
+// Each river through the centres of its path cells, in River::getPathCells order. A river that ends in
+// the ocean or a lake is extended across the edge into the water, a river that leaves a lake starts at the
+// lake's edge, and every path is rounded with Chaikin corner cutting. The ends and the cells where
+// tributaries join stay put, so the rivers still meet
+std::vector<RiverPath> riverPaths(const vor::SphereVoronoi& sphere, const std::vector<River>& rivers, const std::vector<WaterBody>& lakes);
 
 // The circle of latitude lat (degrees), sampled every degree of longitude
 void appendLatitudeCircle(RibbonBatch& batch, float lat, const OverlayStyle& style);

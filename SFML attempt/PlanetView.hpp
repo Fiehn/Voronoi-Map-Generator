@@ -65,7 +65,7 @@ private:
     SphereBoundaries boundaries;
     OverlaySettings overlayStyles; // Of the last updateOverlays, for the highlight and found cells
     std::vector<std::size_t> foundCells;
-    std::vector<std::vector<glm::vec3>> rivers; // Kept to rebuild the ribbons after a style change or a new mesh
+    std::vector<RiverPath> rivers; // Kept to rebuild the ribbons after a style change or a new mesh
     std::vector<float> convergenceLats;
     std::vector<ArrowLevel> arrowLevels;
     std::vector<std::vector<Arrow>> windByLevel, platesByLevel; // Every level's arrows, made with the world

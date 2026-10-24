@@ -28,6 +28,7 @@ namespace {
         switch (static_cast<BorderType>(type))
         {
         case BorderType::Coast: return cell.oceanBool ? 1 : 0;
+        case BorderType::Shore: return cell.lakeBool ? 1 : 0;
         case BorderType::Continent: return cell.continent;
         case BorderType::Biome: return cell.biome;
         default: return 0;

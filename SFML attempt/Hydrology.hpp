@@ -16,7 +16,7 @@ struct HydrologyStats {
 	double lakeEvaporation = 0.0;
 	double toOcean = 0.0;      // What reaches the ocean cells
 	double lost = 0.0;         // Overflow of a planet without an ocean
-	double deadEnd = 0.0;      // Discharge that ends in a land cell that is not under a lake, should be 0
+	double deadEnd = 0.0;      // Water that reached a pit nothing could drain, given a one-cell closed lake of its own
 	int cyclicCells = 0;       // Cells whose downstream links loop, should be 0
 	std::string report;
 };
