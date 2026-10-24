@@ -67,9 +67,6 @@
     <ClCompile Include="GlobalWorldObjects.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="Cells.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="utils.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -77,12 +74,6 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="extractiveResources.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="windArrows.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Voronoi.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="SphereVoronoi.cpp">
@@ -116,9 +107,6 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="PlanetColors.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="BoundaryRender.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="MapColors.cpp">
@@ -207,9 +195,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Voronoi.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="SphereVoronoi.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -267,12 +252,6 @@
     <ClInclude Include="clustering.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="vertex.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BoundaryRender.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="MapColors.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -280,9 +259,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Map.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="mapconfig.hpp">
@@ -301,9 +277,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="extractiveResources.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="windArrows.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PlanetaryObjects.hpp">

@@ -1,5 +1,4 @@
 #pragma once
-#include "Voronoi.hpp" // Others still reach the flat map through here until it is removed
 #include "SphereVoronoi.hpp"
 #include "HistoryData.hpp"
 #include "flecs_schema.h"

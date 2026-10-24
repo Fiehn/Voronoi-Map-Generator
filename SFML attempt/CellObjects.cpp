@@ -16,18 +16,9 @@ void River::purgeRiver(std::vector<Cell>& map) {
     for (size_t i = 0; i < cells.size(); i++) {
         map[cells[i]].riverBool = false;
     }
-    path.clear();
+    pathCells.clear();
     cells.clear();
     len = 0;
-};
-
-sf::VertexArray River::drawRiver() {
-    sf::VertexArray river(sf::LinesStrip, path.size());
-    for (size_t i = 0; i < path.size(); i++) {
-        river[i].position = path[i];
-        river[i].color = sf::Color::Blue;
-    }
-    return river;
 };
 
 static float riverCellScore(const Cell& cell) {
@@ -36,15 +27,6 @@ static float riverCellScore(const Cell& cell) {
 	if (cell.lakeBool) score += 2;
 	if (cell.oceanBool) score += 3;
 	return score;
-};
-
-void River::calcPath(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& points) {
-    calcPathCells(map);
-    path.clear();
-    path.reserve(pathCells.size());
-    for (std::size_t cell : pathCells) {
-        path.push_back(points[cell]);
-    }
 };
 
 void River::calcPathCells(const std::vector<Cell>& map) {
@@ -147,64 +129,8 @@ void River::addCell(std::size_t cell) {
 	cells.push_back(cell);
 };
 
-void Lake::calcArea() {
-	area = polygonArea(bounds);
-};
-
-void Lake::calcMaxDepth() {
-
-};
-
-void Lake::calcBounds(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map) {
-	bounds.clear();
-	bounds.reserve(cells.size() * 2);
-	// We need to find the outer bounds of the lake cells
-	// We can do this by finding the convex hull of the lake cells
-	// Using Chan's algorithm
-
-	// First get all the points of the lake
-	std::vector<sf::Vector2f> points;
-	points.reserve(cells.size() * 10);
-	// points are stored in map[cells[i]].vertex
-	for (std::size_t i = 0; i < cells.size(); i++) {
-		for (std::size_t j = 0; j < map[cells[i]].vertex.size(); j++) {
-			points.push_back(voronoi_points[map[cells[i]].vertex[j]]);
-		}
-	}
-
-	// Find the convex hull of the points
-	bounds = convexHull(points); /// THIS IS NOT THE WAY YOU dimbo
-};
-
-sf::VertexArray Lake::drawLake() { /// THis is not working correctly fix it
-	sf::VertexArray lake(sf::TriangleStrip, bounds.size()+1);
-	// Set the center of the lake
-	//lake[0].position = computeCentroid(bounds);
-	//lake[0].color = sf::Color::Blue;
-	// Set the bounds of the lake
-	for (size_t i = 0; i < bounds.size(); i++) {
-		lake[i].position = bounds[i];
-		lake[i].color = sf::Color::Blue;
-	}
-	return lake;
-};
-
 Continent::Continent(int id) {
 	this->id = id;
-};
-
-void Continent::calcCenter(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map) {
-	// Find the center of the continent
-	sf::Vector2f sum = sf::Vector2f(0, 0);
-	for (std::size_t i = 0; i < cells.size(); i++) {
-		sum += voronoi_points[map[cells[i]].vertex[0]];
-	}
-	center = sum / static_cast<float>(cells.size());
-};
-
-void Continent::finishContinent(const std::vector<sf::Vector2f>& voronoi_points, const std::vector<Cell>& map)
-{
-	calcCenter(voronoi_points, map);
 };
 
 void Continent::calcCenterOnSphere(const std::vector<glm::vec3>& points)
@@ -223,127 +149,3 @@ void Continent::addBoundryCell(std::size_t cellId)
 {
     boundCells.push_back(cellId);
 };
-
-sf::VertexArray Continent::drawDirectionArrows()
-{
-    // Create an arrow as a triangle pointing in the direction vector
-    sf::VertexArray arrow(sf::Triangles, 3);
-
-    float arrowLength = 70.f; // Reduced from 100.f to make it shorter
-    float baseAngleOffset = PI / 12; // Reduced from PI/8 to make it less fat
-
-    // Normalize the direction vector if it's not already normalized
-    sf::Vector2f normalizedDirection = direction;
-    float magnitude = std::sqrt(direction.x * direction.x + direction.y * direction.y);
-    if (magnitude > 0) {
-        normalizedDirection.x /= magnitude;
-        normalizedDirection.y /= magnitude;
-    }
-
-    // Calculate the angle of the direction vector
-    float angleRadians = std::atan2(normalizedDirection.y, normalizedDirection.x);
-
-    // Calculate the tip of the arrow
-    sf::Vector2f tip = center + normalizedDirection * arrowLength;
-
-    // Calculate the base points of the arrow (using 0.6f instead of 0.7f for a slimmer look)
-    sf::Vector2f base1 = center + (arrowLength * 0.6f) *
-        sf::Vector2f(std::cos(angleRadians + PI - baseAngleOffset),
-            std::sin(angleRadians + PI - baseAngleOffset));
-
-    sf::Vector2f base2 = center + (arrowLength * 0.6f) *
-        sf::Vector2f(std::cos(angleRadians + PI + baseAngleOffset),
-            std::sin(angleRadians + PI + baseAngleOffset));
-
-    // Set the vertices positions and color
-    arrow[0].position = tip;
-    arrow[0].color = sf::Color::Black;
-    arrow[1].position = base1;
-    arrow[1].color = sf::Color::Black;
-    arrow[2].position = base2;
-    arrow[2].color = sf::Color::Black;
-
-    return arrow;
-}
-
-
-void Continent::generateBoundryLine(const std::vector<Cell>& map, const std::vector<sf::Vector2f>& voronoi_points)
-{
-	/// DOES NOT WORK! FIX IT
-    /*
-	// Find the vertices of the boundry cells that are not within the bounds of the continent
-    std::vector<sf::Vector2f> points; 
-    points.reserve(boundCells.size() * 2);
-
-    for (std::size_t i = 0; i < boundCells.size(); i++)
-    {
-        int mainContinent = map[boundCells[i]].continent;
-        // Check points and see if that point is also contained in a neighbor from a different continent
-        for (std::size_t j = 0; j < map[boundCells[i]].vertex.size(); j++)
-        {
-			sf::Vector2f point = voronoi_points[map[boundCells[i]].vertex[j]];
-            for (std::size_t k = 0; k < map[boundCells[i]].neighbors.size(); k++)
-            {
-                if (mainContinent != map[map[boundCells[i]].neighbors[k]].continent)
-                {
-                    continue;
-                }
-                else
-                {
-                    for (std::size_t l = 0; l < map[map[boundCells[i]].neighbors[k]].vertex.size(); l++)
-                    {
-                        sf::Vector2f neighborPoint = voronoi_points[map[map[boundCells[i]].neighbors[k]].vertex[l]];
-
-                        if (point == neighborPoint)
-                        {
-                            points.push_back(point);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-	// Use a NN to get the order of the points
-    std::size_t startpoint = 0;
-    std::vector<bool> used(points.size());
-
-	boundLines.clear();
-    boundLines.reserve(points.size());
-	boundLines.push_back(points[startpoint]);
-
-    while (boundLines.size() < points.size())
-    {
-		float minDist = std::numeric_limits<float>::max();
-		std::size_t minIndex = 0;
-		for (std::size_t i = 0; i < points.size(); i++)
-		{
-			if (used[i])
-			{
-				continue;
-			}
-			float dist = distance(points[startpoint], points[i]); 
-			if (dist < minDist)
-			{
-				minDist = dist;
-				minIndex = i;
-			}
-		}
-		startpoint = minIndex; 
-		used[startpoint] = true; 
-		boundLines.push_back(points[startpoint]); 
-    }
-    */
-
-};
-
-sf::VertexArray Continent::drawBoundryLine() 
-{
-	sf::VertexArray continentLine(sf::LinesStrip, boundLines.size());
-	for (size_t i = 0; i < boundLines.size(); i++)
-	{
-		continentLine[i].position = boundLines[i]; 
-		continentLine[i].color = sf::Color::Red; 
-	}
-    return continentLine;
-}

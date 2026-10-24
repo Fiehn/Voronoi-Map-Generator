@@ -6,7 +6,7 @@
 
 namespace vor {
 
-    // Planar Delaunay triangulation in double precision, a port of the Delaunator in Voronoi.cpp.
+    // Planar Delaunay triangulation in double precision, a port of Delaunator (mapbox/delaunator).
     // Used by the sphere Voronoi on stereographically projected points.
     struct Delaunay2D {
         static constexpr std::size_t NONE = std::numeric_limits<std::size_t>::max();

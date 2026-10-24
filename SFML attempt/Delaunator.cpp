@@ -85,7 +85,7 @@ namespace vor {
             return std::fabs(a.x - b.x) <= EPS && std::fabs(a.y - b.y) <= EPS;
         }
 
-        // The working state of one triangulation, same names as Voronoi::delaunay
+        // The working state of one triangulation, same names as the original Delaunator
         struct Builder {
             const std::vector<glm::dvec2>& points;
             std::vector<std::size_t> triangles;
@@ -151,8 +151,23 @@ namespace vor {
                 std::size_t ar = 0;
                 m_edge_stack.clear();
 
-                // recursion eliminated with a stack, see the diagram in Voronoi::legalize
+                // recursion eliminated with a stack
                 while (true) {
+                    /* if the pair of triangles doesn't satisfy the Delaunay condition
+                    * (p1 is inside the circumcircle of [p0, pl, pr]), flip them,
+                    * then do the same check/flip recursively for the new pair of triangles
+                    *
+                    *           pl                    pl
+                    *          /||\                  /  \
+                    *       al/ || \bl            al/    \a
+                    *        /  ||  \              /      \
+                    *       /  a||b  \    flip    /___ar___\
+                    *     p0\   ||   /p1   =>   p0\---bl---/p1
+                    *        \  ||  /              \      /
+                    *       ar\ || /br             b\    /br
+                    *          \||/                  \  /
+                    *           pr                    pr
+                    */
                     const std::size_t b = halfedges[a];
                     const std::size_t a0 = 3 * (a / 3);
                     ar = a0 + (a + 2) % 3;

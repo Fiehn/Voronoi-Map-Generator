@@ -150,7 +150,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BoundaryRender.cpp" />
     <ClCompile Include="RenderSettings.cpp" />
     <ClCompile Include="SphereBoundary.cpp">
       <!-- Optimised in Debug too: it is rebuilt on every map mode switch and is 4-6x slower unoptimised -->
@@ -166,7 +165,6 @@
     <ClCompile Include="MapColors.cpp" />
     <ClCompile Include="BiomeGen.cpp" />
     <ClCompile Include="CellObjects.cpp" />
-    <ClCompile Include="Cells.cpp" />
     <ClCompile Include="CrashHandler.cpp" />
     <ClCompile Include="CultureManager.hpp" />
     <ClCompile Include="CultureManager_old.cpp">
@@ -206,7 +204,6 @@
     </ClCompile>
     <ClCompile Include="SeasonalCalculator.hpp" />
     <ClCompile Include="utils.cpp" />
-    <ClCompile Include="Voronoi.cpp" />
     <ClCompile Include="SphereVoronoi.cpp" />
     <ClCompile Include="Delaunator.cpp" />
     <ClCompile Include="PlanetCamera.cpp" />
@@ -214,11 +211,9 @@
     <ClCompile Include="PlanetView.cpp" />
     <ClCompile Include="PlanetGen.cpp" />
     <ClCompile Include="PlanetColors.cpp" />
-    <ClCompile Include="windArrows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AbstractWorld.hpp" />
-    <ClInclude Include="BoundaryRender.hpp" />
     <ClInclude Include="RenderSettings.hpp" />
     <ClInclude Include="SphereBoundary.hpp" />
     <ClInclude Include="Ribbon.hpp" />
@@ -256,7 +251,6 @@
     <ClInclude Include="LogCommon.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="MainMenu.hpp" />
-    <ClInclude Include="Map.hpp" />
     <ClInclude Include="mapconfig.hpp" />
     <ClInclude Include="MythicRules.hpp" />
     <ClInclude Include="NewMap.hpp" />
@@ -278,8 +272,6 @@
     </ClInclude>
     <ClInclude Include="resource.h" />
     <ClInclude Include="tickerSimulation.hpp" />
-    <ClInclude Include="vertex.hpp" />
-    <ClInclude Include="Voronoi.hpp" />
     <ClInclude Include="SphereVoronoi.hpp" />
     <ClInclude Include="Delaunator.hpp" />
     <ClInclude Include="PlanetCamera.hpp" />
@@ -292,7 +284,6 @@
     <ClInclude Include="SphereMath.hpp" />
     <ClInclude Include="MapProjection.hpp" />
     <ClInclude Include="POP_Manager.hpp" />
-    <ClInclude Include="windArrows.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SFML attempt.rc" />

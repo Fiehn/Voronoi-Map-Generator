@@ -10,12 +10,10 @@
 #include "util.hpp"
 
 #include "mapconfig.hpp"
-#include "windArrows.hpp"
-#include "Voronoi.hpp"
-#include "vertex.hpp"
 #include "cell.hpp"
 #include "GlobalWorldObjects.hpp"
-#include "Map.hpp"
+#include "BiomeGen.hpp"
+#include "PlanetGen.hpp"
 #include "POP_Manager.hpp"
 #include "SeasonalCalculator.hpp"
 
@@ -72,10 +70,6 @@ int main()
     // Create the global world objects
     GlobalWorldObjects globals;
 
-    // Empty additionals
-    sf::VertexArray lines;
-    lines.setPrimitiveType(sf::Lines);
-
     // The cell shown in the Highlighted Cell panel, the hovered one while Highlight Cell is on
     std::size_t highlightedCell = vor::INVALID_INDEX;
 
@@ -94,12 +88,7 @@ int main()
 	// Create the POP Manager
 	PopManager popManager;
 
-    // Create the view
-    sf::Vector2f oldPos;
-    bool moving = false;
     bool drawHighlightBool = false; // Set to true to highlight a cell
-	bool drawLakesBool = true; // Draw lakes
-	bool drawContinentBool = false; // Draw continent borders
 
     int mapType = 0; int mapTypeOld = 0;
     bool showNewMapBool = false; // Get window to draw new map
@@ -123,10 +112,6 @@ int main()
 	std::vector<std::size_t> findingCells;
 	std::size_t findCell = vor::INVALID_INDEX;
 
-    // Retrieve the window's default view
-    float globalZoom = 1;
-    sf::View view = window.getDefaultView();
-
     // Resource Map
 	ResourceType selectedResource = ResourceType::Clay;
 
@@ -147,7 +132,7 @@ int main()
 
     // Generate the actual map:
     genWorld(planet, globals, window,
-        lines, seasonCalc,
+        seasonCalc,
         windowWidth, windowHeight,
 		font, config, seed, popManager);
     window.setActive(true);
@@ -183,13 +168,14 @@ int main()
 
             planetView.handleEvent(event, window);
 
-            // The flat map's keys: Escape closes, T, B and P toggle the temperature, biome and precipitation maps
+            // Escape closes, T, B and P toggle the temperature, biome and precipitation maps, H toggles Highlight Cell
             if (event.type == sf::Event::KeyPressed && !showLoadConfig && !showSaveConfig && !ImGui::GetIO().WantCaptureKeyboard)
             {
                 if (event.key.code == sf::Keyboard::Escape) { window.close(); }
                 else if (event.key.code == sf::Keyboard::T) { mapType = mapType == 1 ? 0 : 1; }
                 else if (event.key.code == sf::Keyboard::B) { mapType = mapType == 2 ? 0 : 2; }
                 else if (event.key.code == sf::Keyboard::P) { mapType = mapType == 3 ? 0 : 3; }
+                else if (event.key.code == sf::Keyboard::H) { drawHighlightBool = !drawHighlightBool; }
             }
 
 			if (event.type == sf::Event::Closed) {
@@ -346,7 +332,7 @@ int main()
 		searchFinder(planet, findingCells, findCell, showFindSearcherBool, maxCellInMap);
         biomeUI.biomePopUp(planet, globals, config, showBiomeGenBool, mapType, changeBiomeColorBool);
         if (showNewMap(planet, globals, window,
-			lines, seasonCalc,
+			seasonCalc,
                 windowWidth, windowHeight,
                 font, config, seed, popManager,
                 showNewMapBool))

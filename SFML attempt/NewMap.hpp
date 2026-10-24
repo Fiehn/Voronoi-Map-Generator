@@ -60,7 +60,6 @@ struct GenStepWrapper {
 static void genWorld(vor::SphereVoronoi& planet,
     GlobalWorldObjects& globals,
     sf::RenderWindow& window,
-    sf::VertexArray& lines,
 	SeasonalCalculator& seasonCalc,
     const unsigned int MAXWIDTH,
     const unsigned int MAXHEIGHT,
@@ -129,7 +128,6 @@ static void genWorld(vor::SphereVoronoi& planet,
         globals.setGlobalTemp(config.global_temp_avg);
 		globals.generatePlanet(config.earthLike);
         globals.generateConvergenceLines();
-        lines.clear(); // The convergence lines are drawn on the sphere again with the overlays
         planet.clearMap();
         }, "Initializing Global Variables", currentStep,
         totalSteps, window, loadingSprite, loadingBar,

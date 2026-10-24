@@ -42,22 +42,6 @@ inline int clamp_int(int x, int max, int min)
 	return x;
 }
 
-inline sf::Vector2f clampVect2f(sf::Vector2f vect, float maxx, float minx, float maxy, float miny)
-{
-    sf::Vector2f new_vect = vect;
-    if (vect.x < minx) { new_vect.x = minx; }
-    if (vect.x > maxx) { new_vect.x = maxy; }
-    if (vect.y < miny) { new_vect.y = miny; }
-    if (vect.y > maxy) { new_vect.y = maxy; }
-    return new_vect;
-}
-
-inline double dist(sf::Vector2f a, sf::Vector2f b) {
-    const double dx = a.x - b.x;
-    const double dy = a.y - b.y;
-    return dx * dx + dy * dy;
-}
-
 inline float RandomBetween(float smallNumber, float bigNumber)
 {
     float diff = bigNumber - smallNumber;
@@ -181,112 +165,6 @@ inline float sum_vec_float(const std::vector<float>& x)
     return sum + err;
 }
 
-inline size_t fast_mod(const size_t i, const size_t c) 
-{
-    return i >= c ? i % c : i;
-}
-
-// monotonically increases with real angle, used for delaunay
-inline double pseudo_angle(const double dx, const double dy) 
-{
-    const double p = dx / (std::abs(dx) + std::abs(dy));
-    return (dy > 0.0 ? 3.0 - p : 1.0 + p) / 4.0; // [0..1)
-}
-
-inline double circumradius(sf::Vector2f a, sf::Vector2f b, sf::Vector2f c) 
-{
-    const double dx = b.x - a.x;
-    const double dy = b.y - a.y;
-    const double ex = c.x - a.x;
-    const double ey = c.y - a.y;
-
-    const double bl = dx * dx + dy * dy;
-    const double cl = ex * ex + ey * ey;
-    const double d = dx * ey - dy * ex;
-
-    const double x = (ey * bl - dy * cl) * 0.5 / d;
-    const double y = (dx * cl - ex * bl) * 0.5 / d;
-
-    if ((bl > 0.0 || bl < 0.0) && (cl > 0.0 || cl < 0.0) && (d > 0.0 || d < 0.0)) {
-        return x * x + y * y;
-    }
-    else {
-        return std::numeric_limits<double>::max();
-    }
-}
-
-// 
-inline bool orient(sf::Vector2f p, sf::Vector2f q, sf::Vector2f r) 
-{
-    return (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y) < 0.0;
-}
-
-// Return the center of the circle
-inline sf::Vector2f circumcenter(sf::Vector2f a, sf::Vector2f b, sf::Vector2f c) 
-{
-    const double dx = b.x - a.x;
-    const double dy = b.y - a.y;
-    const double ex = c.x - a.x;
-    const double ey = c.y - a.y;
-
-    const double bl = dx * dx + dy * dy;
-    const double cl = ex * ex + ey * ey;
-    const double d = dx * ey - dy * ex;
-
-    const double x = a.x + (ey * bl - dy * cl) * 0.5 / d;
-    const double y = a.y + (dx * cl - ex * bl) * 0.5 / d;
-
-    return sf::Vector2f(static_cast<float>(x), static_cast<float>(y));
-}
-
-inline bool in_circle(sf::Vector2f a, sf::Vector2f b, sf::Vector2f c, sf::Vector2f p) {
-    const double dx = a.x - p.x;
-    const double dy = a.y - p.y;
-    const double ex = b.x - p.x;
-    const double ey = b.y - p.y;
-    const double fx = c.x - p.x;
-    const double fy = c.y - p.y;
-
-    const double ap = dx * dx + dy * dy;
-    const double bp = ex * ex + ey * ey;
-    const double cp = fx * fx + fy * fy;
-
-    return (dx * (ey * cp - bp * fy) -
-        dy * (ex * cp - bp * fx) +
-        ap * (ex * fy - ey * fx)) < 0.0;
-}
-
-constexpr double EPSILON = std::numeric_limits<double>::epsilon();
-
-inline bool check_pts_equal(sf::Vector2f a, sf::Vector2f b) {
-    return std::fabs(a.x - b.x) <= EPSILON &&
-        std::fabs(a.y - b.y) <= EPSILON;
-}
-
-// Compare a list of points to a center point, used for sorting
-struct compare_dist_to_point {
-    std::vector<sf::Vector2f> const& points;
-    sf::Vector2f p;
-
-    bool operator()(std::size_t i, std::size_t j) {
-        const double d1 = dist(points[i], p);
-        const double d2 = dist(points[j], p);
-        const double diff1 = d1 - d2;
-        const double diff2 = points[i].x - points[j].x;
-        const double diff3 = points[i].y - points[j].y;
-
-        if (diff1 > 0.0 || diff1 < 0.0) {
-            return diff1 < 0;
-        }
-        else if (diff2 > 0.0 || diff2 < 0.0) {
-            return diff2 < 0;
-        }
-        else {
-            return diff3 < 0;
-        }
-    }
-};
-
 inline float normalizeAngle(float angleDegrees) {
     while (angleDegrees >= 360.0) {
         angleDegrees -= 360.0;
@@ -386,68 +264,6 @@ inline float betaDist(float alpha, float beta)
 	float gamma2 = std::tgammaf(beta);
 	return gamma1 / (gamma1 + gamma2);
 }
-
-inline bool pointInPolygon(const sf::Vector2f& point, const std::vector<sf::Vector2f>& vertices) {
-	// Check if a point is within a polygon
-	bool inside = false;
-	for (int i = 0, j = vertices.size() - 1; i < vertices.size(); j = i++) {
-		if (((vertices[i].y > point.y) != (vertices[j].y > point.y)) &&
-			(point.x < (vertices[j].x - vertices[i].x) * (point.y - vertices[i].y) / (vertices[j].y - vertices[i].y) + vertices[i].x)) {
-			inside = !inside;
-		}
-	}
-	return inside;
-}
-
-inline sf::Vector2f RandomPointInPolygon(const std::vector<sf::Vector2f>& vertices) {
-	// DO NOT USE!! This function is slow. It uses rejection sampling to get a random point in a polygon
-	// Get a random point within a polygon
-	float xMin = vertices[0].x;
-	float xMax = vertices[0].x;
-	float yMin = vertices[0].y;
-	float yMax = vertices[0].y;
-
-    for (int i = 1; i < vertices.size(); i++) {
-        if (vertices[i].x < xMin) {
-			xMin = vertices[i].x;
-		}
-        if (vertices[i].x > xMax) {
-			xMax = vertices[i].x;
-		}
-        if (vertices[i].y < yMin) {
-			yMin = vertices[i].y;
-		}
-        if (vertices[i].y > yMax) {
-			yMax = vertices[i].y;
-		}
-	}
-
-	sf::Vector2f point;
-    do {
-		point.x = RandomBetween(xMin, xMax);
-		point.y = RandomBetween(yMin, yMax);
-	} while (!pointInPolygon(point, vertices));
-
-	return point;
-}
-
-std::vector<sf::Vector2f> convexHull(const std::vector<sf::Vector2f>& points);
-
-// Function to compute the centroid of a polygon
-sf::Vector2f computeCentroid(const std::vector<sf::Vector2f>& points);
-
-// Function to compute the angle between two points and the centroid
-inline float computeAngle(const sf::Vector2f& centroid, const sf::Vector2f& point) 
-{
-    return std::atan2(point.y - centroid.y, point.x - centroid.x);
-}
-
-// Function to order points sequentially around the centroid
-std::vector<sf::Vector2f> orderPoints(std::vector<sf::Vector2f> points);
-
-
-// Function to compute the area of a polygon (with unordered points)
-float polygonArea(const std::vector<sf::Vector2f>& points);
 
 
 // Color table with names from https://www.rapidtables.com/web/color/RGB_Color.html
@@ -795,22 +611,6 @@ public:
     }
 };
 
-
-inline float distance(sf::Vector2f a, sf::Vector2f b)
-{
-    // Euclidian distance
-	return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
-}
-
-
-static float magnitude(const sf::Vector2f& vec) {
-    return std::sqrt(vec.x * vec.x + vec.y * vec.y);
-}
-static sf::Vector2f normalize(const sf::Vector2f& vec) {
-    float mag = magnitude(vec);
-    if (mag < 0.001f) return sf::Vector2f(0.0f, 0.0f);
-    return sf::Vector2f(vec.x / mag, vec.y / mag);
-}
 
 
 

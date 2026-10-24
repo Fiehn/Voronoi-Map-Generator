@@ -1,16 +1,21 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <cstddef>
+#include <limits>
 #include <glm/glm.hpp>
 #include "cell.hpp"
 
 namespace vor {
 
+    // "No cell" for the size_t cell indices the UI keeps
+    constexpr std::size_t INVALID_INDEX = std::numeric_limits<std::size_t>::max();
+
     // Fibonacci sphere points, each pushed along its tangent plane by up to
     // jitter * mean spacing per axis. Uses rand(), so the map seed applies.
     std::vector<glm::vec3> fibonacciPoints(int n, float jitter);
 
-    // Voronoi cells on the unit sphere. Replaces vor::Voronoi once the simulation is ported.
+    // Voronoi cells on the unit sphere, the planet every view is projected from.
     //
     // Delaunay mesh: triangles are counter clockwise seen from outside, and every halfedge
     // has a twin since the mesh is closed. Halfedge e runs from triangles[e] to

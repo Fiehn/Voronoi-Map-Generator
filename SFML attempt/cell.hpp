@@ -2,7 +2,7 @@ class Cell; // Forward declaration
 
 #pragma once
 #include <vector>
-#include <SFML/System/Vector2.hpp>
+#include <limits>
 #include "extractiveResources.hpp"
 
 
@@ -13,7 +13,6 @@ public:
     Cell(int i) : id(i) { vertex.reserve(10); neighbors.reserve(10); };
     std::vector<int> vertex; // Id's of vertecies that corespond to the cell and are stored in voronoi_points this should be pointers?
     std::vector<int> neighbors; // Id's of the neighbors
-    unsigned int vertex_offset = 0U; // Offset for the vertex buffer
 
     float height = 0.f; // Height of the cell (uncapped, sealevel is typically around 0.5)
     float rise = 0.f; // Difference in height between the highest and the lowest neighbor cell
@@ -57,10 +56,6 @@ public:
     int culture = -1; // Will be tied to POP calculations later
 
 	ExtractiveResource resources; // Extractive resources in the cell (std::map<ResourceType, float>)
-
-    void sort_angles(const std::vector<sf::Vector2f>& points, const std::vector<sf::Vector2f>& voroi_points);
-    
-    bool contains(sf::Vector2f point, const std::vector<sf::Vector2f>& voroi_points);
 
     ~Cell() {
         vertex.clear();

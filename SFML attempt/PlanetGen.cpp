@@ -11,7 +11,7 @@
 #include "util.hpp"
 
 //////////
-// Steps that only walk the cell graph, moved unchanged from Map.hpp
+// Steps that only walk the cell graph
 //////////
 void rise(std::vector<Cell>& map)
 { /* Calculate the rise by finding the tallest and shortest neighbor*/

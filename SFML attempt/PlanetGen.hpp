@@ -9,7 +9,6 @@
 // World generation on the sphere.
 //
 // The first group only walks the cell graph (cells and their neighbours), so it works on any map.
-// It moved here from Map.hpp, which still uses it for the old flat world until that is removed.
 
 void rise(std::vector<Cell>& map);
 void smooth_height(std::vector<Cell>& map, float rise_threshold = 0.1, int repeats = 1, int method = 1);
@@ -28,10 +27,10 @@ void closeOceanCell(std::vector<Cell>& map);
 void smoothTemps(std::vector<Cell>& map, int smoothTimes);
 void calcHumid(std::vector<Cell>& map);
 void riverIteration(std::vector<Cell>& map, GlobalWorldObjects& globals, std::vector<std::size_t>& stack, std::size_t start, std::size_t river_id);
-// Rivers from the snow line down. The flat map's version also takes the positions for its river and lake drawing
+// Rivers from the snow line down
 void calcRiverStart(std::vector<Cell>& map, GlobalWorldObjects& globals);
 
-// The second group needs positions, these are the sphere versions of the Map.hpp functions.
+// The second group needs positions on the sphere.
 
 // Plate speeds, drawn uniformly per plate. The range keeps the mean squared speed at 1, which gives the
 // relative plate velocities the same spread as the flat map's random direction vectors, so the
