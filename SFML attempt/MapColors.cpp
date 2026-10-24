@@ -129,6 +129,13 @@ sf::Color precipitationColor(const PrecipitationColors& colors, float precipitat
     return scaleColor(precipitation * colors.stepsPerUnit, colors.dry, colors.wet, colors.dry, colors.overflow);
 }
 
+sf::Color tintColor(sf::Color base, sf::Color target, float strength)
+{
+    strength = std::clamp(strength, 0.f, 1.f);
+    const auto mix = [strength](sf::Uint8 a, sf::Uint8 b) { return static_cast<sf::Uint8>(a + (b - a) * strength + 0.5f); };
+    return sf::Color(mix(base.r, target.r), mix(base.g, target.g), mix(base.b, target.b), base.a);
+}
+
 sf::Color waterColor(const WaterColors& colors, float discharge)
 {
     const float t = std::clamp(std::log10(1.f + std::max(discharge, 0.f)) / std::log10(1.f + colors.fullDischarge), 0.f, 1.f);
@@ -189,6 +196,18 @@ bool mapColorsUI(MapColors& colors)
         float start = normalRange(p.dry, p.wet) / p.stepsPerUnit;
         ImGui::TextDisabled("Overflows from %.0f, reaches the target at %.0f",
             start, start + overflowLength(p.wet, p.overflow) / p.stepsPerUnit);
+        ImGui::TreePop();
+    }
+
+    if (ImGui::TreeNode("Snow and ice"))
+    {
+        SnowIceColors& s = colors.snowIce;
+        changed |= ImGui::Checkbox("Show in Height and Biome modes", &s.enabled);
+        changed |= colorEdit("Snow", s.snow);
+        changed |= ImGui::SliderFloat("Snow strength", &s.snowStrength, 0.f, 1.f, "%.2f");
+        changed |= colorEdit("Sea ice", s.ice);
+        changed |= ImGui::SliderFloat("Ice strength", &s.iceStrength, 0.f, 1.f, "%.2f");
+        ImGui::TextDisabled("Land that stays at or below 0 C in its warmest month, ocean at or below -2 C");
         ImGui::TreePop();
     }
 

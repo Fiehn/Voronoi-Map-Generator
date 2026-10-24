@@ -147,6 +147,14 @@ void RenderSettings::save_json(const std::string& filename) const
         {"ocean", colorToJson(colors.water.ocean)}
     };
 
+    j["map_colors"]["snow_ice"] = {
+        {"enabled", colors.snowIce.enabled},
+        {"snow", colorToJson(colors.snowIce.snow)},
+        {"ice", colorToJson(colors.snowIce.ice)},
+        {"snow_strength", colors.snowIce.snowStrength},
+        {"ice_strength", colors.snowIce.iceStrength}
+    };
+
     nlohmann::json jOverlays = nlohmann::json::object();
     for (const OverlayEntry& entry : OVERLAYS)
     {
@@ -232,6 +240,13 @@ bool RenderSettings::load_json(const std::string& filename)
     colors.water.dry = colorFromJson(jWater.value("dry", nlohmann::json()), colors.water.dry);
     colors.water.wet = colorFromJson(jWater.value("wet", nlohmann::json()), colors.water.wet);
     colors.water.ocean = colorFromJson(jWater.value("ocean", nlohmann::json()), colors.water.ocean);
+
+    const nlohmann::json& jSnowIce = jColors.value("snow_ice", nlohmann::json::object());
+    colors.snowIce.enabled = jSnowIce.value("enabled", colors.snowIce.enabled);
+    colors.snowIce.snow = colorFromJson(jSnowIce.value("snow", nlohmann::json()), colors.snowIce.snow);
+    colors.snowIce.ice = colorFromJson(jSnowIce.value("ice", nlohmann::json()), colors.snowIce.ice);
+    colors.snowIce.snowStrength = std::clamp(jSnowIce.value("snow_strength", colors.snowIce.snowStrength), 0.f, 1.f);
+    colors.snowIce.iceStrength = std::clamp(jSnowIce.value("ice_strength", colors.snowIce.iceStrength), 0.f, 1.f);
 
     const nlohmann::json& jOverlays = j.value("overlays", nlohmann::json::object());
     overlays.riverMinWidthPx = std::clamp(jOverlays.value("river_min_width_px", overlays.riverMinWidthPx), 0.5f, 8.f);

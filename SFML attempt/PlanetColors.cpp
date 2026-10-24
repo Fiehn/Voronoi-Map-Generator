@@ -61,10 +61,14 @@ std::vector<sf::Color> mapModeColors(const std::vector<Cell>& cells, const Globa
     default: // Cultures have no colours yet
         break;
     }
-    // Lakes are water in the modes that show the terrain
+    // Lakes are water, and snow and sea ice cover the terrain, in the modes that show it
     if (mapType == 0 || mapType == 2) {
+        const SnowIceColors& snowIce = colors.snowIce;
         for (std::size_t i = 0; i < n; i++) {
-            if (cells[i].lakeBool && !cells[i].oceanBool) out[i] = colors.water.lake;
+            if (cells[i].lakeBool && !cells[i].oceanBool) { out[i] = colors.water.lake; continue; }
+            if (!snowIce.enabled) continue;
+            if (cells[i].snowBool) out[i] = tintColor(out[i], snowIce.snow, snowIce.snowStrength);
+            else if (cells[i].iceBool) out[i] = tintColor(out[i], snowIce.ice, snowIce.iceStrength);
         }
     }
     return out;

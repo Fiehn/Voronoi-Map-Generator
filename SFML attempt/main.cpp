@@ -318,7 +318,7 @@ int main()
         }
 
         // Only the value maps use the map colours, redrawing the others would reroll the continent colours
-        bool valueMap = mapType == 0 || mapType == 1 || mapType == 3;
+        bool valueMap = mapType == 0 || mapType == 1 || mapType == 2 || mapType == 3 || mapType == 8;
         if (mapColorsUI(renderSettings.colors) && valueMap) { redrawMap(); }
         if (renderSettingsFileUI(renderSettings))
         {

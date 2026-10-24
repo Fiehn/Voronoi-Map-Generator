@@ -42,16 +42,29 @@ struct WaterColors
     float fullDischarge = 10000.f; // m3/s that has the wet colour
 };
 
+// Permanent snow on land and sea ice, mixed over the terrain colours of the Height and Biome modes
+struct SnowIceColors
+{
+    bool enabled = true;
+    sf::Color snow = sf::Color(250, 252, 255);
+    sf::Color ice = sf::Color(205, 230, 245);
+    float snowStrength = 0.85f; // 0 is the terrain colour, 1 is the snow colour
+    float iceStrength = 0.7f;
+};
+
 struct MapColors
 {
     HeightColors height;
     TemperatureColors temperature;
     PrecipitationColors precipitation;
     WaterColors water;
+    SnowIceColors snowIce;
 };
 
 sf::Color heightColor(const HeightColors& colors, float height, bool ocean);
 sf::Color temperatureColor(const TemperatureColors& colors, float temperature);
+// base mixed toward target, strength 0 to 1
+sf::Color tintColor(sf::Color base, sf::Color target, float strength);
 sf::Color waterColor(const WaterColors& colors, float discharge);
 sf::Color precipitationColor(const PrecipitationColors& colors, float precipitation);
 
