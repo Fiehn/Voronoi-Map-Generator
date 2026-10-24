@@ -4,56 +4,11 @@
 #include <cstdint>
 #include <SFML/Graphics.hpp>
 #include "Voronoi.hpp"
-#include "MapColors.hpp"
+#include "RenderSettings.hpp"
 
-// Smooth boundary rendering
+// Smooth boundary rendering on the flat map (the planet uses SphereBoundaries)
 // Builds a render mesh from the Voronoi geometry where the edges between differently labelled cells
 // are subdivided and smoothed (quadratic Bezier corner-cutting through the edge midpoints)
-
-enum class BorderType : int
-{
-    // Ordered by priority, an edge gets the first enabled type whose labels differ across it
-    Coast = 0,  // oceanBool differs
-    Continent,  // continent differs
-    // TODO: Culture boundaries (cell.culture) once the Cultures map is implemented.
-    Biome,      // biome differs
-    Count
-};
-
-constexpr int BORDER_TYPE_COUNT = static_cast<int>(BorderType::Count);
-constexpr int MAP_MODE_COUNT = 8; // Matches the mapType radio buttons in main.cpp
-inline constexpr const char* RENDER_SETTINGS_FILE = "render_settings.json";
-
-struct BoundaryStyle
-{
-    int subdivisions = 6; // Segments per boundary edge, 1 only moves the corners
-    float strength = 1.f; // 0 is the original Voronoi edges and 1 is the full curve
-    bool outline = true;
-    float outlineWidthPx = 2.f; // Screen pixels, the outline keeps its width when zooming
-    sf::Color outlineColor = sf::Color(20, 20, 20, 255);
-};
-
-struct RenderSettings
-{
-    BoundaryStyle styles[BORDER_TYPE_COUNT];
-    bool modeTypes[MAP_MODE_COUNT][BORDER_TYPE_COUNT] = {}; // Active boundary types for each map mode
-    MapColors colors; // Height, temperature and precipitation colours
-
-    // Debug overlays (not saved)
-    bool debugWireframe = false;
-    bool debugChains = false;
-    bool debugClamped = false;
-    bool debugOriginalEdges = false;
-
-    // Bumped on change so the renderer knows what to rebuild (not saved)
-    unsigned int geometryRevision = 0;
-    unsigned int styleRevision = 0;
-
-    RenderSettings();
-
-    void save_json(const std::string& filename) const;
-    bool load_json(const std::string& filename); // Missing keys keep their defaults, returns false if the file can't be read
-};
 
 class BoundaryRenderer
 {
@@ -151,9 +106,3 @@ private:
 
     const vor::Voronoi* lastMap = nullptr;
 };
-
-// Boundaries section for the Map Controls window, returns true when the geometry has to be rebuilt
-bool boundarySettingsUI(RenderSettings& settings, int mapMode);
-
-// Save and load buttons for the whole render settings file, returns true when the settings were loaded
-bool renderSettingsFileUI(RenderSettings& settings);

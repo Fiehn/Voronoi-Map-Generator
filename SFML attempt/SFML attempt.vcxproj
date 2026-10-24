@@ -151,6 +151,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BoundaryRender.cpp" />
+    <ClCompile Include="RenderSettings.cpp" />
+    <ClCompile Include="SphereBoundary.cpp">
+      <!-- Optimised in Debug too: it is rebuilt on every map mode switch and is 4-6x slower unoptimised -->
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+    </ClCompile>
+    <ClCompile Include="Ribbon.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="GLContext.cpp" />
     <ClCompile Include="MapColors.cpp" />
@@ -209,6 +218,9 @@
   <ItemGroup>
     <ClInclude Include="AbstractWorld.hpp" />
     <ClInclude Include="BoundaryRender.hpp" />
+    <ClInclude Include="RenderSettings.hpp" />
+    <ClInclude Include="SphereBoundary.hpp" />
+    <ClInclude Include="Ribbon.hpp" />
     <ClInclude Include="GLContext.hpp" />
     <ClInclude Include="MapColors.hpp" />
     <ClInclude Include="BiomeGen.hpp" />

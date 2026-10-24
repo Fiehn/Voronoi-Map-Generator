@@ -97,6 +97,15 @@
     <ClCompile Include="GlobeRenderer.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="RenderSettings.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="SphereBoundary.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Ribbon.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="PlanetView.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -208,6 +217,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GlobeRenderer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderSettings.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SphereBoundary.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Ribbon.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PlanetView.hpp">

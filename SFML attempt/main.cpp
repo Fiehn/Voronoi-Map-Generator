@@ -27,6 +27,7 @@
 #include "SphereVoronoi.hpp"
 #include "PlanetView.hpp"
 #include "PlanetColors.hpp"
+#include "RenderSettings.hpp"
 #include "NewMap.hpp"
 #include "EventMachine.hpp"
 #include "MainMenu.hpp"
@@ -97,10 +98,8 @@ int main()
     // Create the view
     sf::Vector2f oldPos;
     bool moving = false;
-    bool drawConvergenceLinesBool = false; // Set to true to draw the convergence lines of wind direction
     bool drawWindArrowsBool = false; // Set to true to draw the wind direction
     bool drawHighlightBool = false; // Set to true to highlight a cell
-    bool drawRiversBool = true; // Draw rivers
 	bool drawLakesBool = true; // Draw lakes
 	bool drawContinentBool = false; // Draw continent borders
 
@@ -154,7 +153,8 @@ int main()
         windowWidth, windowHeight,
 		font, config, seed, popManager);
     window.setActive(true);
-    planetView.rebuild(planet);
+    planetView.rebuild(planet, renderSettings, mapType);
+    planetView.setWorldLines(planet, globals);
 
 	std::size_t maxCellInMap = planet.cells.size();
 
@@ -162,10 +162,10 @@ int main()
     auto redrawMap = [&]() {
         if (!window.setActive(true)) { return; }
         if (useSeasonalView) {
-            planetView.setCellColors(planet, seasonalMapModeColors(planet, globals, renderSettings.colors, mapType, selectedResource, seasonCalc, currentDayOfYear));
+            planetView.setCellColors(planet, seasonalMapModeColors(planet, globals, renderSettings.colors, mapType, selectedResource, seasonCalc, currentDayOfYear), renderSettings, mapType);
         }
         else {
-            planetView.setCellColors(planet, mapModeColors(planet.cells, globals, renderSettings.colors, mapType, selectedResource));
+            planetView.setCellColors(planet, mapModeColors(planet.cells, globals, renderSettings.colors, mapType, selectedResource), renderSettings, mapType);
         }
     };
     redrawMap();
@@ -266,7 +266,11 @@ int main()
             ImGui::Separator();
         }
 
-		// The overlays (convergence lines, wind arrows, rivers, lakes, plate borders) come back on the globe later
+		// The wind and plate arrows come back on the globe later, lakes are not drawn
+		ImGui::Checkbox("Draw Lines", &planetView.showConvergenceLines);
+		if (ImGui::BeginItemTooltip()) { ImGui::Text("Wind convergence lines"); ImGui::EndTooltip(); }
+		ImGui::SameLine();
+		ImGui::Checkbox("Draw Rivers", &planetView.showRivers);
 		ImGui::Checkbox("Highlight Cell", &drawHighlightBool);
 		if (ImGui::BeginItemTooltip()) { ImGui::Text("Show the cell under the cursor in the Highlighted Cell window"); ImGui::EndTooltip(); }
 
@@ -308,12 +312,23 @@ int main()
         if (ImGui::Button("Save Config", { 200,50 })) { showSaveConfig = !showSaveConfig; }
         else if (ImGui::Button("Load Config", { 200, 50 })) { showLoadConfig = !showLoadConfig; };
 
-        // The boundary smoothing settings come back when the smoothing moves onto the sphere
+        // Rebuilds the smoothing from the current colours, so the map does not need to be redrawn
+        const unsigned int styleRevision = renderSettings.styleRevision;
+        const bool boundariesChanged = boundarySettingsUI(renderSettings, mapType);
+        overlaySettingsUI(renderSettings);
+        if (boundariesChanged || renderSettings.styleRevision != styleRevision)
+        {
+            if (window.setActive(true)) { planetView.updateBoundaries(planet, renderSettings, mapType); }
+        }
 
         // Only the value maps use the map colours, redrawing the others would reroll the continent colours
         bool valueMap = mapType == 0 || mapType == 1 || mapType == 3;
         if (mapColorsUI(renderSettings.colors) && valueMap) { redrawMap(); }
-        if (renderSettingsFileUI(renderSettings) && valueMap) { redrawMap(); }
+        if (renderSettingsFileUI(renderSettings))
+        {
+            if (valueMap) { redrawMap(); }
+            else if (window.setActive(true)) { planetView.updateBoundaries(planet, renderSettings, mapType); }
+        }
 
         ImGui::End();
 
@@ -330,7 +345,8 @@ int main()
                 showNewMapBool))
         {
             window.setActive(true);
-            planetView.rebuild(planet);
+            planetView.rebuild(planet, renderSettings, mapType);
+            planetView.setWorldLines(planet, globals);
             maxCellInMap = planet.cells.size();
             redrawMap();
         }
@@ -345,6 +361,10 @@ int main()
             redrawMap();
         }
 
+        if (window.setActive(true))
+        {
+            planetView.setFoundCells(planet, showFindSearcherBool ? findingCells : std::vector<std::size_t>());
+        }
         planetView.update(window, planet);
 
         window.clear();

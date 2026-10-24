@@ -45,18 +45,131 @@ std::vector<sf::Color> debugCellColors(const vor::SphereVoronoi& planet, int mod
     return colors;
 }
 
-void PlanetView::rebuild(const vor::SphereVoronoi& planet)
+void PlanetView::rebuild(const vor::SphereVoronoi& planet, const RenderSettings& settings, int mapMode)
 {
-    renderer.build(planet);
     cellSpacing = planet.cells.empty() ? 0.f : std::sqrt(4.f * glm::pi<float>() / planet.cells.size());
     hoveredCell = -1;
+    rivers.clear(); // The old world's, setWorldLines brings the new ones
+    convergenceLats.clear();
+    boundaries.invalidate();
+    updateBoundaries(planet, settings, mapMode);
+}
+
+void PlanetView::setCellColors(const vor::SphereVoronoi& planet, const std::vector<sf::Color>& colors, const RenderSettings& settings, int mapMode)
+{
+    mapColors = colors;
+    updateBoundaries(planet, settings, mapMode);
     uploadColors(planet);
 }
 
-void PlanetView::setCellColors(const vor::SphereVoronoi& planet, const std::vector<sf::Color>& colors)
+void PlanetView::updateBoundaries(const vor::SphereVoronoi& planet, const RenderSettings& settings, int mapMode)
 {
-    mapColors = colors;
-    uploadColors(planet);
+    // A new mesh comes out grey and bare, so it gets its colours and overlays again
+    if (boundaries.sync(planet, settings, mapMode) || !renderer.ready()) {
+        renderer.build(planet, boundaries.rimPoints(), boundaries.rimOffsets());
+        uploadColors(planet);
+        overlaysStale = true;
+    }
+    if (overlaysStale || settings.styleRevision != overlayStyleRevision) {
+        updateOverlays(planet, settings);
+    }
+}
+
+void PlanetView::updateOverlays(const vor::SphereVoronoi& planet, const RenderSettings& settings)
+{
+    overlaysStale = false;
+    overlayStyleRevision = settings.styleRevision;
+    overlayStyles = settings.overlays;
+
+    RibbonBatch outlines;
+    boundaries.appendOutlines(outlines, settings);
+    renderer.setRibbons(RibbonGroup::Boundaries, outlines);
+    uploadHighlight(planet);
+    uploadFoundCells(planet);
+    uploadWorldLines();
+    updateDebugOverlays(planet, settings);
+}
+
+void PlanetView::setWorldLines(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals)
+{
+    rivers = riverPaths(planet, globals.rivers);
+    convergenceLats.clear();
+    for (float fraction : globals.convergenceLines) convergenceLats.push_back(convergenceLineLat(fraction));
+    uploadWorldLines();
+}
+
+void PlanetView::uploadWorldLines()
+{
+    RibbonBatch riverBatch;
+    for (const std::vector<glm::vec3>& path : rivers) riverBatch.addLine(path, false, overlayStyles.rivers.color, overlayStyles.rivers.widthPx);
+    renderer.setRibbons(RibbonGroup::Rivers, riverBatch);
+
+    RibbonBatch lineBatch;
+    for (float lat : convergenceLats) appendLatitudeCircle(lineBatch, lat, overlayStyles.convergenceLines);
+    renderer.setRibbons(RibbonGroup::ConvergenceLines, lineBatch);
+}
+
+void PlanetView::uploadHighlight(const vor::SphereVoronoi& planet)
+{
+    RibbonBatch batch;
+    appendCellOutline(batch, planet, hoveredCell, overlayStyles.highlight);
+    renderer.setRibbons(RibbonGroup::Highlight, batch);
+}
+
+void PlanetView::uploadFoundCells(const vor::SphereVoronoi& planet)
+{
+    RibbonBatch batch;
+    for (std::size_t cell : foundCells) {
+        if (cell < planet.cells.size()) appendCellOutline(batch, planet, static_cast<int>(cell), overlayStyles.foundCells);
+    }
+    renderer.setRibbons(RibbonGroup::FoundCells, batch);
+}
+
+void PlanetView::setFoundCells(const vor::SphereVoronoi& planet, const std::vector<std::size_t>& cells)
+{
+    if (cells == foundCells) return;
+    foundCells = cells;
+    uploadFoundCells(planet);
+}
+
+void PlanetView::updateDebugOverlays(const vor::SphereVoronoi& planet, const RenderSettings& settings)
+{
+    renderer.wireframe = settings.debugWireframe;
+
+    std::vector<DebugVertex> lines, points;
+    if (settings.debugOriginalEdges) {
+        appendDebugLines(lines, boundaries.originalEdges(planet), sf::Color(255, 0, 255, 200));
+    }
+    if (settings.debugChains) {
+        // A colour per chain from its index, so neighbouring chains tell apart
+        const std::vector<SphereBoundaries::Polyline>& chains = boundaries.boundaryLines();
+        for (std::size_t c = 0; c < chains.size(); c++) {
+            std::uint64_t h = 1469598103934665603ULL;
+            h ^= c;
+            h *= 1099511628211ULL;
+            const sf::Color color(
+                static_cast<sf::Uint8>(64 + (h & 0xBF)),
+                static_cast<sf::Uint8>(64 + ((h >> 8) & 0xBF)),
+                static_cast<sf::Uint8>(64 + ((h >> 16) & 0xBF)), 255);
+            const std::vector<glm::vec3>& p = chains[c].points;
+            std::vector<glm::vec3> pairs;
+            for (std::size_t i = 0; i + 1 < p.size(); i++) {
+                pairs.push_back(p[i]);
+                pairs.push_back(p[i + 1]);
+            }
+            if (chains[c].closed && p.size() > 2) {
+                pairs.push_back(p.back());
+                pairs.push_back(p.front());
+            }
+            appendDebugLines(lines, pairs, color);
+        }
+        appendDebugPoints(points, boundaries.pinnedPoints(), sf::Color::Red, 5.f);
+    }
+    if (settings.debugClamped) {
+        appendDebugPoints(points, boundaries.clampedPoints(), sf::Color::Yellow, 7.f);
+    }
+    renderer.setDebugLines(lines);
+    renderer.setDebugPoints(points);
 }
 
 void PlanetView::uploadColors(const vor::SphereVoronoi& planet)
@@ -123,13 +236,15 @@ void PlanetView::update(const sf::RenderWindow& window, const vor::SphereVoronoi
     }
     if (cell != hoveredCell) {
         hoveredCell = cell;
-        renderer.setHighlight(planet, cell);
+        uploadHighlight(planet);
     }
 }
 
 void PlanetView::draw(sf::RenderWindow& window)
 {
     if (!window.setActive(true)) return;
+    renderer.setRibbonsVisible(RibbonGroup::Rivers, showRivers);
+    renderer.setRibbonsVisible(RibbonGroup::ConvergenceLines, showConvergenceLines);
     renderer.draw(camera, viewportOf(window));
     window.resetGLStates();
 }
@@ -172,6 +287,10 @@ void PlanetView::ui(const vor::SphereVoronoi& planet, const GlobalWorldObjects& 
     if (ImGui::BeginItemTooltip()) {
         ImGui::Text("Off: the flat map is one map from 180W to 180E that stops at its edges");
         ImGui::EndTooltip();
+    }
+
+    if (boundaries.valid()) {
+        ImGui::Text("Boundaries: %.1f ms, %u clamped vertices, %u flipped triangles", boundaries.buildMs, boundaries.clampedVertices, boundaries.flips);
     }
 
     ImGui::Separator();
