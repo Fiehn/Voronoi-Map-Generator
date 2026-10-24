@@ -74,8 +74,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <AllProjectIncludesArePublic>true</AllProjectIncludesArePublic>
-    <AllProjectBMIsArePublic>true</AllProjectBMIsArePublic>
-    <IncludePath>C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\Dear ImGUI;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\SFML ImGUI;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\Dear ImGUI;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\SFML ImGUI;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -115,7 +114,9 @@
       <AdditionalIncludeDirectories>C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\SFML ImGUI;C:\Users\rasmu\source\repos\Fiehn\Voronoi-Map-Generator\SFML attempt\Include\Dear ImGUI</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <EnableModules>true</EnableModules>
+      <EnableModules>false</EnableModules>
+      <!-- The IDE's background scan writes <name>.obj for headers too, the extension keeps it from overwriting these -->
+      <ObjectFileName>$(IntDir)%(Filename)%(Extension).obj</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,7 +136,9 @@
       <AdditionalIncludeDirectories>C:\Users\rasmu\Documents\cpp libraries\SFML-2.5.1\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <EnableModules>true</EnableModules>
+      <EnableModules>false</EnableModules>
+      <!-- The IDE's background scan writes <name>.obj for headers too, the extension keeps it from overwriting these -->
+      <ObjectFileName>$(IntDir)%(Filename)%(Extension).obj</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -147,11 +150,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BoundaryRender.cpp" />
+    <ClCompile Include="RenderSettings.cpp" />
+    <ClCompile Include="SphereBoundary.cpp">
+      <!-- Optimised in Debug too: it is rebuilt on every map mode switch and is 4-6x slower unoptimised -->
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+    </ClCompile>
+    <ClCompile Include="Ribbon.cpp" />
+    <ClCompile Include="ArrowField.cpp" />
+    <ClCompile Include="glad.c" />
+    <ClCompile Include="GLContext.cpp" />
     <ClCompile Include="MapColors.cpp" />
     <ClCompile Include="BiomeGen.cpp" />
     <ClCompile Include="CellObjects.cpp" />
-    <ClCompile Include="Cells.cpp" />
     <ClCompile Include="CrashHandler.cpp" />
     <ClCompile Include="CultureManager.hpp" />
     <ClCompile Include="CultureManager_old.cpp">
@@ -185,19 +198,27 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="POP_Manager.cpp" />
-    <ClCompile Include="POP_Manager.hpp" />
     <ClCompile Include="ReligionManager.cpp" />
     <ClCompile Include="ReligionManager_old.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="SeasonalCalculator.hpp" />
     <ClCompile Include="utils.cpp" />
-    <ClCompile Include="Voronoi.cpp" />
-    <ClCompile Include="windArrows.cpp" />
+    <ClCompile Include="SphereVoronoi.cpp" />
+    <ClCompile Include="Delaunator.cpp" />
+    <ClCompile Include="PlanetCamera.cpp" />
+    <ClCompile Include="GlobeRenderer.cpp" />
+    <ClCompile Include="PlanetView.cpp" />
+    <ClCompile Include="PlanetGen.cpp" />
+    <ClCompile Include="PlanetColors.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AbstractWorld.hpp" />
-    <ClInclude Include="BoundaryRender.hpp" />
+    <ClInclude Include="RenderSettings.hpp" />
+    <ClInclude Include="SphereBoundary.hpp" />
+    <ClInclude Include="Ribbon.hpp" />
+    <ClInclude Include="ArrowField.hpp" />
+    <ClInclude Include="GLContext.hpp" />
     <ClInclude Include="MapColors.hpp" />
     <ClInclude Include="BiomeGen.hpp" />
     <ClInclude Include="cell.hpp" />
@@ -230,7 +251,6 @@
     <ClInclude Include="LogCommon.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="MainMenu.hpp" />
-    <ClInclude Include="Map.hpp" />
     <ClInclude Include="mapconfig.hpp" />
     <ClInclude Include="MythicRules.hpp" />
     <ClInclude Include="NewMap.hpp" />
@@ -252,11 +272,18 @@
     </ClInclude>
     <ClInclude Include="resource.h" />
     <ClInclude Include="tickerSimulation.hpp" />
-    <ClInclude Include="vertex.hpp" />
-    <ClInclude Include="Voronoi.hpp" />
+    <ClInclude Include="SphereVoronoi.hpp" />
+    <ClInclude Include="Delaunator.hpp" />
+    <ClInclude Include="PlanetCamera.hpp" />
+    <ClInclude Include="GlobeRenderer.hpp" />
+    <ClInclude Include="PlanetView.hpp" />
+    <ClInclude Include="PlanetGen.hpp" />
+    <ClInclude Include="PlanetColors.hpp" />
     <ClInclude Include="CellObjects.hpp" />
     <ClInclude Include="util.hpp" />
-    <ClInclude Include="windArrows.hpp" />
+    <ClInclude Include="SphereMath.hpp" />
+    <ClInclude Include="MapProjection.hpp" />
+    <ClInclude Include="POP_Manager.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SFML attempt.rc" />

@@ -39,6 +39,8 @@ static const char* LogCategortToString(LogCategory category)
 	{
 	case LogCategory::General:
 		return "GENERAL";
+	case LogCategory::System:
+		return "SYSTEM";
 	case LogCategory::Map:
 		return "MAP";
 	case LogCategory::POP:
@@ -51,6 +53,8 @@ static const char* LogCategortToString(LogCategory category)
 		return "CULTURE";
 	case LogCategory::Language:
 		return "LANGUAGE";
+	case LogCategory::Religion:
+		return "RELIGION";
 	default:
 		return "UNKNOWN";
 	}

@@ -3,7 +3,7 @@
 #include "flecs_schema.h"
 #include "HistoryData.hpp"
 #include "cell.hpp"
-#include "Voronoi.hpp"
+#include "SphereVoronoi.hpp"
 #include "DeityContradiction.hpp"
 #include "MythicRules.hpp"
 
@@ -26,7 +26,7 @@ public:
 	void evolve(flecs::world& world, History& history, int32_t tick);
 
 	// === Myth Phase ===
-	void myth_phase_evolution(flecs::world& world, History& history, flecs::entity religion_entity, uint32_t ticks_in_phase, vor::Voronoi& map);
+	void myth_phase_evolution(flecs::world& world, History& history, flecs::entity religion_entity, uint32_t ticks_in_phase, vor::SphereVoronoi& map);
 
 private:
 	std::vector<MythicRule> m_all_rules;

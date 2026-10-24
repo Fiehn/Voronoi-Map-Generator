@@ -11,9 +11,8 @@ public:
 	MapConfig() = default;
 
 	// Point generation
-	float point_jitter = 7.f; // Jitter for the points
-	unsigned int ncellx = 150; // Number of cells in x direction
-	unsigned int ncelly = 150; // Number of cells in y direction
+	unsigned int n_cells = 22500; // Number of cells on the planet
+	float point_jitter = 0.5f; // How far each point may move from its spiral position, as a fraction of the cell spacing (0 to 1)
 
     // Height generation
     unsigned int npeaks = 10; // Number of peaks to generate in the heightmap / continents
@@ -98,8 +97,7 @@ private:
 	void to_json(json& j) const {
 		j = json{
 			{"point_jitter", point_jitter},
-			{"ncellx", ncellx},
-			{"ncelly", ncelly},
+			{"n_cells", n_cells},
 			{"npeaks", npeaks},
 			{"delta_max_neg", delta_max_neg},
 			{"delta_max_pos", delta_max_pos},
@@ -147,9 +145,17 @@ private:
 	}
 
 	void from_json(json& j) {
+		// Flat map configs have a cell grid and a jitter in pixels instead
+		if (j.contains("n_cells")) {
+			n_cells = j.at("n_cells").get<unsigned int>();
+		}
+		else {
+			n_cells = j.at("ncellx").get<unsigned int>() * j.at("ncelly").get<unsigned int>();
+		}
 		point_jitter = j.at("point_jitter").get<float>();
-		ncellx = j.at("ncellx").get<unsigned int>();
-		ncelly = j.at("ncelly").get<unsigned int>();
+		if (point_jitter < 0.f || point_jitter > 1.f) {
+			point_jitter = 0.5f;
+		}
 		npeaks = j.at("npeaks").get<unsigned int>();
 		delta_max_neg = j.at("delta_max_neg").get<float>();
 		delta_max_pos = j.at("delta_max_pos").get<float>();

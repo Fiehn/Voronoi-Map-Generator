@@ -22,26 +22,14 @@
     <Filter Include="Header Files\POPs">
       <UniqueIdentifier>{70ef5f64-e5de-41e8-a18d-f7b8c766bcb8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\ImGui">
-      <UniqueIdentifier>{63675876-1b91-435b-bb93-1c301def24ff}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\POPs\Data">
       <UniqueIdentifier>{20e3f213-7ffc-4ada-b382-8b772c83b16d}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\POPs\Managers">
       <UniqueIdentifier>{16fc5cae-8c11-40ea-ac0a-e7ad018d077a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\ImGui">
-      <UniqueIdentifier>{b788a07d-ef5c-4cad-97ab-a95889c66f57}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\Pops">
       <UniqueIdentifier>{ec24bc21-df6c-4ff6-bcae-341b9f6e37e9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\flecs">
-      <UniqueIdentifier>{38a1d7d7-43f1-4374-a847-03b192987cb2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\flecs">
-      <UniqueIdentifier>{9273da59-1e45-41f8-ae0e-fd6c5c476ad3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\POPs\Redundant">
       <UniqueIdentifier>{c869355f-a28c-4aa1-a5d1-5cff8fbfd001}</UniqueIdentifier>
@@ -52,13 +40,31 @@
     <Filter Include="src\Pops\Data">
       <UniqueIdentifier>{816fe529-5e92-4620-993d-8e7b7e606d08}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\External">
+      <UniqueIdentifier>{db97764a-db65-4a71-9ac0-b0918a6b0fff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\External\flecs">
+      <UniqueIdentifier>{9273da59-1e45-41f8-ae0e-fd6c5c476ad3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\External\ImGui">
+      <UniqueIdentifier>{b788a07d-ef5c-4cad-97ab-a95889c66f57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\External\GL">
+      <UniqueIdentifier>{9e8f8cb1-873c-4239-aa41-a9ef4081cdb1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\External">
+      <UniqueIdentifier>{6326b6d1-6239-465c-8c92-f4be729b0f4c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\External\ImGui">
+      <UniqueIdentifier>{63675876-1b91-435b-bb93-1c301def24ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\External\flecs">
+      <UniqueIdentifier>{38a1d7d7-43f1-4374-a847-03b192987cb2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="GlobalWorldObjects.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Cells.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="utils.cpp">
@@ -70,13 +76,37 @@
     <ClCompile Include="extractiveResources.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="windArrows.cpp">
+    <ClCompile Include="SphereVoronoi.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="Voronoi.cpp">
+    <ClCompile Include="Delaunator.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="BoundaryRender.cpp">
+    <ClCompile Include="PlanetCamera.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="GlobeRenderer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderSettings.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="SphereBoundary.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Ribbon.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="ArrowField.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="PlanetView.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="PlanetGen.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="PlanetColors.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="MapColors.cpp">
@@ -98,34 +128,34 @@
       <Filter>src\Debugger</Filter>
     </ClCompile>
     <ClCompile Include="Include\Dear ImGUI\imgui.cpp">
-      <Filter>src\ImGui</Filter>
+      <Filter>src\External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\Dear ImGUI\imgui_demo.cpp">
-      <Filter>src\ImGui</Filter>
+      <Filter>src\External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\Dear ImGUI\imgui_draw.cpp">
-      <Filter>src\ImGui</Filter>
+      <Filter>src\External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\Dear ImGUI\imgui_tables.cpp">
-      <Filter>src\ImGui</Filter>
+      <Filter>src\External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\Dear ImGUI\imgui_widgets.cpp">
-      <Filter>src\ImGui</Filter>
+      <Filter>src\External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\ImGuiFD-main\ImGuiFD.cpp">
-      <Filter>src\ImGui</Filter>
+      <Filter>src\External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\ImGuiFD-main\ImGuiFDNative.cpp">
-      <Filter>src\ImGui</Filter>
+      <Filter>src\External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\SFML ImGUI\imgui-SFML.cpp">
-      <Filter>src\ImGui</Filter>
+      <Filter>src\External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\ImPlot\implot.cpp">
-      <Filter>src\ImGui</Filter>
+      <Filter>src\External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Include\ImPlot\implot_items.cpp">
-      <Filter>src\ImGui</Filter>
+      <Filter>src\External\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="POP_generator.cpp">
       <Filter>src\Pops</Filter>
@@ -134,7 +164,7 @@
       <Filter>src\Pops</Filter>
     </ClCompile>
     <ClCompile Include="flecs.c">
-      <Filter>src\flecs</Filter>
+      <Filter>src\External\flecs</Filter>
     </ClCompile>
     <ClCompile Include="ReligionManager_old.cpp">
       <Filter>src\Pops\Redundant</Filter>
@@ -148,9 +178,6 @@
     <ClCompile Include="CultureManager.hpp">
       <Filter>Header Files\POPs\Managers</Filter>
     </ClCompile>
-    <ClCompile Include="POP_Manager.hpp">
-      <Filter>Header Files\POPs\Managers</Filter>
-    </ClCompile>
     <ClCompile Include="ReligionManager.cpp">
       <Filter>src\Pops</Filter>
     </ClCompile>
@@ -160,9 +187,45 @@
     <ClCompile Include="DeityContradiction.cpp">
       <Filter>src\Pops\Data</Filter>
     </ClCompile>
+    <ClCompile Include="glad.c">
+      <Filter>src\External\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="GLContext.cpp">
+      <Filter>src\External\GL</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Voronoi.hpp">
+    <ClInclude Include="SphereVoronoi.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Delaunator.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PlanetCamera.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GlobeRenderer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderSettings.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SphereBoundary.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Ribbon.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ArrowField.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PlanetView.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PlanetGen.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PlanetColors.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cell.hpp">
@@ -174,16 +237,19 @@
     <ClInclude Include="util.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SphereMath.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MapProjection.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="POP_Manager.hpp">
+      <Filter>Header Files\POPs\Managers</Filter>
+    </ClInclude>
     <ClInclude Include="GlobalWorldObjects.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="clustering.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vertex.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BoundaryRender.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MapColors.hpp">
@@ -193,12 +259,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Map.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\nlohmann\json.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="mapconfig.hpp">
@@ -219,9 +279,6 @@
     <ClInclude Include="extractiveResources.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="windArrows.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PlanetaryObjects.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -232,22 +289,22 @@
       <Filter>Header Files\Debugger</Filter>
     </ClInclude>
     <ClInclude Include="Include\Dear ImGUI\imgui.h">
-      <Filter>Header Files\ImGui</Filter>
+      <Filter>Header Files\External\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Include\ImGuiFD-main\ImGuiFD.h">
-      <Filter>Header Files\ImGui</Filter>
+      <Filter>Header Files\External\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Include\ImPlot\implot.h">
-      <Filter>Header Files\ImGui</Filter>
+      <Filter>Header Files\External\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Include\ImPlot\implot_internal.h">
-      <Filter>Header Files\ImGui</Filter>
+      <Filter>Header Files\External\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="PantheonGraphView.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="flecs.h">
-      <Filter>Header Files\flecs</Filter>
+      <Filter>Header Files\External\flecs</Filter>
     </ClInclude>
     <ClInclude Include="CultureManager_old.hpp">
       <Filter>Header Files\POPs\Redundant</Filter>
@@ -296,6 +353,12 @@
     </ClInclude>
     <ClInclude Include="POP_generator.hpp">
       <Filter>Header Files\POPs\Redundant</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\nlohmann\json.hpp">
+      <Filter>Header Files\External</Filter>
+    </ClInclude>
+    <ClInclude Include="GLContext.hpp">
+      <Filter>Header Files\External</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

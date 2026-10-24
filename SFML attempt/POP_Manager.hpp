@@ -1,6 +1,6 @@
 #pragma once
 #include "POP_data.hpp"
-#include "Voronoi.hpp"
+#include "SphereVoronoi.hpp"
 #include <unordered_map>
 #include <vector>
 #include <functional>

@@ -2,7 +2,7 @@
 #include "flecs.h"
 #include "flecs_schema.h"
 #include "HistoryData.hpp"
-#include "Voronoi.hpp"
+#include "SphereVoronoi.hpp"
 #include <vector>
 #include <string>
 #include <optional>
@@ -27,7 +27,7 @@ struct MythicRule {
 	std::function<void(flecs::world& world, History& history, RuleCandidate candidate)> apply;
 
 	// 3. Get weight for candidate
-	std::function<float(flecs::world& world, flecs::entity religion, vor::Voronoi& map)> get_rule_weight;
+	std::function<float(flecs::world& world, flecs::entity religion, vor::SphereVoronoi& map)> get_rule_weight;
 
 	// cooldown
 	int cooldown_ticks = 0; // current cooldown

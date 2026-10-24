@@ -190,7 +190,7 @@ static void pantheonTestWindow(bool& showPantheonTest) {
     static History testHistory;
     static flecs::entity testReligion;
     static uint32_t currentTick = 0;
-    static vor::Voronoi dummyMap; // Dummy map for the myth phase rule weights
+    static vor::SphereVoronoi dummyMap; // Dummy map for the myth phase rule weights
 
     // Test cell configuration
     static Cell testCell(0);

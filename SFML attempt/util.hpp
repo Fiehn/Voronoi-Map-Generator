@@ -42,22 +42,6 @@ inline int clamp_int(int x, int max, int min)
 	return x;
 }
 
-inline sf::Vector2f clampVect2f(sf::Vector2f vect, float maxx, float minx, float maxy, float miny)
-{
-    sf::Vector2f new_vect = vect;
-    if (vect.x < minx) { new_vect.x = minx; }
-    if (vect.x > maxx) { new_vect.x = maxy; }
-    if (vect.y < miny) { new_vect.y = miny; }
-    if (vect.y > maxy) { new_vect.y = maxy; }
-    return new_vect;
-}
-
-inline double dist(sf::Vector2f a, sf::Vector2f b) {
-    const double dx = a.x - b.x;
-    const double dy = a.y - b.y;
-    return dx * dx + dy * dy;
-}
-
 inline float RandomBetween(float smallNumber, float bigNumber)
 {
     float diff = bigNumber - smallNumber;
@@ -181,112 +165,6 @@ inline float sum_vec_float(const std::vector<float>& x)
     return sum + err;
 }
 
-inline size_t fast_mod(const size_t i, const size_t c) 
-{
-    return i >= c ? i % c : i;
-}
-
-// monotonically increases with real angle, used for delaunay
-inline double pseudo_angle(const double dx, const double dy) 
-{
-    const double p = dx / (std::abs(dx) + std::abs(dy));
-    return (dy > 0.0 ? 3.0 - p : 1.0 + p) / 4.0; // [0..1)
-}
-
-inline double circumradius(sf::Vector2f a, sf::Vector2f b, sf::Vector2f c) 
-{
-    const double dx = b.x - a.x;
-    const double dy = b.y - a.y;
-    const double ex = c.x - a.x;
-    const double ey = c.y - a.y;
-
-    const double bl = dx * dx + dy * dy;
-    const double cl = ex * ex + ey * ey;
-    const double d = dx * ey - dy * ex;
-
-    const double x = (ey * bl - dy * cl) * 0.5 / d;
-    const double y = (dx * cl - ex * bl) * 0.5 / d;
-
-    if ((bl > 0.0 || bl < 0.0) && (cl > 0.0 || cl < 0.0) && (d > 0.0 || d < 0.0)) {
-        return x * x + y * y;
-    }
-    else {
-        return std::numeric_limits<double>::max();
-    }
-}
-
-// 
-inline bool orient(sf::Vector2f p, sf::Vector2f q, sf::Vector2f r) 
-{
-    return (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y) < 0.0;
-}
-
-// Return the center of the circle
-inline sf::Vector2f circumcenter(sf::Vector2f a, sf::Vector2f b, sf::Vector2f c) 
-{
-    const double dx = b.x - a.x;
-    const double dy = b.y - a.y;
-    const double ex = c.x - a.x;
-    const double ey = c.y - a.y;
-
-    const double bl = dx * dx + dy * dy;
-    const double cl = ex * ex + ey * ey;
-    const double d = dx * ey - dy * ex;
-
-    const double x = a.x + (ey * bl - dy * cl) * 0.5 / d;
-    const double y = a.y + (dx * cl - ex * bl) * 0.5 / d;
-
-    return sf::Vector2f(static_cast<float>(x), static_cast<float>(y));
-}
-
-inline bool in_circle(sf::Vector2f a, sf::Vector2f b, sf::Vector2f c, sf::Vector2f p) {
-    const double dx = a.x - p.x;
-    const double dy = a.y - p.y;
-    const double ex = b.x - p.x;
-    const double ey = b.y - p.y;
-    const double fx = c.x - p.x;
-    const double fy = c.y - p.y;
-
-    const double ap = dx * dx + dy * dy;
-    const double bp = ex * ex + ey * ey;
-    const double cp = fx * fx + fy * fy;
-
-    return (dx * (ey * cp - bp * fy) -
-        dy * (ex * cp - bp * fx) +
-        ap * (ex * fy - ey * fx)) < 0.0;
-}
-
-constexpr double EPSILON = std::numeric_limits<double>::epsilon();
-
-inline bool check_pts_equal(sf::Vector2f a, sf::Vector2f b) {
-    return std::fabs(a.x - b.x) <= EPSILON &&
-        std::fabs(a.y - b.y) <= EPSILON;
-}
-
-// Compare a list of points to a center point, used for sorting
-struct compare_dist_to_point {
-    std::vector<sf::Vector2f> const& points;
-    sf::Vector2f p;
-
-    bool operator()(std::size_t i, std::size_t j) {
-        const double d1 = dist(points[i], p);
-        const double d2 = dist(points[j], p);
-        const double diff1 = d1 - d2;
-        const double diff2 = points[i].x - points[j].x;
-        const double diff3 = points[i].y - points[j].y;
-
-        if (diff1 > 0.0 || diff1 < 0.0) {
-            return diff1 < 0;
-        }
-        else if (diff2 > 0.0 || diff2 < 0.0) {
-            return diff2 < 0;
-        }
-        else {
-            return diff3 < 0;
-        }
-    }
-};
-
 inline float normalizeAngle(float angleDegrees) {
     while (angleDegrees >= 360.0) {
         angleDegrees -= 360.0;
@@ -373,8 +251,8 @@ inline int chooseIndex(std::vector<float> rates) {
 
 inline float normalDistPDF(float mean, float std)
 {
-    // Box-Muller transform
-	float u1 = (float)rand() / RAND_MAX;
+    // Box-Muller transform. u1 must not be 0, log(0) gave infinite values once in 32768 draws
+	float u1 = ((float)rand() + 1.0f) / ((float)RAND_MAX + 1.0f);
 	float u2 = (float)rand() / RAND_MAX;
 	return mean + std * sqrt(-2 * log(u1)) * cos(2 * PI * u2);
 }
@@ -386,68 +264,6 @@ inline float betaDist(float alpha, float beta)
 	float gamma2 = std::tgammaf(beta);
 	return gamma1 / (gamma1 + gamma2);
 }
-
-inline bool pointInPolygon(const sf::Vector2f& point, const std::vector<sf::Vector2f>& vertices) {
-	// Check if a point is within a polygon
-	bool inside = false;
-	for (int i = 0, j = vertices.size() - 1; i < vertices.size(); j = i++) {
-		if (((vertices[i].y > point.y) != (vertices[j].y > point.y)) &&
-			(point.x < (vertices[j].x - vertices[i].x) * (point.y - vertices[i].y) / (vertices[j].y - vertices[i].y) + vertices[i].x)) {
-			inside = !inside;
-		}
-	}
-	return inside;
-}
-
-inline sf::Vector2f RandomPointInPolygon(const std::vector<sf::Vector2f>& vertices) {
-	// DO NOT USE!! This function is slow. It uses rejection sampling to get a random point in a polygon
-	// Get a random point within a polygon
-	float xMin = vertices[0].x;
-	float xMax = vertices[0].x;
-	float yMin = vertices[0].y;
-	float yMax = vertices[0].y;
-
-    for (int i = 1; i < vertices.size(); i++) {
-        if (vertices[i].x < xMin) {
-			xMin = vertices[i].x;
-		}
-        if (vertices[i].x > xMax) {
-			xMax = vertices[i].x;
-		}
-        if (vertices[i].y < yMin) {
-			yMin = vertices[i].y;
-		}
-        if (vertices[i].y > yMax) {
-			yMax = vertices[i].y;
-		}
-	}
-
-	sf::Vector2f point;
-    do {
-		point.x = RandomBetween(xMin, xMax);
-		point.y = RandomBetween(yMin, yMax);
-	} while (!pointInPolygon(point, vertices));
-
-	return point;
-}
-
-std::vector<sf::Vector2f> convexHull(const std::vector<sf::Vector2f>& points);
-
-// Function to compute the centroid of a polygon
-sf::Vector2f computeCentroid(const std::vector<sf::Vector2f>& points);
-
-// Function to compute the angle between two points and the centroid
-inline float computeAngle(const sf::Vector2f& centroid, const sf::Vector2f& point) 
-{
-    return std::atan2(point.y - centroid.y, point.x - centroid.x);
-}
-
-// Function to order points sequentially around the centroid
-std::vector<sf::Vector2f> orderPoints(std::vector<sf::Vector2f> points);
-
-
-// Function to compute the area of a polygon (with unordered points)
-float polygonArea(const std::vector<sf::Vector2f>& points);
 
 
 // Color table with names from https://www.rapidtables.com/web/color/RGB_Color.html
@@ -667,6 +483,100 @@ public:
         return 70.0f * (n0 + n1 + n2);
     }
 
+    float noise(float x, float y, float z) {
+        // 3D simplex noise, for sampling on the sphere at p * frequency
+        const float F3 = 1.0f / 3.0f;
+        const float G3 = 1.0f / 6.0f;
+
+        // Skew input space to determine which simplex cell we're in
+        float s = (x + y + z) * F3;
+        int i = fastfloor(x + s);
+        int j = fastfloor(y + s);
+        int k = fastfloor(z + s);
+
+        float t = (i + j + k) * G3;
+        float x0 = x - (i - t); // The x,y,z distances from the cell origin
+        float y0 = y - (j - t);
+        float z0 = z - (k - t);
+
+        // Determine which of the six simplices we are in from the order of x0, y0, z0
+        int i1, j1, k1; // Offsets for second corner of simplex
+        int i2, j2, k2; // Offsets for third corner of simplex
+        if (x0 >= y0) {
+            if (y0 >= z0)      { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; k2 = 0; } // X Y Z order
+            else if (x0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; k2 = 1; } // X Z Y order
+            else               { i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; k2 = 1; } // Z X Y order
+        }
+        else {
+            if (y0 < z0)       { i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; k2 = 1; } // Z Y X order
+            else if (x0 < z0)  { i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; k2 = 1; } // Y Z X order
+            else               { i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; k2 = 0; } // Y X Z order
+        }
+
+        float x1 = x0 - i1 + G3; // Offsets for second corner
+        float y1 = y0 - j1 + G3;
+        float z1 = z0 - k1 + G3;
+        float x2 = x0 - i2 + 2.0f * G3; // Offsets for third corner
+        float y2 = y0 - j2 + 2.0f * G3;
+        float z2 = z0 - k2 + 2.0f * G3;
+        float x3 = x0 - 1.0f + 3.0f * G3; // Offsets for last corner
+        float y3 = y0 - 1.0f + 3.0f * G3;
+        float z3 = z0 - 1.0f + 3.0f * G3;
+
+        // Work out the hashed gradient indices of the four simplex corners
+        int ii = i & 255;
+        int jj = j & 255;
+        int kk = k & 255;
+        int gi0 = perm[ii + perm[jj + perm[kk]]] % 12;
+        int gi1 = perm[ii + i1 + perm[jj + j1 + perm[kk + k1]]] % 12;
+        int gi2 = perm[ii + i2 + perm[jj + j2 + perm[kk + k2]]] % 12;
+        int gi3 = perm[ii + 1 + perm[jj + 1 + perm[kk + 1]]] % 12;
+
+        // Calculate the contribution from the four corners
+        float n0, n1, n2, n3;
+
+        float t0 = 0.5f - x0 * x0 - y0 * y0 - z0 * z0;
+        if (t0 < 0) {
+            n0 = 0.0f;
+        }
+        else {
+            t0 *= t0;
+            n0 = t0 * t0 * dot(grad3[gi0], x0, y0, z0);
+        }
+
+        float t1 = 0.5f - x1 * x1 - y1 * y1 - z1 * z1;
+        if (t1 < 0) {
+            n1 = 0.0f;
+        }
+        else {
+            t1 *= t1;
+            n1 = t1 * t1 * dot(grad3[gi1], x1, y1, z1);
+        }
+
+        float t2 = 0.5f - x2 * x2 - y2 * y2 - z2 * z2;
+        if (t2 < 0) {
+            n2 = 0.0f;
+        }
+        else {
+            t2 *= t2;
+            n2 = t2 * t2 * dot(grad3[gi2], x2, y2, z2);
+        }
+
+        float t3 = 0.5f - x3 * x3 - y3 * y3 - z3 * z3;
+        if (t3 < 0) {
+            n3 = 0.0f;
+        }
+        else {
+            t3 *= t3;
+            n3 = t3 * t3 * dot(grad3[gi3], x3, y3, z3);
+        }
+
+        // Add contributions from each corner to get the final noise value.
+        // The kernel radius^2 is 0.5 rather than the 0.6 in Gustavson's paper, 0.6 leaves small seams.
+        // 76 is the measured peak over 16M samples, which keeps the result just inside [-1,1]
+        return 76.0f * (n0 + n1 + n2 + n3);
+    }
+
     // Generate octave noise (multiple frequencies of noise added together)
     float octaveNoise(float x, float y, int octaves, float persistence) {
         float total = 0.0f;
@@ -683,24 +593,24 @@ public:
 
         return total / maxValue;
     }
+
+    float octaveNoise(float x, float y, float z, int octaves, float persistence) {
+        float total = 0.0f;
+        float frequency = 1.0f;
+        float amplitude = 1.0f;
+        float maxValue = 0.0f;  // Used for normalizing result
+
+        for (int i = 0; i < octaves; i++) {
+            total += noise(x * frequency, y * frequency, z * frequency) * amplitude;
+            maxValue += amplitude;
+            amplitude *= persistence;
+            frequency *= 2.0f;
+        }
+
+        return total / maxValue;
+    }
 };
 
-
-inline float distance(sf::Vector2f a, sf::Vector2f b)
-{
-    // Euclidian distance
-	return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
-}
-
-
-static float magnitude(const sf::Vector2f& vec) {
-    return std::sqrt(vec.x * vec.x + vec.y * vec.y);
-}
-static sf::Vector2f normalize(const sf::Vector2f& vec) {
-    float mag = magnitude(vec);
-    if (mag < 0.001f) return sf::Vector2f(0.0f, 0.0f);
-    return sf::Vector2f(vec.x / mag, vec.y / mag);
-}
 
 
 

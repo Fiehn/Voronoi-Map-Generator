@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <future>
 #include <limits>
+#include "SphereMath.hpp"
 
 // Remember to add PopColormap() after the plot
 void pushTempColormap(const char* plot_id, const char* colormap_name, ImU32* colors, int size, bool colorsHaveChanged)
@@ -43,484 +44,6 @@ void pushTempColormap(const char* plot_id, const char* colormap_name, ImVec4* co
     }
 }
 
-static sf::VertexArray drawHighlightCell(vor::Voronoi& map, std::size_t cell)
-{
-    sf::VertexArray highlight(sf::LinesStrip, map.cells[cell].vertex.size() + 1);
-    for (size_t i = 0; i < map.cells[cell].vertex.size(); i++) {
-        highlight[i].position = sf::Vector2f(map.voronoi_points[map.cells[cell].vertex[i]].x, map.voronoi_points[map.cells[cell].vertex[i]].y);
-        highlight[i].color = sf::Color::Red;
-    }
-    highlight[map.cells[cell].vertex.size()].position = sf::Vector2f(map.voronoi_points[map.cells[cell].vertex[0]].x, map.voronoi_points[map.cells[cell].vertex[0]].y);
-    highlight[map.cells[cell].vertex.size()].color = sf::Color::Red;
-    return highlight;
-}
-
-
-static void drawTempMap(vor::Voronoi& map, VertexMap& vertexMap) {
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        sf::Color color = temperatureColor(vertexMap.colors().temperature, map.cells[i].temp);
-
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
-// Seasonal temperature map - uses SeasonalCalculator to show temperature at a specific day of year
-static void drawSeasonalTempMap(vor::Voronoi& map, VertexMap& vertexMap, 
-    const SeasonalCalculator& seasonCalc, float dayOfYear) 
-{
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        // Get cell position (approximate from first vertex or use center)
-        sf::Vector2f position(0.f, 0.f);
-        if (!map.cells[i].vertex.empty()) {
-            for (int v : map.cells[i].vertex) {
-                position.x += map.voronoi_points[v].x;
-                position.y += map.voronoi_points[v].y;
-            }
-            position.x /= map.cells[i].vertex.size();
-            position.y /= map.cells[i].vertex.size();
-        }
-        
-        // Get seasonal temperature
-        float seasonalTemp = seasonCalc.getTemperature(map.cells[i], position, dayOfYear);
-        
-        sf::Color color = temperatureColor(vertexMap.colors().temperature, seasonalTemp);
-
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
-static void drawBiomeMap(vor::Voronoi& map, const GlobalWorldObjects& globals, VertexMap& vertexMap)
-{
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = globals.biomes[map.cells[i].biome].color;
-        }
-    }
-    vertexMap.update(map);
-}
-
-static void drawPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap)
-{
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        sf::Color color = precipitationColor(vertexMap.colors().precipitation, map.cells[i].percepitation);
-
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
-// Seasonal precipitation map
-static void drawSeasonalPercepitationMap(vor::Voronoi& map, VertexMap& vertexMap, 
-    const SeasonalCalculator& seasonCalc, float dayOfYear)
-{
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        sf::Vector2f position(0.f, 0.f);
-        if (!map.cells[i].vertex.empty()) {
-            for (int v : map.cells[i].vertex) {
-                position.x += map.voronoi_points[v].x;
-                position.y += map.voronoi_points[v].y;
-            }
-            position.x /= map.cells[i].vertex.size();
-            position.y /= map.cells[i].vertex.size();
-        }
-        
-        float seasonalPrecip = seasonCalc.getPercepitationDistribution(map.cells[i], position, dayOfYear).mean;
-        
-        sf::Color color = precipitationColor(vertexMap.colors().precipitation, seasonalPrecip);
-
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
-static void drawHumidityMap(vor::Voronoi& map, VertexMap& vertexMap)
-{
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        sf::Color color(0, 0, clamp(255 * map.cells[i].humidity, 255, 0), 255);
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
-// Seasonal humidity map
-static void drawSeasonalHumidityMap(vor::Voronoi& map, VertexMap& vertexMap, 
-    const SeasonalCalculator& seasonCalc, float dayOfYear)
-{
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        sf::Vector2f position(0.f, 0.f);
-        if (!map.cells[i].vertex.empty()) {
-            for (int v : map.cells[i].vertex) {
-                position.x += map.voronoi_points[v].x;
-                position.y += map.voronoi_points[v].y;
-            }
-            position.x /= map.cells[i].vertex.size();
-            position.y /= map.cells[i].vertex.size();
-        }
-        
-        float seasonalHumidity = seasonCalc.getHumidityDistribution(map.cells[i], position, dayOfYear).mean;
-        
-        sf::Color color(0, 0, clamp(255 * seasonalHumidity, 255, 0), 255);
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
-static void drawHeightMap(vor::Voronoi& map, VertexMap& vertexMap)
-{
-    for (std::size_t i = 0; i < map.cells.size(); i++) {
-        sf::Color color = heightColor(vertexMap.colors().height, map.cells[i].height, map.cells[i].oceanBool);
-
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
-static void drawContinentMap(vor::Voronoi& map, const GlobalWorldObjects& globals, VertexMap& vertexMap)
-{
-    // Get random color per continent
-    ColorTable colorTable;
-
-    std::vector<sf::Color> continentColors = colorTable.getRandomColors(globals.continents.size());
-
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-		// Get the continent id of the cell
-		int continentId = map.cells[i].continent;
-
-		// Get the color for the continent
-		sf::Color color = continentColors[continentId];
-
-		// Set the color for the vertices of the cell
-		for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-		{
-			map.vertices[j].color = color;
-		}
-    }
-	vertexMap.update(map);
-}
-
-static void drawCulturesMap(vor::Voronoi& map, GlobalWorldObjects& globals, VertexMap& vertexMap)
-{
-    
-	vertexMap.update(map);
-}
-
-static void drawResourceMap(vor::Voronoi& map, VertexMap& vertexMap, ResourceType resourceType)
-{
-    // Find the maximum resource amount for normalization
-    float maxAmount = 0.f;
-    for (const auto& cell : map.cells) {
-        float amount = cell.resources.getResourceAmount(resourceType);
-        if (amount > maxAmount) {
-            maxAmount = amount;
-        }
-    }
-
-    // If no resources found, show grey map
-    if (maxAmount < 0.001f) {
-        for (size_t i = 0; i < map.cells.size(); i++) {
-            sf::Color color(80, 80, 80, 255);
-            for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++) {
-                map.vertices[j].color = color;
-            }
-        }
-        vertexMap.update(map);
-        return;
-    }
-
-    // Color cells based on resource abundance
-    for (size_t i = 0; i < map.cells.size(); i++)
-    {
-        float amount = map.cells[i].resources.getResourceAmount(resourceType);
-        float normalizedAmount = amount / maxAmount;
-
-        sf::Color color;
-        if (normalizedAmount < 0.001f) {
-            // No resource - grey
-            color = sf::Color(80, 80, 80, 255);
-        }
-        else {
-            // Yellow to red gradient based on abundance
-            // Yellow (255, 255, 0) -> Orange (255, 128, 0) -> Red (255, 0, 0)
-            sf::Uint8 red = 255;
-            sf::Uint8 green = static_cast<sf::Uint8>(255 * (1.0f - normalizedAmount));
-            color = sf::Color(red, green, 0, 255);
-        }
-
-        for (size_t j = map.cells[i].vertex_offset; j < map.cells[i].vertex_offset + map.cells[i].vertex.size() * 3; j++)
-        {
-            map.vertices[j].color = color;
-        }
-    }
-    vertexMap.update(map);
-}
-
-static void drawRivers(GlobalWorldObjects& globals, sf::RenderWindow& window)
-{
-    for (size_t i = 0; i < globals.rivers.size(); i++)
-    {
-        sf::VertexArray river = globals.rivers[i].drawRiver();
-        window.draw(river);
-    }
-}
-
-static void drawLakes(GlobalWorldObjects& globals, sf::RenderWindow& window)
-{
-    for (std::size_t i = 0; i < globals.lakes.size(); i++)
-    {
-        /// TODO: Fix the lake drawing
-        //sf::VertexArray lake = globals.lakes[i].drawLake();
-        //window.draw(lake);
-    }
-}
-
-static void drawContinents(GlobalWorldObjects& globals, sf::RenderWindow& window)
-{
-    for (std::size_t i = 0; i < globals.continents.size(); i++)
-    {
-        sf::VertexArray continent = globals.continents[i].drawBoundryLine();
-        window.draw(continent);
-    }
-}
-
-
-void eventloop(sf::RenderWindow& window,
-    sf::Event& event,
-    int& mapType,
-    bool& moving,
-    sf::Vector2f& oldPos,
-    bool& drawHighlightBool,
-    sf::VertexArray& highlight,
-    vor::Voronoi& map,
-    std::size_t& highlightedCell,
-    sf::View& view,
-    float& globalZoom,
-    unsigned int windowWidth,
-    unsigned int windowHeight,
-    const bool showLoadConfig,
-    const bool showSaveConfig,
-	sf::VertexArray& windArrows,
-	bool& drawWindArrowsBool
-    )
-{
-    if (showLoadConfig || showSaveConfig) { return; }
-
-	static sf::Vector2f lastViewCenter = view.getCenter();
-	static float lastViewUpdateDistance = 0.f;
-	const float VIEW_UPDATE_THRESHOLD = 50.f * globalZoom;
-
-    switch (event.type) {
-    case sf::Event::Closed:
-    {
-        window.close();
-        break;
-    }
-
-    // Mouse buttons
-    case sf::Event::MouseButtonPressed:
-        // Mouse button is pressed, get the position and set moving as active
-        if (event.mouseButton.button == 0) {
-            moving = true;
-            oldPos = window.mapPixelToCoords(sf::Vector2i(event.mouseButton.x, event.mouseButton.y));
-			lastViewCenter = view.getCenter();
-        }
-        if (event.mouseButton.button == 1) {
-            // This will need to be a values changer.
-        }
-        break;
-
-    case sf::Event::MouseButtonReleased:
-
-        // Mouse button is released, no longer move
-        if (event.mouseButton.button == 0) {
-            moving = false;
-
-			// Update wind arrows if view has moved significantly
-            if (drawWindArrowsBool) {
-                sf::Vector2f currentViewCenter = view.getCenter();
-                float distanceMoved = std::sqrt(std::pow(currentViewCenter.x - lastViewCenter.x, 2) + std::pow(currentViewCenter.y - lastViewCenter.y, 2));
-                // If moved more than threshold, update wind arrows
-                if (distanceMoved >= VIEW_UPDATE_THRESHOLD) {
-                    windArrows = generateWindArrows(map, globalZoom, view, window.getSize());
-                    lastViewCenter = currentViewCenter;
-                }
-            }
-        }
-        break;
-
-    case sf::Event::KeyPressed:
-
-        // Close Program
-        if (event.key.code == sf::Keyboard::Escape) { window.close(); break; }
-
-        // Temperature map
-        else if (event.key.code == sf::Keyboard::T) {
-            if (mapType == 1) { mapType = 0; }
-            else { mapType = 1; }
-        }
-
-        // Biome Map
-        else if (event.key.code == sf::Keyboard::B) {
-            if (mapType == 2) { mapType = 0; }
-            else { mapType = 2; }
-        }
-
-        // Percepitation map
-        else if (event.key.code == sf::Keyboard::P) {
-            if (mapType == 3) { mapType = 0; }
-            else { mapType = 3; }
-        }
-
-
-        // Activate Cell Highlighting
-        else if (event.key.code == sf::Keyboard::H) { drawHighlightBool = !drawHighlightBool; highlight.clear(); }
-
-        break;
-
-        // Mouse Movement
-    case sf::Event::MouseMoved:
-    {
-        // If no button is down, we are not moving the view
-        if (!moving) {
-            // Highlight Cells if active 
-            if (drawHighlightBool)
-            {
-                // Get the position of the mouse in window coordinates
-                const sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
-                // Convert the position to world coordinates
-                const sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos);
-                // Find the cell that contains the mouse
-                const std::size_t cellIndex = map.getCellIndex(worldPos);
-                // If the mouse is over a cell, highlight it
-                if (cellIndex != vor::INVALID_INDEX)
-                {
-                    // Highlight the cell
-                    highlightedCell = cellIndex;
-                    highlight = drawHighlightCell(map, highlightedCell);
-                }
-                else
-                {
-                    highlightedCell = vor::INVALID_INDEX;
-                    highlight.clear();
-                }
-            }
-            break;
-        }
-
-        // Determine the new position in world coordinates
-        const sf::Vector2f newPos = window.mapPixelToCoords(sf::Vector2i(event.mouseMove.x, event.mouseMove.y));
-        // Determine how the cursor has moved
-        // Swap these to invert the movement direction
-        const sf::Vector2f deltaPos = oldPos - newPos;
-
-        sf::Vector2f view_center = view.getCenter() + deltaPos;
-
-        // Make sure that the view is contained inside the map
-        if ((view.getCenter().x + deltaPos.x) + globalZoom * windowWidth / 2 > windowWidth || (view.getCenter().x + deltaPos.x) - globalZoom * windowWidth / 2 < 0) {
-            view_center.x = view.getCenter().x;
-        }
-        if ((view.getCenter().y + deltaPos.y) + globalZoom * windowHeight / 2 > windowHeight || (view.getCenter().y + deltaPos.y) - globalZoom * windowHeight / 2 < 0) {
-            view_center.y = view.getCenter().y;
-        }
-
-        view.setCenter(view_center);
-        window.setView(view);
-
-        if (drawWindArrowsBool && moving) {
-			float distanceMoved = std::sqrt(std::pow(deltaPos.x, 2) + std::pow(deltaPos.y, 2));
-			lastViewUpdateDistance += distanceMoved;
-			// Update wind arrows if moved more than threshold
-            if (lastViewUpdateDistance >= VIEW_UPDATE_THRESHOLD) {
-                windArrows = generateWindArrows(map, globalZoom, view, { windowWidth,windowHeight });
-                lastViewUpdateDistance = 0.f;
-                lastViewCenter = view.getCenter();
-            }
-        }
-
-        // Save the new position as the old one
-        oldPos = window.mapPixelToCoords(sf::Vector2i(event.mouseMove.x, event.mouseMove.y));
-        break;
-    }
-
-    // Zoom
-    case sf::Event::MouseWheelScrolled: {
-        // Ignore the mouse wheel unless we're not moving
-        if (moving) { break; }
-
-		float oldZoom = globalZoom;
-
-        if (event.mouseWheelScroll.delta <= -1)
-        {
-            globalZoom = std::min(1.f, globalZoom + .07f);
-        }
-        else if (event.mouseWheelScroll.delta >= 1)
-        {
-            globalZoom = std::max(.1f, globalZoom - .07f);
-        }
-
-        // Update our view
-        view.setSize(window.getDefaultView().getSize());
-        view.zoom(globalZoom);
-
-        // Make sure that the view is contained inside the map
-        sf::Vector2f view_center = view.getCenter();
-        if ((view.getCenter().x) + globalZoom * windowWidth / 2 > windowWidth) {
-            view_center.x = windowWidth - globalZoom * windowWidth / 2;
-        }
-        if ((view.getCenter().x) - globalZoom * windowWidth / 2 < 0) {
-            view_center.x = globalZoom * windowWidth / 2;
-        }
-        if ((view.getCenter().y) + globalZoom * windowHeight / 2 > windowHeight) {
-            view_center.y = windowHeight - globalZoom * windowHeight / 2;
-        }
-        if (view.getCenter().y - globalZoom * windowHeight / 2 < 0) {
-            view_center.y = globalZoom * windowHeight / 2;
-        }
-        view.setCenter(view_center);
-
-        if (drawWindArrowsBool && std::abs(oldZoom - globalZoom) > 0.03f) {
-            // Update wind arrows
-			windArrows = generateWindArrows(map, globalZoom, view, { windowWidth,windowHeight });
-			lastViewCenter = view.getCenter();
-        }
-
-        window.setView(view);
-        break;
-    }
-    }
-}
-
 
 // Encapsulate all biome-related UI state in a struct
 struct BiomeUI {
@@ -535,7 +58,7 @@ struct BiomeUI {
     } windowState;
 
     // Generation function with proper captures
-    void generateBiomesAsync(vor::Voronoi& map,
+    void generateBiomesAsync(vor::SphereVoronoi& map,
         GlobalWorldObjects& globals,
         MapConfig& config) {
         biomeGenFuture = std::async(std::launch::async,
@@ -549,7 +72,7 @@ struct BiomeUI {
             });
     }
 
-    void biomePopUp(vor::Voronoi& map, 
+    void biomePopUp(vor::SphereVoronoi& map, 
         GlobalWorldObjects& globals, 
         MapConfig& config, 
         bool& showBiomeGenBool, 
@@ -656,12 +179,10 @@ struct BiomeUI {
 };
 
 /// This needs to be fixed and thread safe :)
-void showNewMap(vor::Voronoi& map,
+// Returns true when a new map was generated
+bool showNewMap(vor::SphereVoronoi& planet,
     GlobalWorldObjects& globals,
     sf::RenderWindow& window,
-    VertexMap& vertexMap,
-    sf::VertexArray& windArrows,
-    sf::VertexArray& lines,
 	SeasonalCalculator& seasonalCalc,
     const unsigned int windowWidth,
     const unsigned int windowHeight,
@@ -672,41 +193,35 @@ void showNewMap(vor::Voronoi& map,
     bool& showNewMapBool)
 {
 	if (!showNewMapBool) {
-		return;
+		return false;
 	}
+    bool generated = false;
     ImGui::Begin("New Map Controls");
     // push a color on the generate new map button
 
     if (ImGui::Button("Generate New Map", { 200,50 })) {
-        genWorld(map, globals, window, vertexMap,
-            lines, seasonalCalc,
+        genWorld(planet, globals, window,
+            seasonalCalc,
             windowWidth, windowHeight,
             font, config, seed, popManager);
         showNewMapBool = false;
+        generated = true;
     }
-
-    ImGui::Text("The map will have around %.d cells", config.ncellx * config.ncelly);
 
     ImGui::PushItemWidth(150.f);
 
-    ImGui::InputUInt("Cells x", &config.ncellx);
+    ImGui::InputUInt("Cells", &config.n_cells);
+    config.n_cells = std::clamp(config.n_cells, 100u, 1000000u);
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
-        ImGui::Text("Number of cells in the x direction. \nKeep at least above 100 or it starts to break down.");
+        ImGui::Text("Number of cells on the planet (100 to 1 000 000). \nKeep at least above 10 000 or it starts to break down.");
         ImGui::EndTooltip();
     }
 
-    ImGui::InputUInt("Cells y", &config.ncelly);
+    ImGui::SliderFloat("Jitter of the cells", &config.point_jitter, 0.0f, 1.0f);
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
-        ImGui::Text("Number of cells in the y direction. \nKeep at least above 100 or it starts to break down.");
-        ImGui::EndTooltip();
-    }
-
-    ImGui::DragFloat("Jitter of the cells", &config.point_jitter, 0.5f, 0.0f, 10.f);
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::Text("Amount each cell is jittered from their grid position");
+        ImGui::Text("How far each cell may move from its even spiral position, in cell spacings. \n0.5 looks like the old flat map.");
         ImGui::EndTooltip();
     }
 
@@ -844,19 +359,20 @@ void showNewMap(vor::Voronoi& map,
     ImGui::PopItemWidth();
 
     ImGui::End();
+    return generated;
 }
 
-void resourceMapController(vor::Voronoi& map,
-    GlobalWorldObjects& globals,
-    VertexMap& vertexMap,
+// Returns true when another resource was picked, the map then needs recolouring
+bool resourceMapController(GlobalWorldObjects& globals,
     MapConfig& config,
     bool& showResourceMapBool,
     int& mapType,
     ResourceType& selectedResource)
 {
     if (!showResourceMapBool) {
-        return;
+        return false;
     }
+    bool changed = false;
 
     ImGui::Begin("Resource Map Controls", &showResourceMapBool);
     ImGui::Text("Select a resource to display on the map:");
@@ -974,12 +490,13 @@ void resourceMapController(vor::Voronoi& map,
 
     // Update map when selection changes
     if (previousResource != selectedResource) {
-        drawResourceMap(map, vertexMap, selectedResource);
+        changed = true;
         previousResource = selectedResource;
         mapType = 7; // Set to resource map mode
     }
 
     ImGui::End();
+    return changed;
 }
 
 void planetaryParamsViewer(GlobalWorldObjects& globals, bool& showPlanetaryParamsBool)
@@ -1471,7 +988,7 @@ void configLoadSave(MapConfig& config, bool& showLoadConfig, bool& showSaveConfi
     }
 }
 
-void searchFinder(const vor::Voronoi& map, std::vector<std::size_t>& findingCells, std::size_t& findCell, bool& showFindSearcherBool, const std::size_t maxCellInMap)
+void searchFinder(const vor::SphereVoronoi& map, std::vector<std::size_t>& findingCells, std::size_t& findCell, bool& showFindSearcherBool, const std::size_t maxCellInMap)
 {
     if (!showFindSearcherBool)
     {
@@ -1507,6 +1024,9 @@ void searchFinder(const vor::Voronoi& map, std::vector<std::size_t>& findingCell
 
 void biomeCountPieChart(GlobalWorldObjects& globals, bool& colorChange)
 {
+    // ImPlot asserts on colormaps with fewer than 2 colours
+    if (globals.biomes.size() < 2) { return; }
+
     // Biome distribution pie chart
     std::vector<const char*> labels;
     std::vector<float> data;
@@ -1635,17 +1155,20 @@ void biomeObservation(GlobalWorldObjects& globals, bool& doChange)
     ImGui::End();
 }
 
-void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects& globals, std::size_t highlightedCell,
+void highligtedCellObservation(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals, std::size_t highlightedCell,
     const SeasonalCalculator* seasonCalc = nullptr, const PopManager* popManager = nullptr)
 {
-    if (highlightedCell == vor::INVALID_INDEX) {
+    if (highlightedCell >= planet.cells.size()) {
         return;
     }
     ImGui::Begin("Highlighted Cell");
 
-    const Cell& cell = map.cells[highlightedCell];
+    const Cell& cell = planet.cells[highlightedCell];
 
-    const Biome& biome = globals.biomes[cell.biome];
+    // Biomes may not be generated yet
+    const bool hasBiome = cell.biome >= 0 && cell.biome < static_cast<int>(globals.biomes.size());
+    static const Biome noBiome("None", -1, sf::Color(80, 80, 80));
+    const Biome& biome = hasBiome ? globals.biomes[cell.biome] : noBiome;
     ImVec4 color = ImVec4(biome.color.r / 255.0f, biome.color.g / 255.0f, biome.color.b / 255.0f, 1.0f);
 
     ImGui::BeginTable("Highlighted Cell", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
@@ -1819,16 +1342,7 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
             const char* climateVarNames[] = { "Temperature", "Precipitation", "Humidity", "Wind Strength" };
             ImGui::Combo("Climate Variable", &selectedClimateVar, climateVarNames, IM_ARRAYSIZE(climateVarNames));
 
-            // Get cell position
-            sf::Vector2f position(0.f, 0.f);
-            if (!cell.vertex.empty()) {
-                for (int v : cell.vertex) {
-                    position.x += map.voronoi_points[v].x;
-                    position.y += map.voronoi_points[v].y;
-                }
-                position.x /= cell.vertex.size();
-                position.y /= cell.vertex.size();
-            }
+            const float lat = planet.cellLat[highlightedCell];
 
             // Generate data for the whole year (12 months)
             float yearLength = globals.planetaryParams.getYearLength();
@@ -1845,16 +1359,16 @@ void highligtedCellObservation(const vor::Voronoi& map, const GlobalWorldObjects
                 ClimateDistribution dist;
                 switch (selectedClimateVar) {
                 case 0: // Temperature
-                    dist = seasonCalc->getTemperatureDistribution(cell, position, dayOfYear);
+                    dist = seasonCalc->getTemperatureDistribution(cell, lat, dayOfYear);
                     break;
                 case 1: // Precipitation
-                    dist = seasonCalc->getPercepitationDistribution(cell, position, dayOfYear);
+                    dist = seasonCalc->getPercepitationDistribution(cell, lat, dayOfYear);
                     break;
                 case 2: // Humidity
-                    dist = seasonCalc->getHumidityDistribution(cell, position, dayOfYear);
+                    dist = seasonCalc->getHumidityDistribution(cell, lat, dayOfYear);
                     break;
                 case 3: // Wind Strength
-                    dist = seasonCalc->getWindStrengthDistribution(cell, position, dayOfYear);
+                    dist = seasonCalc->getWindStrengthDistribution(cell, lat, dayOfYear);
                     break;
                 }
                 yMean[i] = dist.mean;
@@ -2167,15 +1681,32 @@ void continentViewer(GlobalWorldObjects& globals, bool& showContinentViewer)
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Center Position");
         ImGui::TableSetColumnIndex(1);
-        sf::Vector2f center = globals.continents[selectedContinent].getCenter();
-        ImGui::Text("(%.1f, %.1f)", center.x, center.y);
+        const glm::vec2 center = unitToLatLon(continent.centerDir);
+        ImGui::Text("lat %.1f, lon %.1f", center.x, center.y);
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Direction Vector");
+        ImGui::Text("Euler Pole");
         ImGui::TableSetColumnIndex(1);
-        sf::Vector2f dir = globals.continents[selectedContinent].getDirection();
-        ImGui::Text("(%.2f, %.2f)", dir.x, dir.y);
+        const glm::vec2 pole = unitToLatLon(continent.eulerAxis);
+        ImGui::Text("lat %.1f, lon %.1f, speed %.2f", pole.x, pole.y, continent.angularSpeed);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("The plate turns about this axis, counter clockwise seen from above the pole");
+            ImGui::EndTooltip();
+        }
+
+        // Plate velocity at its centre, the flat map's direction vector
+        const glm::vec3 centerVelocity = continent.velocityAt(continent.centerDir);
+        const float centerSpeed = glm::length(centerVelocity);
+        const float centerBearing = tangentToBearing(continent.centerDir, centerVelocity);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Motion at Center");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("%.2f toward %.0f deg", centerSpeed, centerBearing);
         if (ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();
@@ -2210,13 +1741,12 @@ void continentViewer(GlobalWorldObjects& globals, bool& showContinentViewer)
         draw_list->AddCircleFilled(center_pos, canvas_size / 2 - 5, ImColor(50, 50, 50, 255));
         draw_list->AddCircle(center_pos, canvas_size / 2 - 5, ImColor(100, 100, 100, 255), 32, 2.0f);
 
-        // Draw direction arrow
-        sf::Vector2f direction = globals.continents[selectedContinent].getDirection();
-        float mag = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+        // Draw direction arrow, north up
+        float mag = centerSpeed;
         if (mag > 0.001f)
         {
-            float normX = direction.x / mag;
-            float normY = direction.y / mag;
+            float normX = std::sin(glm::radians(centerBearing));
+            float normY = -std::cos(glm::radians(centerBearing));
             float arrowLen = (canvas_size / 2 - 10) * std::min(mag, 1.5f);
 
             ImVec2 arrowEnd(center_pos.x + normX * arrowLen, center_pos.y + normY * arrowLen);
@@ -2312,7 +1842,7 @@ void continentViewer(GlobalWorldObjects& globals, bool& showContinentViewer)
 }
 
 void populationViewer(PopManager& popManager, GlobalWorldObjects& globals,
-    bool& showPopulationViewer, const vor::Voronoi& map)
+    bool& showPopulationViewer, const vor::SphereVoronoi& map)
 {
     if (!showPopulationViewer)
     {
