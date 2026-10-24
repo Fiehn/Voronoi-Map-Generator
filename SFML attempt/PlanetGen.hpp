@@ -20,7 +20,6 @@ void propagateTerrainFeatures(std::vector<Cell>& map, GlobalWorldObjects& global
     float heightIncrease, bool volcanicActivity, BoundaryType boundaryType, int propagation_depth);
 void cleanUpContinents(std::vector<Cell>& map, GlobalWorldObjects& globals);
 void generateOceans(std::vector<Cell>& map, GlobalWorldObjects& globals);
-void generateSnowline(std::vector<Cell>& map, GlobalWorldObjects& globals);
 void generateTreeline(std::vector<Cell>& map, GlobalWorldObjects& globals);
 void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float deltaCoastLine);
 void closeOceanCell(std::vector<Cell>& map);
@@ -72,5 +71,8 @@ float normalizedClimateLatitude(float lat, float equatorFraction);
 // (0 = east, 90 = down) when moving moisture, so every wind there was turned 90 degrees clockwise
 void planetCalcWind(vor::SphereVoronoi& planet, GlobalWorldObjects& globals);
 void planetCalcTemp(vor::SphereVoronoi& planet, GlobalWorldObjects& globals);
+// Permanent snow on land and sea ice from the warmest month, so it runs after the temperatures are smoothed.
+// Fills snowBool, iceBool and globals.snowCells
+void planetCalcSnowIce(vor::SphereVoronoi& planet, GlobalWorldObjects& globals);
 void planetCalcPercepitation(vor::SphereVoronoi& planet, GlobalWorldObjects& globals, const MapConfig& config);
 void planetCalcClimateVariance(vor::SphereVoronoi& planet, GlobalWorldObjects& globals);

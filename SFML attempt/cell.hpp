@@ -41,6 +41,14 @@ public:
     bool oceanBool = false; // Is an ocean
     bool coastBool = false; // Is next to ocean
 
+    // Water balance from the hydrology step. Depths are in precipitation units (10 mm per year)
+    float pet = 0.f; // Potential evapotranspiration, from temperature only
+    float aet = 0.f; // Actual evapotranspiration of land (Budyko)
+    float runoff = 0.f; // Precipitation that is not evapotranspired, land only
+    float discharge = 0.f; // Water passing the cell in m3/s, the cell's own runoff plus everything upstream
+    int downstream = -1; // The neighbour the water leaves to, -1 at the ocean and in closed lakes
+    int waterBody = -1; // Index in globals.waterBodies when the cell is under a lake
+
     bool riverBool = false; // Has a river
     float riverStr = 0.f; // River strength
 	int riverId = -1; // River id

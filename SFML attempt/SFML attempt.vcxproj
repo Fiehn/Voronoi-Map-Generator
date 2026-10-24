@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -210,6 +210,7 @@
     <ClCompile Include="GlobeRenderer.cpp" />
     <ClCompile Include="PlanetView.cpp" />
     <ClCompile Include="PlanetGen.cpp" />
+    <ClCompile Include="Hydrology.cpp" />
     <ClCompile Include="PlanetColors.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -278,6 +279,8 @@
     <ClInclude Include="GlobeRenderer.hpp" />
     <ClInclude Include="PlanetView.hpp" />
     <ClInclude Include="PlanetGen.hpp" />
+    <ClInclude Include="Hydrology.hpp" />
+    <ClInclude Include="WaterBody.hpp" />
     <ClInclude Include="PlanetColors.hpp" />
     <ClInclude Include="CellObjects.hpp" />
     <ClInclude Include="util.hpp" />

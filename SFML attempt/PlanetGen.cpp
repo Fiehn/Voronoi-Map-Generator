@@ -9,6 +9,7 @@
 #include <glm/gtc/constants.hpp>
 #include "SphereMath.hpp"
 #include "util.hpp"
+#include "SeasonalCalculator.hpp"
 
 //////////
 // Steps that only walk the cell graph
@@ -419,22 +420,6 @@ void generateOceans(std::vector<Cell>& map, GlobalWorldObjects& globals)
     }
 }
 
-void generateSnowline(std::vector<Cell>& map, GlobalWorldObjects& globals)
-{
-	// Generate snowline cells
-    // If above snowline heigh
-	// and temperature is below 5C
-	// mark as snowline
-    for (size_t i = 0; i < map.size(); i++)
-    {
-        if (map[i].height >= globals.globalSnowline && map[i].temp <= 5.0f)
-        {
-            map[i].snowBool = true;
-            globals.snowCells.push_back(i);
-        }
-	}
-}
-
 void generateTreeline(std::vector<Cell>& map, GlobalWorldObjects& globals)
 {
     // Generate treeline cells
@@ -446,6 +431,38 @@ void generateTreeline(std::vector<Cell>& map, GlobalWorldObjects& globals)
 	}
 }
 
+void planetCalcSnowIce(vor::SphereVoronoi& planet, GlobalWorldObjects& globals)
+{
+    // Permanent snow and glaciers: land whose warmest month averages at or below 0 C.
+    // Sea ice: ocean whose warmest month averages at or below -2 C.
+    // Needs the smoothed temperatures. The snow line is whatever height that makes it, globalSnowline only reports it
+    const SeasonalCalculator seasons(globals);
+    const float yearLength = globals.planetaryParams.getYearLength();
+    constexpr float SEA_ICE_TEMP = -2.0f;
+
+    globals.snowCells.clear();
+    float lowestSnow = std::numeric_limits<float>::max();
+    for (std::size_t i = 0; i < planet.cells.size(); i++)
+    {
+        Cell& cell = planet.cells[i];
+        float warmest = -std::numeric_limits<float>::max();
+        for (int month = 0; month < 12; month++)
+        {
+            const float dayOfYear = (month + 0.5f) * (yearLength / 12.0f);
+            warmest = std::max(warmest, seasons.getTemperature(cell, planet.cellLat[i], dayOfYear));
+        }
+
+        cell.snowBool = !cell.oceanBool && warmest <= 0.0f;
+        cell.iceBool = cell.oceanBool && warmest <= SEA_ICE_TEMP;
+        if (cell.snowBool)
+        {
+            globals.snowCells.push_back(i);
+            lowestSnow = std::min(lowestSnow, cell.height);
+        }
+    }
+    globals.globalSnowline = globals.snowCells.empty() ? 1.0f : lowestSnow;
+}
+
 void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float deltaCoastLine) // sea level, coast, treeline and snow line
 {
 	// USE DELTA COASTLINE TO ADJUST coast lines later
@@ -455,9 +472,8 @@ void calcHeightValues(std::vector<Cell>& map, GlobalWorldObjects& globals, float
     // Generate oceans and coasts
 	generateOceans(map, globals);
 
-    // Snowline
-	generateSnowline(map, globals);
-        
+	// Snow and sea ice need temperatures, see planetCalcSnowIce
+
 	// Treeline
 	generateTreeline(map, globals);
     
@@ -1538,7 +1554,10 @@ void planetCalcTemp(vor::SphereVoronoi& planet, GlobalWorldObjects& globals)
 
     // Planetary temperature modifiers
     float baseTemp = globals.globalTempAvg;
-    float equatorToPoleGradient = globals.planetaryParams.equatorToPoleTemp;
+    // equatorToPoleTemp is a relative measure that also drives the circulation strength (Earth = 20), the old
+    // code used it as the actual drop, which left the poles at 13 C. Earth's sea level drop is about 50 C
+    constexpr float POLE_DROP_PER_GRADIENT = 2.5f;
+    float equatorToPoleGradient = globals.planetaryParams.equatorToPoleTemp * POLE_DROP_PER_GRADIENT;
     float greenhouseBoost = globals.planetaryParams.greenhouseEffectFactor;
     float axisTilt = globals.planetaryParams.axialTilt;
 

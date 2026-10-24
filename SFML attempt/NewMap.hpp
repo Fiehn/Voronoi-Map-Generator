@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 #include "Logger.h"
+#include "Hydrology.hpp"
 
 // Struct to wrap the generation steps
 struct GenStepWrapper {
@@ -112,7 +113,7 @@ static void genWorld(vor::SphereVoronoi& planet,
 	}
 
     // Total processing steps
-    const int totalSteps = 18;
+    const int totalSteps = 20;
     int currentStep = 0;
 
     // Initial draw
@@ -171,10 +172,6 @@ static void genWorld(vor::SphereVoronoi& planet,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcRiverStart(planet.cells, globals); }, "Calculating River", currentStep,
-		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
-
-    GenStepWrapper::RunStep([&]() {
 		planetCalcTemp(planet, globals); }, "Calculating Temperatures", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
@@ -183,7 +180,20 @@ static void genWorld(vor::SphereVoronoi& planet,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
+		planetCalcSnowIce(planet, globals); }, "Calculating Snow and Ice", currentStep,
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+
+    GenStepWrapper::RunStep([&]() {
 		planetCalcPercepitation(planet, globals, config); }, "Calculating Percepetation", currentStep,
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+
+    GenStepWrapper::RunStep([&]() {
+		const HydrologyStats water = planetCalcHydrology(planet, globals, config);
+			LOG_INFO(Map, "Hydrology:", water.report); }, "Calculating Water", currentStep,
+		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
+
+    GenStepWrapper::RunStep([&]() {
+		calcRiverStart(planet.cells, globals); }, "Calculating River", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {

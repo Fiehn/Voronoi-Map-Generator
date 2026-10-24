@@ -22,6 +22,7 @@ void AtmosphericComposition::normalize() {
 }
 
 void PlanetaryParameters::initializeEarthLike() {
+	planetRadiusKm = 6371.0f;
 	rotationSpeed = 1.0f;
 	progradeRotation = true;
 	axialTilt = 23.5f;
@@ -42,6 +43,7 @@ void PlanetaryParameters::initializeEarthLike() {
 }
 
 void PlanetaryParameters::initializeMarsLike() {
+	planetRadiusKm = 3390.0f;
 	rotationSpeed = 0.97f;
 	progradeRotation = true;
 	axialTilt = 25.0f;
@@ -62,6 +64,7 @@ void PlanetaryParameters::initializeMarsLike() {
 }
 
 void PlanetaryParameters::initialize() {
+	planetRadiusKm = RandomBetween(3000.0f, 9000.0f); // From Mars-sized to a bit over Earth-sized
 	rotationSpeed = RandomBetween(0.5f, 2.0f);
 	progradeRotation = (rand() % 2 == 0);
 	axialTilt = RandomBetween(12.0f, 40.0f);

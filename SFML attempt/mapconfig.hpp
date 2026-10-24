@@ -36,7 +36,7 @@ public:
 	float erosion_strength = 0.15f; // strength of erosion effect
 
     // Temperature
-    float global_temp_avg = 35.f; // not the actual average but a value that determines the temperature range
+    float global_temp_avg = 37.f; // not the actual average but the sea level temperature at the climate equator
     unsigned int temp_smooth_repeats = 0; // amount of temperature smoothing iterations
 
     // Sealevel
@@ -50,6 +50,13 @@ public:
 	float moisture_loss_rate = 0.02f; // amount of moisture lost per cell
 	float orographic_factor = 3.0f; // height influence on percepitation
 	float condensation_rate = 0.15f; // rate at which moisture condenses into precipitation
+
+    // Hydrology
+	float pet_scale = 6.0f; // Potential evapotranspiration per degree above -5 C, in precipitation units (about 0.7 x max_percipitation at 30 C)
+	float open_water_factor = 1.1f; // Open water evaporates this much more than the potential evapotranspiration of land
+	float budyko_w = 2.6f; // Shape of the Budyko curve (Fu), higher gives less runoff in dry climates
+	float min_lake_depth_m = 100.0f; // A depression shallower than this is crossed by the river, not filled
+	unsigned int min_lake_cells = 5; // A depression with fewer cells under its spill level is crossed by the river
 
     // Biomes
     unsigned int kmeans_max_iter = 15; // The maximum amount of iterations for the clustering (KMeans and every GMM restart)
@@ -124,6 +131,11 @@ private:
 			{"land_evapotranspiration_factor", land_evapotranspiration_factor},
 			{"ocean_evaporation_factor", ocean_evaporation_factor},
 			{"condensation_rate", condensation_rate},
+				{"pet_scale", pet_scale},
+				{"open_water_factor", open_water_factor},
+				{"budyko_w", budyko_w},
+				{"min_lake_depth_m", min_lake_depth_m},
+				{"min_lake_cells", min_lake_cells},
 			{"earthLike", earthLike},
 			{"population_density", population_density},
 			{"urbanization_rate", urbanization_rate},
@@ -183,6 +195,12 @@ private:
 		land_evapotranspiration_factor = j.at("land_evapotranspiration_factor").get<float>();
 		ocean_evaporation_factor = j.at("ocean_evaporation_factor").get<float>();
 		condensation_rate = j.at("condensation_rate").get<float>();
+		// Older configs have no hydrology settings
+		pet_scale = j.value("pet_scale", 6.0f);
+		open_water_factor = j.value("open_water_factor", 1.1f);
+		budyko_w = j.value("budyko_w", 2.6f);
+		min_lake_depth_m = j.value("min_lake_depth_m", 100.0f);
+		min_lake_cells = j.value("min_lake_cells", 5u);
 		earthLike = j.at("earthLike").get<bool>();
 		population_density = j.at("population_density").get<float>();
 		urbanization_rate = j.at("urbanization_rate").get<float>();

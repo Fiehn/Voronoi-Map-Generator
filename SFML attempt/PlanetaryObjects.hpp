@@ -27,6 +27,7 @@ struct SeasonalModifiers {
 
 class PlanetaryParameters {
 public:
+	float planetRadiusKm = 6371.0f; // Radius of the planet in km, turns the unit sphere into real areas and distances
 	float rotationSpeed = 1.0f; // Rotation speed of the planet (relative to Earth)
 	bool progradeRotation = true; // True for prograde, false for retrograde
 	float axialTilt = 23.5f; // Axial tilt in degrees

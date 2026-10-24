@@ -31,6 +31,7 @@ namespace vor {
         std::vector<glm::vec3> voronoi_points; // Circumcentre of each Delaunay triangle
         std::vector<float> cellLat;            // Degrees, cached from points
         std::vector<float> cellLon;
+        std::vector<float> cellArea;           // Steradians, i.e. area on the unit sphere; the cells sum to 4 pi
 
         std::vector<int> triangles;
         std::vector<int> halfedges;
