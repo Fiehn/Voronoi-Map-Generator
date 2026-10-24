@@ -160,6 +160,7 @@
       <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
     </ClCompile>
     <ClCompile Include="Ribbon.cpp" />
+    <ClCompile Include="ArrowField.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="GLContext.cpp" />
     <ClCompile Include="MapColors.cpp" />
@@ -221,6 +222,7 @@
     <ClInclude Include="RenderSettings.hpp" />
     <ClInclude Include="SphereBoundary.hpp" />
     <ClInclude Include="Ribbon.hpp" />
+    <ClInclude Include="ArrowField.hpp" />
     <ClInclude Include="GLContext.hpp" />
     <ClInclude Include="MapColors.hpp" />
     <ClInclude Include="BiomeGen.hpp" />

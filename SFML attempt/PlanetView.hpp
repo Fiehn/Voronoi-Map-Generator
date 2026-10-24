@@ -24,6 +24,10 @@ public:
     int debugMode = 0; // 0: random colour per cell, 1: lat/lon checkerboard
     bool showRivers = true;
     bool showConvergenceLines = false;
+    bool showWindArrows = false;
+    bool showPlateArrows = true; // Only in the Continents map mode
+
+    static constexpr int CONTINENTS_MAP_MODE = 5; // The Continents radio button in main.cpp
 
     // After the planet is (re)generated. Needs the window's GL context active
     void rebuild(const vor::SphereVoronoi& planet, const RenderSettings& settings, int mapMode);
@@ -33,8 +37,8 @@ public:
     void updateBoundaries(const vor::SphereVoronoi& planet, const RenderSettings& settings, int mapMode);
     // Cells in the Find Cell list, outlined. Cheap when the list is unchanged. Needs the window's GL context active
     void setFoundCells(const vor::SphereVoronoi& planet, const std::vector<std::size_t>& cells);
-    // Rivers and convergence lines of a newly generated world. Needs the window's GL context active
-    void setWorldLines(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals);
+    // Rivers, convergence lines, wind and plate arrows of a newly generated world. Needs the window's GL context active
+    void setWorldOverlays(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals);
 
     void handleEvent(const sf::Event& event, const sf::RenderWindow& window);
     void update(const sf::RenderWindow& window, const vor::SphereVoronoi& planet); // Once per frame, picks the hovered cell
@@ -54,6 +58,7 @@ private:
     void uploadHighlight(const vor::SphereVoronoi& planet);
     void uploadFoundCells(const vor::SphereVoronoi& planet);
     void uploadWorldLines();
+    void uploadArrows(int level);
 
     std::vector<sf::Color> mapColors; // Kept so switching the debug colours off restores them
     GlobeRenderer renderer;
@@ -62,6 +67,10 @@ private:
     std::vector<std::size_t> foundCells;
     std::vector<std::vector<glm::vec3>> rivers; // Kept to rebuild the ribbons after a style change or a new mesh
     std::vector<float> convergenceLats;
+    std::vector<ArrowLevel> arrowLevels;
+    std::vector<std::vector<Arrow>> windByLevel, platesByLevel; // Every level's arrows, made with the world
+    int arrowLevel = -1; // Uploaded, -1 for none
+    int currentMapMode = 0;
     unsigned int overlayStyleRevision = 0;
     bool overlaysStale = true; // The mesh was rebuilt, which drops every overlay
     bool dragging = false;

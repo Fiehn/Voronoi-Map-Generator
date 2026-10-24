@@ -49,8 +49,13 @@ void PlanetView::rebuild(const vor::SphereVoronoi& planet, const RenderSettings&
 {
     cellSpacing = planet.cells.empty() ? 0.f : std::sqrt(4.f * glm::pi<float>() / planet.cells.size());
     hoveredCell = -1;
-    rivers.clear(); // The old world's, setWorldLines brings the new ones
+    // The old world's, setWorldOverlays brings the new ones
+    rivers.clear();
     convergenceLats.clear();
+    arrowLevels.clear();
+    windByLevel.clear();
+    platesByLevel.clear();
+    arrowLevel = -1;
     boundaries.invalidate();
     updateBoundaries(planet, settings, mapMode);
 }
@@ -64,6 +69,7 @@ void PlanetView::setCellColors(const vor::SphereVoronoi& planet, const std::vect
 
 void PlanetView::updateBoundaries(const vor::SphereVoronoi& planet, const RenderSettings& settings, int mapMode)
 {
+    currentMapMode = mapMode;
     // A new mesh comes out grey and bare, so it gets its colours and overlays again
     if (boundaries.sync(planet, settings, mapMode) || !renderer.ready()) {
         renderer.build(planet, boundaries.rimPoints(), boundaries.rimOffsets());
@@ -87,15 +93,38 @@ void PlanetView::updateOverlays(const vor::SphereVoronoi& planet, const RenderSe
     uploadHighlight(planet);
     uploadFoundCells(planet);
     uploadWorldLines();
+    uploadArrows(arrowLevel);
     updateDebugOverlays(planet, settings);
 }
 
-void PlanetView::setWorldLines(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals)
+void PlanetView::setWorldOverlays(const vor::SphereVoronoi& planet, const GlobalWorldObjects& globals)
 {
     rivers = riverPaths(planet, globals.rivers);
     convergenceLats.clear();
     for (float fraction : globals.convergenceLines) convergenceLats.push_back(convergenceLineLat(fraction));
     uploadWorldLines();
+
+    arrowLevels = buildArrowLevels(planet);
+    windByLevel.clear();
+    platesByLevel.clear();
+    const float fastest = maxPlateSpeed(planet, globals.continents);
+    for (const ArrowLevel& level : arrowLevels) {
+        windByLevel.push_back(windArrows(planet, level));
+        platesByLevel.push_back(plateArrows(planet, globals.continents, level, fastest));
+    }
+    uploadArrows(arrowLevels.empty() ? -1 : arrowLevelFor(arrowLevels, camera.zoom));
+}
+
+void PlanetView::uploadArrows(int level)
+{
+    arrowLevel = level >= 0 && level < static_cast<int>(arrowLevels.size()) ? level : -1;
+    ArrowBatch wind, plates;
+    if (arrowLevel >= 0) {
+        wind.add(windByLevel[arrowLevel]);
+        plates.add(platesByLevel[arrowLevel]);
+    }
+    renderer.setArrows(ArrowGroup::Wind, wind);
+    renderer.setArrows(ArrowGroup::Plates, plates);
 }
 
 void PlanetView::uploadWorldLines()
@@ -224,6 +253,12 @@ void PlanetView::update(const sf::RenderWindow& window, const vor::SphereVoronoi
     const glm::vec2 viewport = viewportOf(window);
     camera.clampTo(viewport, maxZoom());
 
+    // The arrows only change when the zoom crosses into another level
+    if (!arrowLevels.empty()) {
+        const int level = arrowLevelFor(arrowLevels, camera.zoom);
+        if (level != arrowLevel) uploadArrows(level);
+    }
+
     // Over the UI the last hovered cell stays, so its readout can still be looked at
     if (!hasPlanet() || ImGui::GetIO().WantCaptureMouse) return;
 
@@ -245,6 +280,9 @@ void PlanetView::draw(sf::RenderWindow& window)
     if (!window.setActive(true)) return;
     renderer.setRibbonsVisible(RibbonGroup::Rivers, showRivers);
     renderer.setRibbonsVisible(RibbonGroup::ConvergenceLines, showConvergenceLines);
+    renderer.setArrowsVisible(ArrowGroup::Wind, showWindArrows);
+    renderer.setArrowsVisible(ArrowGroup::Plates, showPlateArrows && currentMapMode == CONTINENTS_MAP_MODE);
+    if (arrowLevel >= 0) renderer.arrowSlotPx = arrowSlotPx(arrowLevels[arrowLevel], camera.zoom);
     renderer.draw(camera, viewportOf(window));
     window.resetGLStates();
 }

@@ -106,6 +106,9 @@
     <ClCompile Include="Ribbon.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="ArrowField.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="PlanetView.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -226,6 +229,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Ribbon.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ArrowField.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PlanetView.hpp">

@@ -73,7 +73,6 @@ int main()
     GlobalWorldObjects globals;
 
     // Empty additionals
-    sf::VertexArray windArrows;
     sf::VertexArray lines;
     lines.setPrimitiveType(sf::Lines);
 
@@ -98,7 +97,6 @@ int main()
     // Create the view
     sf::Vector2f oldPos;
     bool moving = false;
-    bool drawWindArrowsBool = false; // Set to true to draw the wind direction
     bool drawHighlightBool = false; // Set to true to highlight a cell
 	bool drawLakesBool = true; // Draw lakes
 	bool drawContinentBool = false; // Draw continent borders
@@ -154,7 +152,7 @@ int main()
 		font, config, seed, popManager);
     window.setActive(true);
     planetView.rebuild(planet, renderSettings, mapType);
-    planetView.setWorldLines(planet, globals);
+    planetView.setWorldOverlays(planet, globals);
 
 	std::size_t maxCellInMap = planet.cells.size();
 
@@ -229,6 +227,7 @@ int main()
             if (mapType != 1 && mapType != 3 && mapType != 4) {
                 useSeasonalView = false;
             }
+            planetView.showWindArrows = false;
             redrawMap();
             if (mapType == 7) { showResourceGenBool = true; }
 		}
@@ -266,11 +265,19 @@ int main()
             ImGui::Separator();
         }
 
-		// The wind and plate arrows come back on the globe later, lakes are not drawn
+		// Lakes are not drawn
 		ImGui::Checkbox("Draw Lines", &planetView.showConvergenceLines);
 		if (ImGui::BeginItemTooltip()) { ImGui::Text("Wind convergence lines"); ImGui::EndTooltip(); }
 		ImGui::SameLine();
 		ImGui::Checkbox("Draw Rivers", &planetView.showRivers);
+		ImGui::SameLine();
+		ImGui::Checkbox("Draw Wind", &planetView.showWindArrows);
+		if (ImGui::BeginItemTooltip()) { ImGui::Text("Wind arrows, coloured by strength. Turned off when the map changes"); ImGui::EndTooltip(); }
+		if (mapType == PlanetView::CONTINENTS_MAP_MODE) {
+			ImGui::SameLine();
+			ImGui::Checkbox("Plate arrows", &planetView.showPlateArrows);
+			if (ImGui::BeginItemTooltip()) { ImGui::Text("How each plate moves, the length by speed"); ImGui::EndTooltip(); }
+		}
 		ImGui::Checkbox("Highlight Cell", &drawHighlightBool);
 		if (ImGui::BeginItemTooltip()) { ImGui::Text("Show the cell under the cursor in the Highlighted Cell window"); ImGui::EndTooltip(); }
 
@@ -346,7 +353,7 @@ int main()
         {
             window.setActive(true);
             planetView.rebuild(planet, renderSettings, mapType);
-            planetView.setWorldLines(planet, globals);
+            planetView.setWorldOverlays(planet, globals);
             maxCellInMap = planet.cells.size();
             redrawMap();
         }

@@ -5,6 +5,7 @@
 #include "SphereVoronoi.hpp"
 #include "PlanetCamera.hpp"
 #include "Ribbon.hpp"
+#include "ArrowField.hpp"
 #include "RenderSettings.hpp"
 
 // CPU side of the planet's render mesh, shared by the globe and the flat view. Kept apart from
@@ -61,6 +62,10 @@ inline float convergenceLineLat(float fraction) { return 90.f - 180.f * fraction
 enum class RibbonGroup { Rivers, Boundaries, ConvergenceLines, FoundCells, Highlight, Count };
 constexpr int RIBBON_GROUP_COUNT = static_cast<int>(RibbonGroup::Count);
 
+// Arrow layers, drawn in this order after ConvergenceLines
+enum class ArrowGroup { Plates, Wind, Count };
+constexpr int ARROW_GROUP_COUNT = static_cast<int>(ArrowGroup::Count);
+
 // Debug overlay vertices, drawn as lines (pairs) or round points of the given pixel size
 struct DebugVertex {
     glm::vec3 position;
@@ -106,6 +111,9 @@ public:
     void setCellColors(const std::vector<sf::Color>& colors); // One per cell
     void setRibbons(RibbonGroup group, const RibbonBatch& batch); // Replaces the group's lines and discs
     void setRibbonsVisible(RibbonGroup group, bool visible);     // Hides a group without dropping it
+    void setArrows(ArrowGroup group, const ArrowBatch& batch);
+    void setArrowsVisible(ArrowGroup group, bool visible);
+    float arrowSlotPx = ARROW_TARGET_SPACING_PX; // Pixels between arrows, their size is a fraction of it
     void setDebugLines(const std::vector<DebugVertex>& lines);
     void setDebugPoints(const std::vector<DebugVertex>& points);
     bool wireframe = false; // Debug: the mesh's triangle edges over the cells
@@ -128,6 +136,12 @@ private:
         float lonMin = 0.f, lonMax = 0.f;
         bool visible = true;
     };
+    struct ArrowLayer {
+        unsigned int vao = 0, buffer = 0;
+        int vertexCount = 0;
+        float lonMin = 0.f, lonMax = 0.f;
+        bool visible = true;
+    };
 
     void release();
     void upload(const PlanetMesh& mesh);
@@ -138,19 +152,22 @@ private:
     void drawOverlays(bool flat, int instances);
     // Ribbon groups [from, to), switches to the ribbon program and leaves it in use
     void drawRibbons(const PlanetCamera& camera, const glm::vec2& viewport, RibbonGroup from, RibbonGroup to);
+    // Every arrow layer, switches to the arrow program and leaves it in use
+    void drawArrows(const PlanetCamera& camera, const glm::vec2& viewport);
     void setDebugBuffer(unsigned int buffer, int& count, const std::vector<DebugVertex>& vertices);
 
     // GL object names, GLuint. They belong to the context that made them, and are only freed
     // while it is active (after the window closes they go with the process)
     unsigned long long contextId = 0;
     bool contextActive() const;
-    unsigned int program = 0, ribbonProgram = 0;
-    ProjectionUniforms meshUniforms, ribbonUniforms;
-    int ribbonViewportLocation = -1, ribbonDiscsLocation = -1;
+    unsigned int program = 0, ribbonProgram = 0, arrowProgram = 0;
+    ProjectionUniforms meshUniforms, ribbonUniforms, arrowUniforms;
+    int ribbonViewportLocation = -1, ribbonDiscsLocation = -1, arrowViewportLocation = -1, arrowSlotLocation = -1;
     unsigned int vao = 0, positionBuffer = 0, latLonBuffer = 0, colorBuffer = 0, indexBuffer = 0;
     unsigned int debugLineVao = 0, debugLineBuffer = 0, debugPointVao = 0, debugPointBuffer = 0;
     int debugLineCount = 0, debugPointCount = 0;
     RibbonLayer ribbons[RIBBON_GROUP_COUNT];
+    ArrowLayer arrows[ARROW_GROUP_COUNT];
 
     int indexCount = 0;
     int poleFanIndexCount = 0;

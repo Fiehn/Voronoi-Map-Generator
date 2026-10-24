@@ -25,9 +25,15 @@ uniform int uHorizonClip; // Globe: clip what lies beyond the horizon, for overl
 uniform float uFirstCopy; // Flat: instance i draws the map shifted by uFirstCopy + i world widths
 uniform float uMaxY;      // Flat: the map ends at |y| = uMaxY
 uniform float uMaxX;      // Flat: and at |x| = uMaxX
+uniform vec2 uViewport;   // Pixels, for the overlays sized on screen
 
 const float PI = 3.14159265358979;
 const float POLE_CLAMP = 1.57062178; // 89.99 degrees
+
+// Pixels from the screen centre of a clip space point
+vec2 toPixels(vec4 clip) { return clip.xy / clip.w * 0.5 * uViewport; }
+// Moves a clip space position by a pixel offset
+vec4 offsetPixels(vec4 clip, vec2 pixels) { return vec4(clip.xy + pixels * 2.0 / uViewport * clip.w, clip.zw); }
 
 // Flat map point of this instance's copy
 vec2 mapPoint(vec2 latLon)
@@ -95,13 +101,10 @@ layout(location = 5) in vec2 aNextLatLon;
 layout(location = 6) in vec4 aColor;
 layout(location = 7) in float aHalfWidth;
 layout(location = 8) in float aSide;
-uniform vec2 uViewport;
 uniform int uDiscs; // Round points of diameter 2 * aHalfWidth instead of lines
 out vec4 vColor;
 
 const float MITER_LIMIT = 2.0; // Max miter length in half widths
-
-vec2 toPixels(vec4 clip) { return clip.xy / clip.w * 0.5 * uViewport; }
 
 void main()
 {
@@ -132,7 +135,41 @@ void main()
         miter /= len;
         offset = miter * (aHalfWidth / max(dot(miter, nOut), 1.0 / MITER_LIMIT));
     }
-    gl_Position.xy += offset * aSide * 2.0 / uViewport * clip.w;
+    gl_Position = offsetPixels(clip, offset * aSide);
+}
+)";
+
+    // Arrows, see ArrowField.hpp. Each corner knows the arrow's anchor and a point a little way
+    // ahead of it, so the arrow points along the projected direction on any view. The shape is
+    // the flat map's: the tip one length ahead, the base corners 0.7 lengths back at 22.5 degrees
+    const char* ARROW_VERTEX_MAIN = R"(
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aLatLon;
+layout(location = 2) in vec3 aAheadPosition;
+layout(location = 3) in vec2 aAheadLatLon;
+layout(location = 4) in vec4 aColor;
+layout(location = 5) in float aSize;   // Length as a fraction of uSlot
+layout(location = 6) in float aCorner; // 0 tip, 1 and 2 the base corners
+uniform float uSlot; // Pixels between neighbouring arrows
+out vec4 vColor;
+
+const float SPREAD = PI / 8.0;
+
+void main()
+{
+    vColor = aColor;
+    vec4 clip = projectPoint(aPosition, aLatLon);
+    setClipDistances(aPosition, aLatLon);
+    gl_Position = clip;
+
+    vec2 d = toPixels(projectPoint(aAheadPosition, aAheadLatLon)) - toPixels(clip);
+    if (dot(d, d) < 1e-12) return;
+    d = normalize(d);
+    float arrowLength = aSize * uSlot;
+    float angle = aCorner < 0.5 ? 0.0 : (aCorner < 1.5 ? PI - SPREAD : PI + SPREAD);
+    float radius = aCorner < 0.5 ? arrowLength : 0.7 * arrowLength;
+    vec2 dir = vec2(d.x * cos(angle) - d.y * sin(angle), d.x * sin(angle) + d.y * cos(angle));
+    gl_Position = offsetPixels(clip, dir * radius);
 }
 )";
 
@@ -397,6 +434,7 @@ GlobeRenderer::~GlobeRenderer()
     if (contextActive()) {
         if (program) glDeleteProgram(program);
         if (ribbonProgram) glDeleteProgram(ribbonProgram);
+        if (arrowProgram) glDeleteProgram(arrowProgram);
     }
 }
 
@@ -414,6 +452,10 @@ void GlobeRenderer::release()
             arrays.insert(arrays.end(), { layer.vao, layer.discVao });
             buffers.insert(buffers.end(), { layer.buffer, layer.indexBuffer, layer.discBuffer });
         }
+        for (const ArrowLayer& layer : arrows) {
+            arrays.push_back(layer.vao);
+            buffers.push_back(layer.buffer);
+        }
         for (GLuint a : arrays) {
             if (a) glDeleteVertexArrays(1, &a);
         }
@@ -425,6 +467,7 @@ void GlobeRenderer::release()
     positionBuffer = latLonBuffer = colorBuffer = indexBuffer = debugLineBuffer = debugPointBuffer = 0;
     indexCount = poleFanIndexCount = globeIndexCount = debugLineCount = debugPointCount = 0;
     for (RibbonLayer& layer : ribbons) layer = RibbonLayer();
+    for (ArrowLayer& layer : arrows) layer = ArrowLayer();
     cellFirstVertex.clear();
     poleBands.clear();
 }
@@ -433,7 +476,7 @@ bool GlobeRenderer::ensurePrograms()
 {
     const unsigned long long active = sf::Context::getActiveContextId();
     if (active == 0) return false;
-    if (active != contextId) program = ribbonProgram = 0; // Made in another context, which can't use them here
+    if (active != contextId) program = ribbonProgram = arrowProgram = 0; // Made in another context, which can't use them here
     contextId = active;
 
     if (!program) {
@@ -447,6 +490,13 @@ bool GlobeRenderer::ensurePrograms()
         ribbonUniforms.fetch(ribbonProgram);
         ribbonViewportLocation = glGetUniformLocation(ribbonProgram, "uViewport");
         ribbonDiscsLocation = glGetUniformLocation(ribbonProgram, "uDiscs");
+    }
+    if (!arrowProgram) {
+        arrowProgram = compileWithProjection(ARROW_VERTEX_MAIN);
+        if (!arrowProgram) return false;
+        arrowUniforms.fetch(arrowProgram);
+        arrowViewportLocation = glGetUniformLocation(arrowProgram, "uViewport");
+        arrowSlotLocation = glGetUniformLocation(arrowProgram, "uSlot");
     }
     return true;
 }
@@ -603,6 +653,43 @@ void GlobeRenderer::setRibbonsVisible(RibbonGroup group, bool visible)
     ribbons[static_cast<int>(group)].visible = visible;
 }
 
+void GlobeRenderer::setArrows(ArrowGroup group, const ArrowBatch& batch)
+{
+    if (!ready() || !contextActive()) return;
+    ArrowLayer& layer = arrows[static_cast<int>(group)];
+
+    if (!layer.vao) {
+        const auto attribute = [](GLuint location, GLint size, GLenum type, GLboolean normalised, std::size_t offset) {
+            glEnableVertexAttribArray(location);
+            glVertexAttribPointer(location, size, type, normalised, sizeof(ArrowVertex), reinterpret_cast<const void*>(offset));
+        };
+        glGenVertexArrays(1, &layer.vao);
+        glBindVertexArray(layer.vao);
+        glGenBuffers(1, &layer.buffer);
+        glBindBuffer(GL_ARRAY_BUFFER, layer.buffer);
+        attribute(0, 3, GL_FLOAT, GL_FALSE, offsetof(ArrowVertex, position));
+        attribute(1, 2, GL_FLOAT, GL_FALSE, offsetof(ArrowVertex, latLon));
+        attribute(2, 3, GL_FLOAT, GL_FALSE, offsetof(ArrowVertex, aheadPosition));
+        attribute(3, 2, GL_FLOAT, GL_FALSE, offsetof(ArrowVertex, aheadLatLon));
+        attribute(4, 4, GL_UNSIGNED_BYTE, GL_TRUE, offsetof(ArrowVertex, color));
+        attribute(5, 1, GL_FLOAT, GL_FALSE, offsetof(ArrowVertex, size));
+        attribute(6, 1, GL_FLOAT, GL_FALSE, offsetof(ArrowVertex, corner));
+        glBindVertexArray(0);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, layer.buffer);
+    glBufferData(GL_ARRAY_BUFFER, batch.vertices.size() * sizeof(ArrowVertex), batch.vertices.empty() ? nullptr : batch.vertices.data(), GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    layer.vertexCount = static_cast<int>(batch.vertices.size());
+    layer.lonMin = batch.lonMin;
+    layer.lonMax = batch.lonMax;
+}
+
+void GlobeRenderer::setArrowsVisible(ArrowGroup group, bool visible)
+{
+    arrows[static_cast<int>(group)].visible = visible;
+}
+
 void GlobeRenderer::setDebugBuffer(unsigned int buffer, int& count, const std::vector<DebugVertex>& vertices)
 {
     count = 0;
@@ -662,6 +749,7 @@ void GlobeRenderer::drawGlobe(const PlanetCamera& camera, const glm::vec2& viewp
     glDrawElements(GL_TRIANGLES, globeIndexCount, GL_UNSIGNED_INT, nullptr);
 
     drawRibbons(camera, viewport, RibbonGroup::Rivers, RibbonGroup::FoundCells);
+    drawArrows(camera, viewport);
 
     // The debug overlays are lifted and depth tested against the cells, the wireframe culled like them
     glUseProgram(program);
@@ -692,6 +780,7 @@ void GlobeRenderer::drawFlat(const PlanetCamera& camera, const glm::vec2& viewpo
         reinterpret_cast<const void*>(offset), copies.count());
 
     drawRibbons(camera, viewport, RibbonGroup::Rivers, RibbonGroup::FoundCells);
+    drawArrows(camera, viewport);
 
     // The debug overlays lie within the mesh's longitude range, so the same copies cover them.
     // The mesh program keeps its uniforms
@@ -744,6 +833,34 @@ void GlobeRenderer::drawRibbons(const PlanetCamera& camera, const glm::vec2& vie
     }
 }
 
+void GlobeRenderer::drawArrows(const PlanetCamera& camera, const glm::vec2& viewport)
+{
+    // Like the ribbons: on the surface, no depth test, clipped at the horizon on the globe. All
+    // three corners share the anchor's clip distance, so an arrow is drawn whole or not at all
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glUseProgram(arrowProgram);
+    glUniform2f(arrowViewportLocation, viewport.x, viewport.y);
+    glUniform1f(arrowSlotLocation, arrowSlotPx);
+
+    const bool flat = camera.mode == ViewMode::Flat;
+    const float maxY = mapproj::project(camera.projection, mapproj::maxLat(camera.projection), 0.f).y;
+    if (!flat) arrowUniforms.set(0, camera.globeViewProj(viewport), 1.f, camera.globeEye(viewport), true, 0.f, 0.f, 0.f);
+
+    for (const ArrowLayer& layer : arrows) {
+        if (!layer.visible || layer.vertexCount == 0) continue;
+        int instances = 1;
+        if (flat) {
+            FlatCopies copies;
+            if (!flatCopies(camera, viewport, layer.lonMin, layer.lonMax, copies)) continue;
+            arrowUniforms.set(static_cast<int>(camera.projection), camera.flatViewProj(viewport), 1.f, glm::vec3(0.f), false,
+                static_cast<float>(copies.first), maxY, copies.maxX);
+            instances = copies.count();
+        }
+        glBindVertexArray(layer.vao);
+        glDrawArraysInstanced(GL_TRIANGLES, 0, layer.vertexCount, instances);
+    }
+}
 void GlobeRenderer::drawOverlays(bool flat, int instances)
 {
     // The globe draws all cell fans, the flat view the pole bands instead of the pole fans
