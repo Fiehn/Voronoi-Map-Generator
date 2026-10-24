@@ -31,3 +31,23 @@ struct HydrologyStats {
 // Fills Cell::pet, aet, runoff, discharge, downstream, waterBody and globals.waterBodies. Does not touch
 // height, lakeBool, riverBool or the old river code
 HydrologyStats planetCalcHydrology(vor::SphereVoronoi& planet, GlobalWorldObjects& globals, const MapConfig& config);
+
+struct RiverStats {
+	int rivers = 0;
+	int mainRivers = 0;        // Those that end in water, the rest are tributaries
+	int riverCells = 0;
+	int lakeCells = 0;
+	float longestKm = 0.f;
+	float maxDischarge = 0.f;  // m3/s
+	float maxWidth = 0.f;      // m
+	float maxDepth = 0.f;      // m
+	float maxSpeed = 0.f;      // m/s
+	std::string report;
+};
+
+// Rivers from the discharge: every land cell that is not under a lake and carries at least
+// config.river_min_discharge. The cells are split into rivers (main stem and tributaries, see River), and each
+// gets a width, depth and speed from its discharge and the slope of the water surface (Leopold and Maddock,
+// continuity and Manning). Fills Cell::riverBool, riverId, riverWidth, riverDepth, riverSpeed, lakeBool,
+// lakeId, globals.rivers, riverCells and lakeCells, and the river links of globals.waterBodies
+RiverStats planetCalcRivers(vor::SphereVoronoi& planet, GlobalWorldObjects& globals, const MapConfig& config);

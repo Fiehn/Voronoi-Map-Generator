@@ -268,7 +268,7 @@ namespace ResourceGen {
 		else if (cell.coastBool) {
 			abundance += 0.7f + RandomBetween(-0.1f, 0.2f);
 		} else if (cell.riverBool) {
-			abundance += 0.4f + cell.riverStr*0.4f + RandomBetween(-0.1f, 0.2f);
+			abundance += 0.4f + cell.riverStrength()*0.4f + RandomBetween(-0.1f, 0.2f);
 		}
 		else if (cell.lakeBool) {
 			abundance += 0.6f + RandomBetween(-0.1f, 0.2f);

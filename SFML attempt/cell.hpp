@@ -3,6 +3,8 @@ class Cell; // Forward declaration
 #pragma once
 #include <vector>
 #include <limits>
+#include <cmath>
+#include <algorithm>
 #include "extractiveResources.hpp"
 
 
@@ -50,7 +52,9 @@ public:
     int waterBody = -1; // Index in globals.waterBodies when the cell is under a lake
 
     bool riverBool = false; // Has a river
-    float riverStr = 0.f; // River strength
+    float riverWidth = 0.f; // Channel width in m, river cells only
+    float riverDepth = 0.f; // Mean depth in m
+    float riverSpeed = 0.f; // Mean flow speed in m/s
 	int riverId = -1; // River id
 
     bool lakeBool = false; // Has a lake
@@ -64,6 +68,12 @@ public:
     int culture = -1; // Will be tied to POP calculations later
 
 	ExtractiveResource resources; // Extractive resources in the cell (std::map<ResourceType, float>)
+
+    // 0 to 1 from the discharge, a river of 10000 m3/s or more is 1. For the things that care how big the river is
+    float riverStrength() const {
+        if (!riverBool || discharge <= 0.f) { return 0.f; }
+        return std::min(1.f, std::log10(1.f + discharge) / 4.f);
+    }
 
     ~Cell() {
         vertex.clear();

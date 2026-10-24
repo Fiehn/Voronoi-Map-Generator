@@ -55,6 +55,7 @@ public:
 	float pet_scale = 6.0f; // Potential evapotranspiration per degree above -5 C, in precipitation units (about 0.7 x max_percipitation at 30 C)
 	float open_water_factor = 1.1f; // Open water evaporates this much more than the potential evapotranspiration of land
 	float budyko_w = 2.6f; // Shape of the Budyko curve (Fu), higher gives less runoff in dry climates
+	float river_min_discharge = 200.0f; // Discharge in m3/s from which a cell is a river, absolute so it does not depend on the amount of cells
 	float min_lake_depth_m = 100.0f; // A depression shallower than this is crossed by the river, not filled
 	unsigned int min_lake_cells = 5; // A depression with fewer cells under its spill level is crossed by the river
 
@@ -134,6 +135,7 @@ private:
 				{"pet_scale", pet_scale},
 				{"open_water_factor", open_water_factor},
 				{"budyko_w", budyko_w},
+				{"river_min_discharge", river_min_discharge},
 				{"min_lake_depth_m", min_lake_depth_m},
 				{"min_lake_cells", min_lake_cells},
 			{"earthLike", earthLike},
@@ -199,6 +201,7 @@ private:
 		pet_scale = j.value("pet_scale", 6.0f);
 		open_water_factor = j.value("open_water_factor", 1.1f);
 		budyko_w = j.value("budyko_w", 2.6f);
+		river_min_discharge = j.value("river_min_discharge", 200.0f);
 		min_lake_depth_m = j.value("min_lake_depth_m", 100.0f);
 		min_lake_cells = j.value("min_lake_cells", 5u);
 		earthLike = j.at("earthLike").get<bool>();

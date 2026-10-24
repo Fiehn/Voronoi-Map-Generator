@@ -3,6 +3,7 @@
 #include <cmath>
 #include <limits>
 #include <numeric>
+#include <deque>
 #include <sstream>
 
 namespace {
@@ -495,11 +496,181 @@ HydrologyStats planetCalcHydrology(vor::SphereVoronoi& planet, GlobalWorldObject
 		if (--upstreamLeft[to] == 0) { ready.push_back(to); }
 	}
 	stats.cyclicCells = n - sorted;
+	for (int i = 0; i < n; i++)
+	{
+		cells[i].discharge = static_cast<float>(discharge[i]);
+		cells[i].downstream = cells[i].oceanBool ? -1 : downstream[i];
+	}
+
 	std::ostringstream out;
 	out << stats.nodes << " depressions (" << stats.leaves << " minima, " << stats.viableNodes << " deep enough), "
 		<< stats.lakes << " lakes (" << stats.closedLakes << " closed), " << stats.passThroughRegions << " crossed by the river. "
 		<< "Runoff " << stats.landRunoff << " m3/s = lake evaporation " << stats.lakeEvaporation << " + to ocean " << stats.toOcean
 		<< " + lost " << stats.lost << ", dead ends " << stats.deadEnd << ", cyclic cells " << stats.cyclicCells;
+	stats.report = out.str();
+	return stats;
+}
+
+RiverStats planetCalcRivers(vor::SphereVoronoi& planet, GlobalWorldObjects& globals, const MapConfig& config)
+{
+	RiverStats stats;
+	std::vector<Cell>& cells = planet.cells;
+	const int n = static_cast<int>(cells.size());
+	const double radiusKm = globals.planetaryParams.planetRadiusKm;
+
+	globals.rivers.clear();
+	globals.riverCells.clear();
+	globals.lakeCells.clear();
+	for (int i = 0; i < n; i++)
+	{
+		Cell& cell = cells[i];
+		cell.riverBool = false;
+		cell.riverId = -1;
+		cell.riverWidth = cell.riverDepth = cell.riverSpeed = 0.f;
+		cell.lakeBool = cell.waterBody >= 0;
+		cell.lakeId = cell.waterBody;
+		if (cell.lakeBool) { globals.lakeCells.push_back(i); stats.lakeCells++; }
+		if (!cell.oceanBool && !cell.lakeBool && cell.discharge >= config.river_min_discharge)
+		{
+			cell.riverBool = true;
+			globals.riverCells.push_back(i);
+			stats.riverCells++;
+		}
+	}
+	for (WaterBody& body : globals.waterBodies) { body.inflowRivers.clear(); body.outflowRiver = -1; }
+
+	// Distance between two cell centres in km
+	auto distanceKm = [&](int a, int b) {
+		const double d = std::clamp(static_cast<double>(glm::dot(planet.points[a], planet.points[b])), -1.0, 1.0);
+		return std::acos(d) * radiusKm;
+		};
+
+	// 1. Rivers: from each mouth upstream along the larger branch, the others become tributaries
+	std::vector<std::vector<int>> upstream(n);
+	std::vector<int> mouths;
+	for (int c : globals.riverCells)
+	{
+		const int down = cells[c].downstream;
+		if (down >= 0 && cells[down].riverBool) { upstream[down].push_back(c); }
+		else { mouths.push_back(c); }
+	}
+	std::sort(mouths.begin(), mouths.end(), [&](int a, int b) { return cells[a].discharge > cells[b].discharge; });
+
+	struct Work { int top; int parent; int confluence; };
+	std::deque<Work> work;
+	for (int m : mouths) { work.push_back({ m, -1, -1 }); }
+	while (!work.empty())
+	{
+		const Work job = work.front();
+		work.pop_front();
+		const int id = static_cast<int>(globals.rivers.size());
+		globals.rivers.emplace_back(id);
+
+		std::vector<int> walk;
+		for (int cur = job.top;;)
+		{
+			walk.push_back(cur);
+			cells[cur].riverId = id;
+			int best = -1;
+			for (int up : upstream[cur])
+			{
+				if (best < 0 || cells[up].discharge > cells[best].discharge) { best = up; }
+			}
+			for (int up : upstream[cur])
+			{
+				if (up != best) { work.push_back({ up, id, cur }); }
+			}
+			if (best < 0) { break; }
+			cur = best;
+		}
+
+		River& river = globals.rivers[id];
+		river.pathCells.assign(walk.rbegin(), walk.rend());
+		river.mouthDischarge = cells[job.top].discharge;
+		river.parentRiver = job.parent;
+		if (job.parent >= 0)
+		{
+			river.pathCells.push_back(job.confluence);
+			river.mouthType = RiverMouth::River;
+			globals.rivers[job.parent].tributaries.push_back(id);
+		}
+		else
+		{
+			stats.mainRivers++;
+			const int down = cells[job.top].downstream;
+			if (down >= 0 && cells[down].oceanBool) { river.mouthType = RiverMouth::Ocean; }
+			else if (down >= 0 && cells[down].waterBody >= 0)
+			{
+				river.mouthType = RiverMouth::Lake;
+				river.mouthLake = cells[down].waterBody;
+				globals.waterBodies[river.mouthLake].inflowRivers.push_back(id);
+			}
+		}
+		for (std::size_t k = 1; k < river.pathCells.size(); k++)
+		{
+			river.lengthKm += static_cast<float>(distanceKm(static_cast<int>(river.pathCells[k - 1]), static_cast<int>(river.pathCells[k])));
+		}
+		if (job.parent < 0 && cells[job.top].downstream >= 0) { river.lengthKm += static_cast<float>(distanceKm(job.top, cells[job.top].downstream)); }
+		stats.longestKm = std::max(stats.longestKm, river.lengthKm);
+	}
+	stats.rivers = static_cast<int>(globals.rivers.size());
+
+	for (WaterBody& body : globals.waterBodies)
+	{
+		if (body.outlet >= 0 && cells[body.outlet].riverBool) { body.outflowRiver = cells[body.outlet].riverId; }
+	}
+
+	// 2. Width, depth and speed. The slope is the drop of the filled water surface (a lake is level, a
+	// depression that was crossed is as high as its pass) over the distance to the next cell
+	constexpr double MANNING_N = 0.035;
+	constexpr double MIN_SLOPE = 1e-5;
+	std::vector<float> filled(n, std::numeric_limits<float>::quiet_NaN());
+	auto filledHeight = [&](int start) {
+		std::vector<int> chain;
+		int x = start;
+		float base = 0.f;
+		while (true)
+		{
+			if (!std::isnan(filled[x])) { base = filled[x]; break; }
+			if (cells[x].oceanBool) { filled[x] = cells[x].height; base = filled[x]; break; }
+			if (cells[x].waterBody >= 0) { filled[x] = globals.waterBodies[cells[x].waterBody].level; base = filled[x]; break; }
+			chain.push_back(x);
+			if (cells[x].downstream < 0) { base = -std::numeric_limits<float>::max(); break; }
+			x = cells[x].downstream;
+		}
+		for (auto it = chain.rbegin(); it != chain.rend(); ++it)
+		{
+			base = std::max(base, cells[*it].height);
+			filled[*it] = base;
+		}
+		return filled[start];
+		};
+	for (int c : globals.riverCells)
+	{
+		Cell& cell = cells[c];
+		const int down = cell.downstream;
+		double slope = MIN_SLOPE;
+		if (down >= 0)
+		{
+			const double drop = (static_cast<double>(filledHeight(c)) - filledHeight(down)) * HEIGHT_UNIT_M;
+			slope = std::max(MIN_SLOPE, drop / (distanceKm(c, down) * 1000.0));
+		}
+		const double q = cell.discharge;
+		const double width = 4.0 * std::sqrt(q);
+		const double depth = std::pow(q * MANNING_N / (width * std::sqrt(slope)), 0.6);
+		cell.riverWidth = static_cast<float>(width);
+		cell.riverDepth = static_cast<float>(depth);
+		cell.riverSpeed = static_cast<float>(q / (width * depth));
+		stats.maxDischarge = std::max(stats.maxDischarge, cell.discharge);
+		stats.maxWidth = std::max(stats.maxWidth, cell.riverWidth);
+		stats.maxDepth = std::max(stats.maxDepth, cell.riverDepth);
+		stats.maxSpeed = std::max(stats.maxSpeed, cell.riverSpeed);
+	}
+
+	std::ostringstream out;
+	out << stats.rivers << " rivers (" << stats.mainRivers << " main), " << stats.riverCells << " river cells, " << stats.lakeCells
+		<< " lake cells, longest " << stats.longestKm << " km, max " << stats.maxDischarge << " m3/s, " << stats.maxWidth << " m wide, "
+		<< stats.maxDepth << " m deep, " << stats.maxSpeed << " m/s";
 	stats.report = out.str();
 	return stats;
 }

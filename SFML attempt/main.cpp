@@ -277,7 +277,7 @@ int main()
         ImGui::Text("Global Temperature: %.2f", globals.globalTempAvg);
         ImGui::Text("Global Precipitation: %.2f", globals.globalPercepitation);
         ImGui::Text("Global Snow Line: %.2f", globals.globalSnowline);
-		ImGui::Text("Amount of Rivers: %d", globals.rivers.size());
+		ImGui::Text("Amount of Rivers: %d, Lakes: %d", static_cast<int>(globals.rivers.size()), static_cast<int>(globals.waterBodies.size()));
 
 
         // Display the temp, percepitation, and elevation, biome of the highlighted cell at the same position.

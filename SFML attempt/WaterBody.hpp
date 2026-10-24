@@ -15,5 +15,7 @@ struct WaterBody {
 	float outflow = 0.f;        // What leaves over the outlet, 0 for a closed basin
 	int outlet = -1;            // The pass the water leaves over, -1 when it does not
 	int outletTarget = -1;      // The cell on the far side of the pass
+	std::vector<int> inflowRivers; // Rivers (globals.rivers) that end in this lake
+	int outflowRiver = -1;      // The river that starts at the outlet, -1 if there is none
 	bool full = false;          // At its spill level, otherwise a closed basin (endorheic)
 };

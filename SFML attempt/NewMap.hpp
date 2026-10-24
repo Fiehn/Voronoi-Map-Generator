@@ -193,7 +193,8 @@ static void genWorld(vor::SphereVoronoi& planet,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {
-		calcRiverStart(planet.cells, globals); }, "Calculating River", currentStep,
+		const RiverStats rivers = planetCalcRivers(planet, globals, config);
+			LOG_INFO(Map, "Rivers:", rivers.report); }, "Calculating Rivers", currentStep,
 		totalSteps, window, loadingSprite, loadingBar, progressText, MAXWIDTH, MAXHEIGHT);
 
     GenStepWrapper::RunStep([&]() {

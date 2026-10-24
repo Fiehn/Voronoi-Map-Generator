@@ -47,8 +47,7 @@ class River;
 // Outline of a cell's original polygon (not the smoothed rim), as a closed ribbon line
 void appendCellOutline(RibbonBatch& batch, const vor::SphereVoronoi& sphere, int cell, const OverlayStyle& style);
 
-// Each river as the centres of its path cells, in River::getPathCells order. That walk goes back
-// along a branch to reach the next one, as the flat map drew it
+// Each river as the centres of its path cells, in River::getPathCells order, from the source to the mouth. A tributary ends on the cell of the river it joins
 std::vector<std::vector<glm::vec3>> riverPaths(const vor::SphereVoronoi& sphere, const std::vector<River>& rivers);
 
 // The circle of latitude lat (degrees), sampled every degree of longitude

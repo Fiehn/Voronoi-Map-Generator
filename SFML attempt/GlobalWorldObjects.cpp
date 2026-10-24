@@ -41,7 +41,6 @@ void GlobalWorldObjects::clearGlobals()
 	biomes.clear();
 	rivers.clear();
 	continents.clear();
-	lakes.clear();
 	waterBodies.clear();
 	convergenceLines.clear();
 	windDirection.clear();
